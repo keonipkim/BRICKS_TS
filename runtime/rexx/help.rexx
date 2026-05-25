@@ -11,7 +11,7 @@ EXEC CICS ASSIGN TERMID(TRM) END-EXEC
 
   IF AID = 'F3' THEN DO
     /* Rewind: chain back to ourselves so the dispatcher's task-end  */
-   EXEC CICS RETURN END-EXEC
+   EXEC CICS RETURN TRANSID('MYMU') END-EXEC
   END
 
 EXIT

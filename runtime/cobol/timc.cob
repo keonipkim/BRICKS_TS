@@ -112,7 +112,7 @@
            EXEC CICS START TRANSID('TIMC') INTERVAL(HHMMSS)
                            FROM(MSG) END-EXEC.
 
-           EXEC CICS RETURN END-EXEC.
+           EXEC CICS RETURN TRANSID('MYMU') END-EXEC.
            STOP RUN.
 
        SHOW-REMINDER.

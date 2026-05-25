@@ -256,7 +256,7 @@
            END-IF.
 
            MOVE NCOUNT TO DFHCOMMAREA.
-           EXEC CICS RETURN END-EXEC.
+           EXEC CICS RETURN TRANSID('MYMU') END-EXEC.
            STOP RUN.
 
        FILTERED-LIST.

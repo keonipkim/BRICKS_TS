@@ -45,7 +45,7 @@ DO FOREVER
   /* PF12 from the menu screen exits the transaction immediately.       */
   /* C2X returns the AID byte as 2-char hex; PF12 = 0x7C.               */
   IF C2X(EIBAID) = '7C' THEN DO
-    EXEC CICS RETURN END-EXEC
+    EXEC CICS RETURN TRANSID('MYMU') END-EXEC
   END
 
   AKT  = UPPER(STRIP(MAP.ACTION))

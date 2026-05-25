@@ -133,7 +133,7 @@
 
            PERFORM MENU-LOOP UNTIL EXIT-FLAG = 'Y'.
 
-           EXEC CICS RETURN END-EXEC.
+           EXEC CICS RETURN TRANSID('MYMU') END-EXEC.
            STOP RUN.
 
        MENU-LOOP.
