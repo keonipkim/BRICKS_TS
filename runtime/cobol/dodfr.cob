@@ -23,5 +23,5 @@
            MOVE 'Press ENTER or PF3 to return to the prompt.' TO REPORT-LINE
            EXEC CICS SEND TEXT FROM(REPORT-LINE) END-EXEC
 
-           EXEC CICS RETURN END-EXEC.
+           EXEC CICS RETURN TRANSID('MYMU') END-EXEC.
        END PROGRAM DODFR.

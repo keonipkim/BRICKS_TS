@@ -47,7 +47,7 @@ DO FOREVER
 
   AID = C2X(EIBAID)
   IF AID = 'F3' THEN DO
-    EXEC CICS RETURN END-EXEC
+    EXEC CICS RETURN TRANSID('MYMU') END-EXEC
   END
 
   /* Pick up any edited queue name. */
