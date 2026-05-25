@@ -16,6 +16,7 @@ show_welcome=yes
 start_transaction=HELP
 start_web3270=yes
 web3270_port=9000
+start_transaction=MYMU
 max_conns_per_ip=16
 
 #after how long doe exec web calls time out
