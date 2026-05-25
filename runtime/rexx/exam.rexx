@@ -8,5 +8,5 @@
  MSG = 'EXAM ON ' TRM ' -- A=' || A '  B=' || B '  C=' || C
                                                                        
   EXEC CICS SEND TEXT FROM(MSG) ERASE END-EXEC
-  EXEC CICS RETURN END-EXEC
+  EXEC CICS RETURN TRANSID('MYMU') END-EXEC
  EXIT
