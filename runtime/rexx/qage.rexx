@@ -15,7 +15,7 @@ EXEC CICS SEND MAP('QAGE1') FROM(SCR.) ERASE END-EXEC
 /* PF3 = no chain, drop back to the bare TRANSID prompt. Hex 'F3' is  */
 /* the AID byte the dispatcher records into EIBAID after SEND MAP.    */
 IF C2X(EIBAID) = 'F3' THEN DO
-  EXEC CICS RETURN END-EXEC
+  EXEC CICS RETURN TRANSID('MYMU') END-EXEC
 END
 
 EXEC CICS RETURN TRANSID('QAGR') END-EXEC
