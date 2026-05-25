@@ -3,3 +3,4 @@ bricks
 bricks.log
 log/
 data/files.boltdb
+runtime/tmp/
