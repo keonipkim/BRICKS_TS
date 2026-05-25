@@ -29,7 +29,7 @@ IF EIBRESP = 0 THEN DO
   SCR.FIRED  = '(scheduled fire -- ENTER to dismiss)'
   EXEC CICS SEND MAP('TIM2') FROM(SCR.) ERASE END-EXEC
   EXEC CICS RECEIVE MAP('TIM2') INTO(SCR.) END-EXEC
-  EXEC CICS RETURN END-EXEC
+  EXEC CICS RETURN TRANSID('MYMU') END-EXEC
 END
 
 /* Cold-start path: prompt the operator for delay + message.         */
@@ -41,7 +41,7 @@ EXEC CICS RECEIVE MAP('TIM1') INTO(SCR.) END-EXEC
 
 /* PF3 cancels the schedule.                                          */
 IF C2X(EIBAID) = 'F3' THEN DO
-  EXEC CICS RETURN END-EXEC
+  EXEC CICS RETURN TRANSID('MYMU') END-EXEC
 END
 
 /* Validate seconds. Default to 30 if blank or non-numeric.          */
@@ -62,5 +62,5 @@ IF MSG = '' THEN MSG = '(blank reminder)'
 
 EXEC CICS START TRANSID('TIMR') INTERVAL(HHMMSS) FROM(MSG) END-EXEC
 
-EXEC CICS RETURN END-EXEC
+EXEC CICS RETURN TRANSID('MYMU') END-EXEC
 EXIT

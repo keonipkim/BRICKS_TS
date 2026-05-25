@@ -62,7 +62,7 @@ IF NPAGES = 0 THEN NPAGES = 1
 /* the appropriate message. DFHCOMMAREA carries '0' back to the caller.  */
 IF TOTAL = 0 THEN DO
   DFHCOMMAREA = '0'
-  EXEC CICS RETURN END-EXEC
+  EXEC CICS RETURN TRANSID('MYMU') END-EXEC
 END
 
 EXIT_LIST = 0
@@ -122,5 +122,5 @@ END
 /* Hand the match count back to the caller via DFHCOMMAREA. CUST reads*/
 /* this to compose its post-list status message.  */
 DFHCOMMAREA = TOTAL
-EXEC CICS RETURN END-EXEC
+EXEC CICS RETURN TRANSID('MYMU') END-EXEC
 EXIT
