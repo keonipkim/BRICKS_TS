@@ -1,0 +1,5 @@
+.DS_Store
+bricks
+bricks.log
+log/
+data/files.boltdb
