@@ -149,5 +149,5 @@
            EXEC CICS CONVERSE MAP('SQLD1') FROM(SCR) INTO(SCR)
                               ERASE END-EXEC.
 
-           EXEC CICS RETURN END-EXEC.
+           EXEC CICS RETURN TRANSID('MYMU') END-EXEC.
            STOP RUN.
