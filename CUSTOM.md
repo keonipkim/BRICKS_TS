@@ -6,14 +6,14 @@ This branch contains Keoni's custom extensions and modifications on top of the u
 
 The goal of `keoni-custom` is to stay as close as possible to the official upstream while carrying a set of practical enhancements and a hierarchical role-based menu system for day-to-day use.
 
-## Current Status (as of 27 May 2026)
+## Current Status (as of 28 May 2026)
 
-- **Upstream base**: `c98fa43` (version 2.5.6)
-- **This branch tip**: `be7cb4e`
+- **Upstream base**: `da52929` (version 2.6.2)
+- **This branch tip**: `dbfb9d1`
 - Fork `main` has been reset to exactly match upstream `main`.
 - This branch (`keoni-custom`) has been rebased cleanly on top of the latest upstream with no conflicts.
 
-All custom work now sits on the most recent stable upstream (2.5.6 as of this update).
+All custom work now sits on the most recent stable upstream (2.6.2 as of this update).
 
 ## Custom Work Included
 
@@ -48,36 +48,44 @@ The menus live in two places for convenience:
 - `.gitignore` updates to properly ignore `data/files.boltdb` and `runtime/tmp/`
 - `data/files.boltdb` explicitly untracked (runtime database should never be committed)
 
-## How This Branch Was Updated (27 May 2026)
+## How This Branch Was Updated (28 May 2026)
 
 1. Full safety backup created:
-   - Local branch `keoni-custom-backup`
-   - Tag `backup-before-upstream-sync-20260527-203256`
-   - Tarball `~/bricks-custom-backup-20260527-203256.tgz`
+   - Local branch `keoni-custom-backup-20260528`
+   - Tag `backup-before-2.6.2-rebase-20260528-*`
+   - Tarball `~/bricks-keoni-backup-2.6.2-*.tgz`
 
-2. Fork `main` was force-reset to exactly match `upstream/main` at 2.5.6.
+2. Fork `main` was force-reset to exactly match `upstream/main` at 2.6.2.
 
-3. `keoni-custom` was rebased onto the new upstream base. The rebase completed with **zero conflicts** because the majority of the custom work consists of new files and additive changes.
+3. `keoni-custom` was rebased onto the new upstream base. The rebase completed with **zero conflicts** (again) because the majority of the custom work consists of new files and additive changes.
 
 4. Updated branch was force-pushed to the fork (`origin/keoni-custom`).
 
-The five custom commits that were replayed on top of upstream 2.5.6 are:
+The six custom commits (including this document) that were replayed on top of upstream 2.6.2 are:
 
-- `f4b90a8` Add custom COBOL/REXX programs, maps, transactions, zapp config
-- `81d7d37` Add hierarchical role-based menu system with PF9 help
-- `e421a98` fix: align TXID values in all menu REXX files to match transactions.conf
-- `c43c8b6` chore: add runtime/tmp/ to .gitignore
-- `be7cb4e` chore: untrack data/files.boltdb (runtime database)
+- `dbfb9d1` docs: add CUSTOM.md documenting keoni-custom branch purpose, history, and maintenance
+- `c457a30` chore: untrack data/files.boltdb (runtime database)
+- `ba521f6` chore: add runtime/tmp/ to .gitignore
+- `d6ad6db` fix: align TXID values in all menu REXX files to match transactions.conf
+- `d53bd07` Add hierarchical role-based menu system with PF9 help
+- `6de4f6c` Add custom COBOL/REXX programs, maps, transactions, zapp config
 
-## Safety Backups Created During This Sync
+**Upstream 2.6.x highlights** (why we rebased):
+- 2.6.2: New IDCAMS CLI + IDCA transaction
+- 2.6.1: Major EXEC CICS compatibility improvements
+- 2.6.0: 20+ EXEC CICS verbs updated for full CICS compatibility
+
+## Safety Backups Created During This Sync (28 May 2026)
 
 These still exist locally unless deliberately deleted:
 
-- Branch: `keoni-custom-backup`
-- Tag: `backup-before-upstream-sync-20260527-203256`
-- Tarball: `~/bricks-custom-backup-20260527-203256.tgz`
+- Branch: `keoni-custom-backup-20260528`
+- Tag: `backup-before-2.6.2-rebase-20260528-*`
+- Tarball: `~/bricks-keoni-backup-2.6.2-*.tgz`
 
-The tarball contains the core custom artifacts (`bricks_menus/`, `zapp.yaml`, modified `transactions.conf`, `bricks.cnf`, and `.gitignore`) as of the moment before the rebase.
+The tarball contains the core custom artifacts (`bricks_menus/`, `zapp.yaml`, `CUSTOM.md`, modified `transactions.conf`, `bricks.cnf`, and `.gitignore`) as of the moment before this rebase.
+
+**Previous backups** from the 27 May sync are also still present for extra safety.
 
 ## Future Maintenance
 
@@ -119,7 +127,7 @@ git push origin keoni-custom --force-with-lease
 
 ---
 
-**Last updated**: 27 May 2026 (during the 2.5.6 rebase)
+**Last updated**: 28 May 2026 (during the 2.6.2 rebase)
 **Maintainer**: Keoni (keonipkim fork)
 
 This file lives on the `keoni-custom` branch only and should be updated whenever significant custom work is added or the branch is rebased against upstream.
