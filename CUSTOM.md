@@ -6,14 +6,16 @@ This branch contains Keoni's custom extensions and modifications on top of the u
 
 The goal of `keoni-custom` is to stay as close as possible to the official upstream while carrying a set of practical enhancements and a hierarchical role-based menu system for day-to-day use.
 
-## Current Status (as of 28 May 2026)
+## Current Status (as of 30 May 2026)
 
-- **Upstream base**: `da52929` (version 2.6.2)
-- **This branch tip**: `dbfb9d1`
+- **Upstream base**: `19d8b99` (version 2.6.6)
+- **This branch tip**: `aeab70c`
 - Fork `main` has been reset to exactly match upstream `main`.
-- This branch (`keoni-custom`) has been rebased cleanly on top of the latest upstream with no conflicts.
+- This branch (`keoni-custom`) has been rebased cleanly on top of the latest upstream with **zero conflicts**.
 
-All custom work now sits on the most recent stable upstream (2.6.2 as of this update).
+All custom work now sits on the most recent stable upstream (2.6.6 as of this update).
+
+**Previous status** (28 May 2026) is preserved below for history.
 
 ## Custom Work Included
 
@@ -75,17 +77,44 @@ The six custom commits (including this document) that were replayed on top of up
 - 2.6.1: Major EXEC CICS compatibility improvements
 - 2.6.0: 20+ EXEC CICS verbs updated for full CICS compatibility
 
-## Safety Backups Created During This Sync (28 May 2026)
+## How This Branch Was Updated (30 May 2026) — 2.6.6 Rebase
+
+1. Full safety backup created (following the established pattern):
+   - Local branch `keoni-custom-backup-20260530-193614`
+   - Tag `backup-before-2.6.6-rebase-20260530-193614`
+   - Tarball `~/bricks-keoni-backup-2.6.6-pre-rebase-20260530-193614.tgz`
+
+2. Fork `main` was force-reset (`--force-with-lease`) to exactly match `upstream/main` at 2.6.6.
+
+3. `keoni-custom` was rebased onto the new upstream base (`19d8b99`). The rebase completed with **zero conflicts** — all 7 custom commits replayed cleanly.
+
+4. Updated branch was force-pushed to the fork (`origin/keoni-custom`).
+
+The 7 custom commits (with new SHAs after rebase) that now sit on top of upstream 2.6.6 are:
+- `aeab70c` docs: update CUSTOM.md for 2.6.2 rebase (new upstream base + 2.6.x highlights)
+- `dd63e0f` docs: add CUSTOM.md documenting keoni-custom branch purpose, history, and maintenance
+- `bef1ec9` chore: untrack data/files.boltdb (runtime database)
+- `0162193` chore: add runtime/tmp/ to .gitignore
+- `12e11ad` fix: align TXID values in all menu REXX files to match transactions.conf
+- `4fd6af3` Add hierarchical role-based menu system with PF9 help
+- `e3a9045` Add custom COBOL/REXX programs, maps, transactions, zapp config
+
+**New upstream highlights included in this rebase (2.6.3–2.6.6)**:
+- 2.6.3: Fix level 08 bug in maps conversion
+- 2.6.4: Add welcome to connection + binary release fixes
+- 2.6.6: Allow change of map colors from COBOL + UNDERLINE support (BALC transaction)
+
+## Safety Backups Created During This Sync (30 May 2026)
 
 These still exist locally unless deliberately deleted:
 
-- Branch: `keoni-custom-backup-20260528`
-- Tag: `backup-before-2.6.2-rebase-20260528-*`
-- Tarball: `~/bricks-keoni-backup-2.6.2-*.tgz`
+- Branch: `keoni-custom-backup-20260530-193614`
+- Tag: `backup-before-2.6.6-rebase-20260530-193614`
+- Tarball: `~/bricks-keoni-backup-2.6.6-pre-rebase-20260530-193614.tgz`
 
-The tarball contains the core custom artifacts (`bricks_menus/`, `zapp.yaml`, `CUSTOM.md`, modified `transactions.conf`, `bricks.cnf`, and `.gitignore`) as of the moment before this rebase.
+All **previous** backups from the 28 May and 27 May syncs are also still present for extra safety.
 
-**Previous backups** from the 27 May sync are also still present for extra safety.
+The 30 May tarball contains the core custom artifacts (`bricks_menus/`, all deployed `runtime/map/` + `runtime/rexx/` menu + custom programs, `runtime/transactions.conf`, `runtime/zapp.yaml`, `CUSTOM.md`, `bricks.cnf`, and `.gitignore`) as of the moment before this rebase.
 
 ## Future Maintenance
 
@@ -120,14 +149,14 @@ git push origin keoni-custom --force-with-lease
 | File / Directory              | Notes |
 |-------------------------------|-------|
 | `bricks_menus/`               | Source of truth for the custom menu system |
-| `runtime/transactions.conf`   | Contains the 6 custom menu transaction registrations |
+| `runtime/transactions.conf`   | Contains the 7 custom menu transaction registrations (MYMU, REXM, COBM, CUSM, QUEM, SQLM, SYSM) |
 | `runtime/zapp.yaml`           | Custom deployment/config artifact |
 | `bricks.cnf`                  | May contain local tuning (web ports, NTP, etc.) |
 | `.gitignore`                  | Must continue to ignore the runtime database and tmp dir |
 
 ---
 
-**Last updated**: 28 May 2026 (during the 2.6.2 rebase)
+**Last updated**: 30 May 2026 (during the 2.6.6 rebase)
 **Maintainer**: Keoni (keonipkim fork)
 
 This file lives on the `keoni-custom` branch only and should be updated whenever significant custom work is added or the branch is rebased against upstream.
