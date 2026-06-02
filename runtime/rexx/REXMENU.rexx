@@ -30,6 +30,13 @@ N=N+1; TXID.N='QAGR';  TXDESC.N='QUEUE AGR (REXX)';     TXGRP.N='users'
 N=N+1; TXID.N='TIMR';  TXDESC.N='TIMER REXX';           TXGRP.N='users'
 N=N+1; TXID.N='SQLR';  TXDESC.N='SQL DEMO REXX';        TXGRP.N='admin'
 N=N+1; TXID.N='DODF';  TXDESC.N='DOD FRAME REXX';       TXGRP.N='admin'
+N=N+1; TXID.N='BRDS'; TXDESC.N='BRDS (REXX)';             TXGRP.N='users'
+N=N+1; TXID.N='CHAT'; TXDESC.N='CHAT DEMO (REXX)';         TXGRP.N='users'
+N=N+1; TXID.N='CSGM'; TXDESC.N='CSGM GMTEXT (REXX)';       TXGRP.N='public'
+N=N+1; TXID.N='MNDL'; TXDESC.N='MANDELBROT (REXX)';        TXGRP.N='users'
+N=N+1; TXID.N='MNDU'; TXDESC.N='JULIA SET (REXX)';         TXGRP.N='users'
+N=N+1; TXID.N='TIME'; TXDESC.N='TIME (REXX)';              TXGRP.N='public'
+N=N+1; TXID.N='WAPI'; TXDESC.N='WAPI DEMO (REXX)';         TXGRP.N='users'
 TOTALMASTER=N
 
 VISCOUNT=0
