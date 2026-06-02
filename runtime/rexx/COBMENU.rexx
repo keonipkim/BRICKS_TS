@@ -31,6 +31,11 @@ N=N+1; TXID.N='TIMC';   TXDESC.N='TIMER COBOL';           TXGRP.N='users'
 N=N+1; TXID.N='ORDR';   TXDESC.N='ORDER COBOL';           TXGRP.N='users'
 N=N+1; TXID.N='SQLD';   TXDESC.N='SQL DEMO COBOL';        TXGRP.N='admin'
 N=N+1; TXID.N='DODC';  TXDESC.N='DOD FRAME COBOL';       TXGRP.N='admin'
+N=N+1; TXID.N='BANK';  TXDESC.N='BANK DEMO (COBOL)';      TXGRP.N='users'
+N=N+1; TXID.N='BALC';  TXDESC.N='BALC COLOR DEMO (COBOL)'; TXGRP.N='public'
+N=N+1; TXID.N='ESDC';  TXDESC.N='ESDS SEQ (COBOL)';       TXGRP.N='users'
+N=N+1; TXID.N='WHDR';  TXDESC.N='WHDR (COBOL)';           TXGRP.N='users'
+N=N+1; TXID.N='WZEN';  TXDESC.N='WZEN (COBOL)';           TXGRP.N='users'
 TOTALMASTER=N
 
 VISCOUNT=0
