@@ -12,6 +12,7 @@ The goal of `keoni-custom` is to stay as close as possible to the official upstr
 - **This branch tip**: `5c517a5`
 - Fork `main` has been reset to exactly match upstream `main`.
 - This branch (`keoni-custom`) has been rebased cleanly on top of the latest upstream. Minor conflicts were resolved in `runtime/transactions.conf` (due to upstream header/comment/format evolution in 2.7.x); all other custom work (new files + patches) applied cleanly.
+- Post-rebase: synced `bricks_menus/` (rexx + menu maps) to the aligned versions; extended custom menus (REXM + COBM primarily) to cover many more upstream + classic transactions (see "Menu System Extensions").
 
 All custom work (including recent DODFMR extensions) now sits on the most recent stable upstream (2.7.4 as of this update).
 
@@ -137,6 +138,18 @@ The 10 custom commits (with new SHAs after rebase) that now sit on top of upstre
 - 2.7.3: EXEC CICS QUERY SECURITY and EXEC CICS VERIFY PASSWORD support and adapted GUST transaction to show it at work
 - 2.7.4: XEC CICS INQUIRE SYSTEM GMMTEXT support, CSGM transaction added, add new COBOL transaction, show GMTEXT also in connection panel
 
+### Menu System Extensions (post 2.7.4 rebase)
+As a follow-up to the rebase + source sync:
+- Synced `bricks_menus/rexx/*.rexx` and `bricks_menus/map/*MENU.map` (and MYHELP) to match the aligned/live versions in `runtime/` (the "fix: align TXID..." changes, USERSCONF path, PF key handling with C2X, etc.). This ensures `bricks_menus/deploy.sh` produces correct deployed copies.
+- Extended the role-based menus to surface more registered transactions (classic samples + 2.7.x additions) so they are reachable via MYMU without typing TRANSIDs directly:
+  - **REXM (REXX)**: BRDS, CHAT, CSGM (GMTEXT), MNDL/MNDU (fractals), TIME, WAPI + previous.
+  - **COBM (COBOL)**: BANK (full demo), BALC (color/underline), ESDC, WHDR, WZEN + previous.
+- Extended the corresponding menu maps (REXMENU.map, COBMENU.map) with additional Lxx fields to support the longer lists (now 14 and 13 items).
+- All new items use the same role/group logic as existing entries and the aligned TXID values for XCTL/visibility.
+- Result: far fewer "orphan" transactions; BANK, the new fun demos (MNDL etc.), chat/brds, web/api, esds, and whdr/wzen are now in the hierarchy (subject to role).
+
+The menu sources in `bricks_menus/` are now the maintained truth; deploy or manual cp keeps runtime/ in sync.
+
 ## Safety Backups Created During This Sync (01 Jun 2026)
 
 The pre-rebase backup for the 2.7.4 attempt still exists locally:
@@ -188,7 +201,7 @@ git push origin keoni-custom --force-with-lease
 
 ---
 
-**Last updated**: 01 Jun 2026 (during the 2.7.4 rebase)
+**Last updated**: 01 Jun 2026 (2.7.4 rebase + menu source sync + extensions)
 **Maintainer**: Keoni (keonipkim fork)
 
 This file lives on the `keoni-custom` branch only and should be updated whenever significant custom work is added or the branch is rebased against upstream.
