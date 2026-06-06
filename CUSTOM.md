@@ -6,17 +6,15 @@ This branch contains Keoni's custom extensions and modifications on top of the u
 
 The goal of `keoni-custom` is to stay as close as possible to the official upstream while carrying a set of practical enhancements and a hierarchical role-based menu system for day-to-day use.
 
-## Current Status (as of 01 Jun 2026)
+## Current Status (as of 06 Jun 2026)
 
-- **Upstream base**: `c1b5cf3` (version 2.7.4)
-- **This branch tip**: `5c517a5`
+- **Upstream base**: `956d963` (version 2.8.1)
+- **This branch tip**: `0283ddf`
 - Fork `main` has been reset to exactly match upstream `main`.
-- This branch (`keoni-custom`) has been rebased cleanly on top of the latest upstream. Minor conflicts were resolved in `runtime/transactions.conf` (due to upstream header/comment/format evolution in 2.7.x); all other custom work (new files + patches) applied cleanly.
-- Post-rebase: synced `bricks_menus/` (rexx + menu maps) to the aligned versions; extended custom menus (REXM + COBM primarily) to cover many more upstream + classic transactions (see "Menu System Extensions").
+- This branch (`keoni-custom`) has been rebased cleanly on top of the latest upstream. **Zero conflicts** this time — all custom work (new files + patches, including DODFMR changes and the full menu system) replayed cleanly.
+- All prior custom work now sits on upstream 2.8.1 (including 2.8.0/2.7.9/2.7.8/2.7.7/2.7.6/2.7.5 changes).
 
-All custom work (including recent DODFMR extensions) now sits on the most recent stable upstream (2.7.4 as of this update).
-
-**Previous status** (30 May 2026 / 2.6.6) is preserved below for history.
+**Previous status** (01 Jun 2026 / 2.7.4) is preserved below for history.
 
 ## Custom Work Included
 
@@ -161,6 +159,49 @@ All **previous** backups from the 30 May (2.6.6), 28 May (2.6.2), and 27 May syn
 
 The 01 Jun pre-rebase state (tagged) contains the core custom artifacts (`bricks_menus/`, all deployed `runtime/map/` + `runtime/rexx/` menu + custom programs, `runtime/transactions.conf`, `runtime/zapp.yaml`, `CUSTOM.md`, `bricks.cnf`, and `.gitignore`) plus the DODFMR work-in-progress as of the moment before this rebase.
 
+## How This Branch Was Updated (06 Jun 2026) — 2.8.1 Rebase
+
+1. Full safety backup created (following the established pattern, plus user-approved cleanup of older backups):
+   - Local branch `keoni-custom-backup-20260606-095111`
+   - Tag `backup-before-2.8.1-rebase-20260606-095111`
+   (No new tarball was created in this sync.)
+
+2. Fork `main` was force-reset (`--force-with-lease`) to exactly match `upstream/main` at 2.8.1.
+
+3. `keoni-custom` was rebased onto the new upstream base (`956d963`). The rebase completed with **zero conflicts** — all 12 custom commits replayed cleanly. (Notable: `runtime/transactions.conf` required no manual resolution in this cycle, unlike the prior 2.7.4 rebase.)
+
+4. Updated this `CUSTOM.md` (current status + new rebase section), committed the update, and force-pushed the branch to the fork (`origin/keoni-custom`).
+
+The 12 custom commits (with new SHAs after rebase) that now sit on top of upstream 2.8.1 are:
+
+- `0283ddf` feat(menus): sync bricks_menus/ sources to aligned runtime (post-align TXID fix); extend MYMU/REXM/COBM with missing txns (BANK,BALC,BRDS,CHAT,CSGM,MNDL/MNDU,TIME,WAPI,ESDC,WHDR,WZEN); update CUSTOM.md
+- `b27191a` docs: update CUSTOM.md for 2.7.4 rebase (clean rebase on new upstream base)
+- `eda1e84` Saved progress on DODFMR review flow (F4 path)
+- `4a98194` Fix green underline bleed on DODFMR (DODF1 map)
+- `231e861` docs: update CUSTOM.md for 2.6.6 rebase (clean rebase on new upstream base)
+- `3b36021` docs: update CUSTOM.md for 2.6.2 rebase (new upstream base + 2.6.x highlights)
+- `bae3b33` docs: add CUSTOM.md documenting keoni-custom branch purpose, history, and maintenance
+- `33f811b` chore: untrack data/files.boltdb (runtime database)
+- `465988a` chore: add runtime/tmp/ to .gitignore
+- `2d12aa7` fix: align TXID values in all menu REXX files to match transactions.conf
+- `b5a269f` Add hierarchical role-based menu system with PF9 help
+- `f93d001` Add custom COBOL/REXX programs, maps, transactions, zapp config
+
+**New upstream highlights included in this rebase (2.7.5–2.8.1)**:
+- 2.8.1: fix for EIBLEN bug
+- 2.8.0: smart start_bricks.bash script
+- 2.8.0: add_brick_user.bash now uses pre-built binary brickspsw for users who don't know how to rename the appropriate binary
+- 2.8.0: VSAM cache and cemt M V and CEMT M D
+- 2.7.9: DBMON in CMET Monitor
+- 2.7.8: BRICKS time altered log message
+- 2.7.7: show INS in web3270 when in Insert mode
+- 2.7.6: some fixes to web3270 terminal
+- 2.7.5: small cosmetic fixes
+- 2.7.5: udpate copybooks
+- 2.7.5: fix multi-level LINK with pending AID
+
+After rebase + cleanup: older backup branches from May 2026 (and the untimestamped `keoni-custom-backup`) were deleted locally; the most recent prior backup (`keoni-custom-backup-20260601-204810`) + this fresh pre-rebase backup were retained.
+
 ## Future Maintenance
 
 ### Recommended Workflow
@@ -201,7 +242,7 @@ git push origin keoni-custom --force-with-lease
 
 ---
 
-**Last updated**: 01 Jun 2026 (2.7.4 rebase + menu source sync + extensions)
+**Last updated**: 06 Jun 2026 (2.8.1 rebase, clean zero-conflict rebase on latest upstream)
 **Maintainer**: Keoni (keonipkim fork)
 
 This file lives on the `keoni-custom` branch only and should be updated whenever significant custom work is added or the branch is rebased against upstream.
