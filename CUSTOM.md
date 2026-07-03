@@ -9,7 +9,7 @@ The goal of `keoni-custom` is to stay as close as possible to the official upstr
 ## Current Status (as of 02 Jul 2026)
 
 - **Upstream base**: `fd1e7fc` (v3.1.7)
-- **This branch tip**: `8ced4d9` (docs: update CUSTOM.md for 3.1.7 rebase)
+- **This branch tip**: `a8d0d79` (docs: update CUSTOM.md for 3.1.7 rebase)
 - Fork `main` has been reset to exactly match upstream `main`.
 - This branch (`keoni-custom`) has been rebased cleanly on top of the latest upstream. **Zero conflicts** — all 14 custom commits replayed cleanly (using `--onto` to account for upstream history rewrite). Custom additions (DODFMR/PERS + full menu system) preserved.
 - All prior custom work now sits on upstream 3.1.7 (including 3.1.6/3.1.5 JSON+ SABRE + binary/release changes + all previous 3.x/2.x work).
@@ -299,7 +299,7 @@ After rebase: the fresh pre-rebase backup branch + tag were created and retained
 
 The custom commits (with new SHAs after this rebase) that now sit on top of upstream v3.1.7 are:
 
-- `8ced4d9` docs: update CUSTOM.md for 3.1.7 rebase (clean rebase on new upstream base)
+- `a8d0d79` docs: update CUSTOM.md for 3.1.7 rebase (clean rebase on new upstream base)
 - `c1df621` docs: update CUSTOM.md for 3.1.4 rebase (clean rebase on new upstream base)
 - `292edeb` docs: update CUSTOM.md for 2.8.6 rebase (clean rebase on new upstream base)
 - `489585f` docs: update CUSTOM.md for 2.8.1 rebase (clean rebase on new upstream base)
