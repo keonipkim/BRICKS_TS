@@ -9,7 +9,7 @@ The goal of `keoni-custom` is to stay as close as possible to the official upstr
 ## Current Status (as of 25 Jul 2026)
 
 - **Upstream base**: `774af94` (v3.2.0)
-- **This branch tip**: (see docs update commit below after this section is committed)
+- **This branch tip**: `96a4f66` (docs: update CUSTOM.md for 3.2.0 rebase)
 - Fork `main` has been reset to exactly match upstream `main`.
 - This branch (`keoni-custom`) has been rebased cleanly on top of the latest upstream. **Zero conflicts** — all 17 custom commits replayed cleanly (simple `git rebase upstream/main`; no `--onto` needed — upstream was a clean fast-forward from the prior base). Custom additions (DODFMR/PERS + full menu system) preserved.
 - All prior custom work now sits on upstream 3.2.0 (including 3.19 transaction aliases, 3.1.7/3.1.6/3.1.5 JSON + SABRE + binary/release changes + all previous 3.x/2.x work).
