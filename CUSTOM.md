@@ -6,15 +6,15 @@ This branch contains Keoni's custom extensions and modifications on top of the u
 
 The goal of `keoni-custom` is to stay as close as possible to the official upstream while carrying a set of practical enhancements and a hierarchical role-based menu system for day-to-day use.
 
-## Current Status (as of 02 Jul 2026)
+## Current Status (as of 25 Jul 2026)
 
-- **Upstream base**: `fd1e7fc` (v3.1.7)
-- **This branch tip**: `a8d0d79` (docs: update CUSTOM.md for 3.1.7 rebase)
+- **Upstream base**: `774af94` (v3.2.0)
+- **This branch tip**: (see docs update commit below after this section is committed)
 - Fork `main` has been reset to exactly match upstream `main`.
-- This branch (`keoni-custom`) has been rebased cleanly on top of the latest upstream. **Zero conflicts** — all 14 custom commits replayed cleanly (using `--onto` to account for upstream history rewrite). Custom additions (DODFMR/PERS + full menu system) preserved.
-- All prior custom work now sits on upstream 3.1.7 (including 3.1.6/3.1.5 JSON+ SABRE + binary/release changes + all previous 3.x/2.x work).
+- This branch (`keoni-custom`) has been rebased cleanly on top of the latest upstream. **Zero conflicts** — all 17 custom commits replayed cleanly (simple `git rebase upstream/main`; no `--onto` needed — upstream was a clean fast-forward from the prior base). Custom additions (DODFMR/PERS + full menu system) preserved.
+- All prior custom work now sits on upstream 3.2.0 (including 3.19 transaction aliases, 3.1.7/3.1.6/3.1.5 JSON + SABRE + binary/release changes + all previous 3.x/2.x work).
 
-**Previous status** (21 Jun 2026 / 3.1.4) is preserved below for history.
+**Previous status** (02 Jul 2026 / 3.1.7) is preserved below for history.
 
 ## Custom Work Included
 
@@ -322,6 +322,48 @@ The custom commits (with new SHAs after this rebase) that now sit on top of upst
 
 After rebase: the fresh pre-rebase backup branch + tag were created and retained.
 
+## How This Branch Was Updated (25 Jul 2026) — 3.2.0 Rebase
+
+1. Full safety backup created (following the established pattern):
+   - Local branch `keoni-custom-backup-20260725-181435` (at pre-rebase tip `6570b3b`)
+   - Tag `backup-before-3.2.0-rebase-20260725-181435`
+   (No new tarball was created in this sync.)
+
+2. Fork `main` was reset (`--hard`) to exactly match `upstream/main` at v3.2.0 (`774af94`).
+
+3. `keoni-custom` was rebased onto the new upstream base using:
+   `git rebase upstream/main`
+   (Simple rebase — upstream/main was a clean 2-commit fast-forward from the prior base `fd1e7fc`; no history rewrite / `--onto` required.)
+   The rebase completed with **zero conflicts** — all 17 custom commits replayed cleanly.
+
+4. Updated this `CUSTOM.md` (current status + new rebase section), committed the update, and force-pushed the branch to the fork (`origin/keoni-custom`).
+
+The custom commits (with new SHAs after this rebase) that now sit on top of upstream v3.2.0 are:
+
+- `6ffeeb3` docs: pin correct tip SHA in CUSTOM.md
+- `7e68e71` docs: update CUSTOM.md for 3.1.7 rebase (clean rebase on new upstream base)
+- `8700b47` docs: update CUSTOM.md for 3.1.4 rebase (clean rebase on new upstream base)
+- `fe0fd7e` docs: update CUSTOM.md for 2.8.6 rebase (clean rebase on new upstream base)
+- `f052558` docs: update CUSTOM.md for 2.8.1 rebase (clean rebase on new upstream base)
+- `9346314` feat(menus): sync bricks_menus/ sources to aligned runtime (post-align TXID fix); extend MYMU/REXM/COBM with missing txns (BANK,BALC,BRDS,CHAT,CSGM,MNDL/MNDU,TIME,WAPI,ESDC,WHDR,WZEN); update CUSTOM.md
+- `be20c70` docs: update CUSTOM.md for 2.7.4 rebase (clean rebase on new upstream base)
+- `f69e457` Saved progress on DODFMR review flow (F4 path)
+- `ae23fbf` Fix green underline bleed on DODFMR (DODF1 map)
+- `5cb9035` docs: update CUSTOM.md for 2.6.6 rebase (clean rebase on new upstream base)
+- `554d0f1` docs: update CUSTOM.md for 2.6.2 rebase (new upstream base + 2.6.x highlights)
+- `097baf8` docs: add CUSTOM.md documenting keoni-custom branch purpose, history, and maintenance
+- `25c90a8` chore: untrack data/files.boltdb (runtime database)
+- `d244f18` chore: add runtime/tmp/ to .gitignore
+- `693ff4d` fix: align TXID values in all menu REXX files to match transactions.conf
+- `05c621d` Add hierarchical role-based menu system with PF9 help
+- `ce4eeb1` Add custom COBOL/REXX programs, maps, transactions, zapp config
+
+**New upstream highlights included in this rebase (3.19–3.2.0)**:
+- v3.2.0: fixes for COMP-3, SEND MAP ERASE, add 32-bit support, and fix `start_bricks.bash`
+- v3.19: aliases for transactions in `runtime/aliases.conf`
+
+After rebase: the fresh pre-rebase backup branch + tag were created and retained.
+
 ## Future Maintenance
 
 ### Recommended Workflow
@@ -362,7 +404,7 @@ git push origin keoni-custom --force-with-lease
 
 ---
 
-**Last updated**: 02 Jul 2026 (3.1.7 rebase, zero conflicts; used --onto after upstream force-update)
+**Last updated**: 25 Jul 2026 (3.2.0 rebase, zero conflicts; simple rebase on fast-forward upstream)
 **Maintainer**: Keoni (keonipkim fork)
 
 This file lives on the `keoni-custom` branch only and should be updated whenever significant custom work is added or the branch is rebased against upstream.
