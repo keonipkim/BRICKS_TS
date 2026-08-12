@@ -9,7 +9,7 @@ The goal of `keoni-custom` is to stay as close as possible to the official upstr
 ## Current Status (as of 12 Aug 2026)
 
 - **Upstream base**: `6e9c916` (v3.2.3)
-- **This branch tip**: `0cf6658` (docs: pin correct tip SHA in CUSTOM.md) — will be pinned after this docs commit
+- **This branch tip**: `11c4338` (docs: update CUSTOM.md for 3.2.3 rebase)
 - Fork `main` has been reset to exactly match upstream `main`.
 - This branch (`keoni-custom`) has been rebased cleanly on top of the latest upstream. **Zero conflicts** — all 19 custom commits replayed cleanly (simple `git rebase upstream/main`; no `--onto` needed — upstream was a clean fast-forward from the prior 3.2.0 base). Custom additions (DODFMR/PERS + full menu system) preserved. Upstream STAR (3.2.1) is present in `runtime/transactions.conf` alongside the keoni-custom blocks.
 - All prior custom work now sits on upstream 3.2.3 (including 3.2.0 COMP-3 / SEND MAP ERASE / 32-bit, 3.19 transaction aliases, 3.1.7/3.1.6/3.1.5 JSON + SABRE + binary/release changes + all previous 3.x/2.x work).
@@ -382,6 +382,7 @@ After rebase: the fresh pre-rebase backup branch + tag were created and retained
 
 The custom commits (with new SHAs after this rebase) that now sit on top of upstream v3.2.3 are:
 
+- `11c4338` docs: update CUSTOM.md for 3.2.3 rebase (clean rebase on new upstream base)
 - `0cf6658` docs: pin correct tip SHA in CUSTOM.md
 - `57e883e` docs: update CUSTOM.md for 3.2.0 rebase (clean rebase on new upstream base)
 - `4e3523e` docs: pin correct tip SHA in CUSTOM.md
