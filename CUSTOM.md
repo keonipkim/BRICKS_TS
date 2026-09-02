@@ -6,15 +6,15 @@ This branch contains Keoni's custom extensions and modifications on top of the u
 
 The goal of `keoni-custom` is to stay as close as possible to the official upstream while carrying a set of practical enhancements and a hierarchical role-based menu system for day-to-day use.
 
-## Current Status (as of 12 Aug 2026)
+## Current Status (as of 02 Sep 2026)
 
-- **Upstream base**: `6e9c916` (v3.2.3)
-- **This branch tip**: `11c4338` (docs: update CUSTOM.md for 3.2.3 rebase)
+- **Upstream base**: `c59b188` (v3.2.3 source + three README-only commits; GitHub release 3.2.4 is a binary-only Safari web3270 fix tagged on the same SHA as v3.2.3, `6e9c916`)
+- **This branch tip**: `7038da9` (docs: pin correct tip SHA in CUSTOM.md) — will be pinned after this docs commit
 - Fork `main` has been reset to exactly match upstream `main`.
-- This branch (`keoni-custom`) has been rebased cleanly on top of the latest upstream. **Zero conflicts** — all 19 custom commits replayed cleanly (simple `git rebase upstream/main`; no `--onto` needed — upstream was a clean fast-forward from the prior 3.2.0 base). Custom additions (DODFMR/PERS + full menu system) preserved. Upstream STAR (3.2.1) is present in `runtime/transactions.conf` alongside the keoni-custom blocks.
-- All prior custom work now sits on upstream 3.2.3 (including 3.2.0 COMP-3 / SEND MAP ERASE / 32-bit, 3.19 transaction aliases, 3.1.7/3.1.6/3.1.5 JSON + SABRE + binary/release changes + all previous 3.x/2.x work).
+- This branch (`keoni-custom`) has been rebased cleanly on top of the latest upstream. **Zero conflicts** — all 21 custom commits replayed cleanly (simple `git rebase upstream/main`; no `--onto` needed — upstream was a clean 3-commit fast-forward from the prior 3.2.3 base). Custom additions (DODFMR/PERS + full menu system) preserved. Upstream STAR (3.2.1) is present in `runtime/transactions.conf` alongside the keoni-custom blocks.
+- All prior custom work now sits on upstream `c59b188` (including 3.2.3 COBOL improvements, 3.2.0 COMP-3 / SEND MAP ERASE / 32-bit, 3.19 transaction aliases, 3.1.7/3.1.6/3.1.5 JSON + SABRE + binary/release changes + all previous 3.x/2.x work).
 
-**Previous status** (25 Jul 2026 / 3.2.0) is preserved below for history.
+**Previous status** (12 Aug 2026 / 3.2.3) is preserved below for history.
 
 ## Custom Work Included
 
@@ -409,6 +409,52 @@ The custom commits (with new SHAs after this rebase) that now sit on top of upst
 - v3.2.1: millisecond-resolution scheduler for COBOL and STAR transaction (Star Wars)
 
 After rebase: the fresh pre-rebase backup branch + tag were created and retained (plus prior 3.2.0 / 3.1.7 backups).
+
+## How This Branch Was Updated (02 Sep 2026) — 3.2.4 README Rebase
+
+1. Full safety backup created (following the established pattern):
+   - Local branch `keoni-custom-backup-20260902-195743` (at pre-rebase tip `888566e`)
+   - Tag `backup-before-3.2.4-readme-rebase-20260902-195743`
+   (No new tarball was created in this sync.)
+
+2. Fork `main` was reset (`--hard`) to exactly match `upstream/main` at `c59b188`. This was a clean fast-forward of the three README-only commits (`e34a1e7`, `4fbd60f`, `c59b188`).
+
+3. `keoni-custom` was rebased onto the new upstream base using:
+   `git rebase upstream/main`
+   (Simple rebase — upstream/main was a clean 3-commit fast-forward from the prior base `6e9c916`; no history rewrite / `--onto` required.)
+   The rebase completed with **zero conflicts** — all 21 custom commits replayed cleanly. `keoni-custom` does not touch `README.md`, so the upstream README delta applied with no overlap. Custom DODFMR/PERS and menu blocks in `runtime/transactions.conf` were unchanged.
+
+4. Updated this `CUSTOM.md` (current status + new rebase section), committed the update, and force-pushed the branch to the fork (`origin/keoni-custom`).
+
+The custom commits (with new SHAs after this rebase) that now sit on top of upstream `c59b188` are:
+
+- `7038da9` docs: pin correct tip SHA in CUSTOM.md
+- `8576730` docs: update CUSTOM.md for 3.2.3 rebase (clean rebase on new upstream base)
+- `31c7310` docs: pin correct tip SHA in CUSTOM.md
+- `04cc579` docs: update CUSTOM.md for 3.2.0 rebase (clean rebase on new upstream base)
+- `58f871b` docs: pin correct tip SHA in CUSTOM.md
+- `367fcdb` docs: update CUSTOM.md for 3.1.7 rebase (clean rebase on new upstream base)
+- `73d38cd` docs: update CUSTOM.md for 3.1.4 rebase (clean rebase on new upstream base)
+- `f236f49` docs: update CUSTOM.md for 2.8.6 rebase (clean rebase on new upstream base)
+- `d3d3449` docs: update CUSTOM.md for 2.8.1 rebase (clean rebase on new upstream base)
+- `5b1a424` feat(menus): sync bricks_menus/ sources to aligned runtime (post-align TXID fix); extend MYMU/REXM/COBM with missing txns (BANK,BALC,BRDS,CHAT,CSGM,MNDL/MNDU,TIME,WAPI,ESDC,WHDR,WZEN); update CUSTOM.md
+- `db1b339` docs: update CUSTOM.md for 2.7.4 rebase (clean rebase on new upstream base)
+- `cde28c6` Saved progress on DODFMR review flow (F4 path)
+- `6cb3265` Fix green underline bleed on DODFMR (DODF1 map)
+- `6778428` docs: update CUSTOM.md for 2.6.6 rebase (clean rebase on new upstream base)
+- `36a6671` docs: update CUSTOM.md for 2.6.2 rebase (new upstream base + 2.6.x highlights)
+- `f8dd818` docs: add CUSTOM.md documenting keoni-custom branch purpose, history, and maintenance
+- `b081429` chore: untrack data/files.boltdb (runtime database)
+- `be93d6c` chore: add runtime/tmp/ to .gitignore
+- `527d1a1` fix: align TXID values in all menu REXX files to match transactions.conf
+- `3b90771` Add hierarchical role-based menu system with PF9 help
+- `af02906` Add custom COBOL/REXX programs, maps, transactions, zapp config
+
+**New upstream highlights included in this rebase**:
+- Three README-only commits on `main` (26 Aug 2026): Discord/developer-notes links and README wording
+- GitHub release **3.2.4** (published 14 Aug 2026): Safari web3270 selection bugfix. Tag `3.2.4` points at the same source commit as `3.2.3` (`6e9c916`) — binary-only, not a source bump. Download `bricks-3.2.4-*` from GitHub Releases if you run the compiled server locally.
+
+After rebase: the fresh pre-rebase backup branch + tag were created and retained (plus prior 3.2.3 / 3.2.0 / 3.1.7 backups).
 
 ## Future Maintenance
 
