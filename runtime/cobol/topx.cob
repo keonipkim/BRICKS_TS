@@ -608,17 +608,17 @@
       *> Clear DFHCOMMAREA so that the nxt unrelated transaction
       *> doesn't inherit TOPX state bytes.
                    MOVE SPACES TO DFHCOMMAREA
-                   EXEC CICS RETURN END-EXEC
+                   EXEC CICS RETURN TRANSID('MYMU') END-EXEC
                    STOP RUN
                WHEN OTHER PERFORM PAINT-LIST
            END-EVALUATE.
 
       *> A failed query already painted its SEND TEXT message and waited
-      *> for an AID; end the pseudo-conversation (drop to CICS) instead
-      *> of re-driving TOPX straight back into the same error.
+      *> for an AID; return to the main menu instead of re-driving TOPX
+      *> straight back into the same error.
            IF WS-FATAL = 'Y' THEN
                MOVE SPACES TO DFHCOMMAREA
-               EXEC CICS RETURN END-EXEC
+               EXEC CICS RETURN TRANSID('MYMU') END-EXEC
                STOP RUN
            END-IF.
 
@@ -1004,12 +1004,13 @@
            MOVE 'SQL error - see bricks log' TO ST-MSG.
 
       *> SEND-SQL-ERROR -- paint a single free-form line (no map, so no
-      *> empty rows) and arm WS-FATAL. SEND TEXT waits for an AID, so
-      *> the operator reads the error before MAIN drops them to CICS.
+      *> empty rows) and arm WS-FATAL. Wait for ENTER, then MAIN returns
+      *> to MYMU instead of looping the same SQL failure.
        SEND-SQL-ERROR.
-           MOVE 'TOPX - database error. See bricks log. Press ENTER.'
+           MOVE 'TOPX needs 3270BBS DB test3270 (not configured). ENTER=menu'
                TO WS-ERRSCR.
            EXEC CICS SEND TEXT FROM(WS-ERRSCR) ERASE END-EXEC.
+           EXEC CICS RECEIVE INTO(WS-ERRSCR) END-EXEC.
            MOVE 'Y' TO WS-FATAL.
 
       *> ===========================================================
