@@ -4,3 +4,5 @@ bricks.log
 log/
 data/files.boltdb
 runtime/tmp/
+/bin/
+/zapp.yaml
