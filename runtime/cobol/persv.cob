@@ -28,5 +28,5 @@
            END-IF.
            DISPLAY 'PERSV: validated record id = ' KEY-IN.
            MOVE KEY-IN TO DFHCOMMAREA.
-           EXEC CICS RETURN TRANSID('MYMU') END-EXEC.
+           EXEC CICS RETURN END-EXEC.
            STOP RUN.

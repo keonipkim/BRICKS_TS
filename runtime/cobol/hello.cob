@@ -30,6 +30,7 @@
            MOVE 'ENTER=Continue'       TO FOOTER.
 
            EXEC CICS SEND MAP('HELO1') FROM(SCR) ERASE END-EXEC.
+           EXEC CICS RECEIVE MAP('HELO1') INTO(SCR) END-EXEC.
 
            EXEC CICS RETURN TRANSID('MYMU') END-EXEC.
            STOP RUN.

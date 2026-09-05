@@ -6,10 +6,11 @@ This branch contains Keoni's custom extensions and modifications on top of the u
 
 The goal of `keoni-custom` is to stay as close as possible to the official upstream while carrying a set of practical enhancements and a hierarchical role-based menu system for day-to-day use.
 
-## Current Status (as of 02 Sep 2026)
+## Current Status (as of 05 Sep 2026)
 
 - **Upstream base**: `c59b188` (v3.2.3 source + three README-only commits; GitHub release 3.2.4 is a binary-only Safari web3270 fix tagged on the same SHA as v3.2.3, `6e9c916`)
-- **This branch tip**: `7653ac1` (docs: update CUSTOM.md for 3.2.4 README rebase)
+- Menu system repaired so maps, PF keys, and `transactions.conf` ACLs agree (see below). Sign-on for live checks: userid `ADMIN` / password `ADMIN` (`runtime/users.conf` stores the id as `admin`).
+- Last rebase tip: `7653ac1` (docs: update CUSTOM.md for 3.2.4 README rebase). Menu-system repair is the commit after that.
 - Fork `main` has been reset to exactly match upstream `main`.
 - This branch (`keoni-custom`) has been rebased cleanly on top of the latest upstream. **Zero conflicts** — all 21 custom commits replayed cleanly (simple `git rebase upstream/main`; no `--onto` needed — upstream was a clean 3-commit fast-forward from the prior 3.2.3 base). Custom additions (DODFMR/PERS + full menu system) preserved. Upstream STAR (3.2.1) is present in `runtime/transactions.conf` alongside the keoni-custom blocks.
 - All prior custom work now sits on upstream `c59b188` (including 3.2.3 COBOL improvements, 3.2.0 COMP-3 / SEND MAP ERASE / 32-bit, 3.19 transaction aliases, 3.1.7/3.1.6/3.1.5 JSON + SABRE + binary/release changes + all previous 3.x/2.x work).
@@ -31,7 +32,15 @@ A complete set of role-aware menus with PF9 help, including:
 - `SQLMENU` – SQL-specific operations (admin only)
 - Supporting help maps and navigation
 
-These are registered in `runtime/transactions.conf` with `*` or appropriate group ACLs so they are reachable by signed-on users.
+These are registered in `runtime/transactions.conf` with `*` or appropriate group ACLs so they are reachable by signed-on users. Menu **help** is `MHLP` (`MYHELP.rexx`) — it does **not** replace the sample `HELP` transaction.
+
+Menu behaviour (after the 05 Sep 2026 repair):
+
+- `MYMENU.map` paints **dynamic** `Lxx` rows. The number the operator types matches the line on the screen for every role.
+- Visibility uses `EXEC CICS QUERY SECURITY RESOURCE(transid) READ(...)`, not `LINEIN('users.conf')` (that file is outside `tmp_dir` and was making every caller look like PUBLIC).
+- PF1 on the main menu exits to the TRANSID prompt. PF3 on submenus returns to `MYMU`. PF9 opens `MHLP`. PF7/PF8 page long REXX/COBOL/System lists.
+- LINK-only helpers (`CUSV`, `CUSL`, `GUSV`, `GUSL`, `PERV`, `PERL`) are **not** on any menu and must `EXEC CICS RETURN` with no TRANSID so COMMAREA returns to CUST/GUST/PERS.
+- Intentionally not listed as menu rows: those LINK helpers. Sign-off is `CSSF LOGOFF` at the blank prompt (main-menu option 07 / PF1 only drops to the prompt).
 
 The menus live in two places for convenience:
 - `bricks_menus/` (primary custom source)
