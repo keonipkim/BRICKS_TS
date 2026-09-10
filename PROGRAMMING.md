@@ -1191,7 +1191,9 @@ automatically.
 
 ```
 EXEC CICS START TRANSID(name)
-                [INTERVAL(hhmmss) | TIME(hhmmss)]
+                [INTERVAL(hhmmss) | TIME(hhmmss) |
+                 AFTER HOURS(h) MINUTES(m) SECONDS(s) MILLISECS(ms) |
+                 AT    HOURS(h) MINUTES(m) SECONDS(s) MILLISECS(ms)]
                 [FROM(area) [LENGTH(n)]]
                 [TERMID(tttt)]
                 [REQID(handle)] [PROTECT]
@@ -1204,9 +1206,8 @@ this to disambiguate when cancelling or deferring; bricks's
 single-region scheduler accepts the option without action so
 program source ports cleanly. `PROTECT` declares the START as
 recoverable — bricks already enrolls every START in the task-end
-SYNCPOINT, so this is silent passthrough. `SYSID`, `QUEUE`, the
-hh/mm/ss split forms — explicitly rejected with a short "not
-supported" message.
+SYNCPOINT, so this is silent passthrough. `SYSID` and `QUEUE` —
+explicitly rejected with a short "not supported" message.
 
 #### Options
 
@@ -1229,6 +1230,23 @@ supported" message.
    than now, bricks rolls forward to the same time tomorrow
    (real-CICS semantics). Mutually exclusive with `INTERVAL`.
 
+**AFTER / AT HOURS(h) MINUTES(m) SECONDS(s) MILLISECS(ms)**
+   The IBM-canonical compositional alternatives to
+   `INTERVAL` / `TIME` — supply any subset of the four
+   components. `AFTER` is relative, `AT` is the next
+   wall-clock instant with that time-of-day, rolling forward
+   to tomorrow when it has already passed (same rule as
+   `TIME`). The components are additive **counts**, not clock
+   digits, so `AFTER MINUTES(90)` is an hour and a half;
+   IBM's ranges are `HOURS` 0–99, `MINUTES` 0–5999,
+   `SECONDS` 0–359999 and `MILLISECS` 0–360000000, with an
+   `AFTER` total capped at 100 hours and an `AT` total under
+   24 hours. `MILLISECS(ms)` is the bricks sub-second
+   extension and also works on its own
+   (`START TRANSID('X') MILLISECS(100)`); components coded
+   with neither `AFTER` nor `AT` are read as `AFTER`.
+   Mutually exclusive with `INTERVAL` / `TIME`.
+
 **FROM(area) [LENGTH(n)]**
    Payload bytes the new task will pull back via `RETRIEVE`.
    `LENGTH` truncates `area` to `n` bytes; if omitted, the
@@ -1250,10 +1268,12 @@ supported" message.
 * **In-memory queue.** Pending STARTs do **not** survive a
   bricks restart. If you need recovery-protected scheduling
   you'll have to wait for `START PROTECT` (out of scope).
-* **No `REQID`, `SYSID`, `QUEUE`, `PROTECT`, `HOURS`,
-  `MINUTES`, `SECONDS` options.** Each returns `RESP-INVREQ`
-  with the option name in the error string so a port can be
-  triaged.
+* **No `SYSID` or `QUEUE` options.** Each returns
+  `RESP-INVREQ` with the option name in the error string so a
+  port can be triaged. (`REQID` is recorded on the queued
+  entry and honoured by `CANCEL REQID`; `PROTECT` is accepted
+  as a no-op; `HOURS` / `MINUTES` / `SECONDS` / `MILLISECS`
+  are implemented — see `AFTER` / `AT` above.)
 * **One pending payload per task.** When the START fires,
   the FROM bytes go into `tcb.RetrieveBuf`. The new task's
   first `RETRIEVE` drains it; a second `RETRIEVE` returns
@@ -4341,6 +4361,46 @@ That cap converts a dropped-owner edge case into a clean recoverable
 status; legitimate same-region holders are never close to that
 limit.
 
+#### Operator visibility — `CEMT INQUIRE ENQ`
+
+`CEMT INQUIRE ENQ` (letter `E` on the INQUIRE menu) pages every
+enqueue currently held and every task suspended behind one. It
+answers the question a hung terminal raises: who holds the lock,
+and for how long.
+
+| Column | Meaning |
+|---|---|
+| `RESOURCE` | The uppercased, trimmed `RESOURCE` key. Names longer than 24 characters are truncated with a trailing `+`; the head is kept so the value still matches the `ENQ RESOURCE(...)` literal in your source. |
+| `OWNER` | The owning task — the task number, else `TERM:<termid>` for a lock taken outside a task, else `ANON`. |
+| `TRANID` / `TERM` | Joined from the live task table. A lock that outlives its task shows `-` rather than a stale name. |
+| `STATE` | `OWNED` or `WAITING`. One `OWNED` row heads each resource, followed by its waiters, longest-waiting first. |
+| `HOLD` | `YES` when the lock was taken with `HOLD` and so survives `SYNCPOINT` — usually the answer to "why is this lock still here?". `-` on a waiting row. |
+| `AGE` | How long this task has held the lock, or has been waiting for it. A re-entrant `ENQ` does not reset it. |
+
+The panel is read-only and open to every operator, not just
+`ADMIN` — an enqueue is a resource, not internal control-block
+detail, and every column is already visible elsewhere via
+`INQUIRE TRANSACTION` and `INQUIRE TERMINAL`. `ENTER` re-snapshots,
+`PF7` / `PF8` page, `PF3` exits.
+
+On an idle region the panel shows `No enqueues held.` — and that
+screen is live too: `ENTER` re-snapshots it, so an operator can sit
+on it and watch for a lock to appear, at which point the table takes
+over. `PF3` / `CLEAR` backs out.
+
+IBM's `ENQTYPE` and `ENQSCOPE` columns are deliberately omitted
+rather than filled with a constant: bricks has only `EXECENQ`
+enqueues, and its locks are process-scoped, so a blank `ENQSCOPE`
+(which means region scope in real CICS) would assert something
+bricks cannot guarantee. `RETAINED` likewise never appears as a
+`STATE`, because there are no shunted units of work to retain a
+lock.
+
+Because the snapshot is retaken on every `ENTER`, a refresh landing
+between a holder's `DEQ` and the woken waiter's acquisition can
+show a lone `WAITING` row with no `OWNED` row above it. That window
+is real and brief, not a rendering fault.
+
 ### WRITE OPERATOR
 
 ```
@@ -5570,6 +5630,8 @@ function form.
 | `VALUE(name, newval)` | Set the variable named at runtime; returns the prior value. The two-argument form usually appears under `CALL VALUE 'SCR.ROW' || J, LINE`. |
 | `ARG()` | Number of arguments the current procedure was called with. |
 | `ARG(n)` | The `n`th argument (1-based), or empty if out of range. |
+| `SYMBOL(name)` | Classifies a symbol: `'VAR'` if it names a variable that has a value, `'LIT'` if it is a valid symbol with no value assigned (or a constant symbol such as `77`, `.5` or `3D`, which can never be assigned), `'BAD'` if it is not a valid REXX symbol at all. Evaluation is two-step and stops there: the argument expression is evaluated once and the RESULT is the symbol name, so with `J = 3` `SYMBOL('J')` tests `J` while `SYMBOL(J)` tests the name `3`. Compound tails are derived exactly as an ordinary reference derives them, so `SYMBOL('A.J')` tests `A.3`. The answer is always three uppercase characters. |
+| `ADDRESS()` | The name of the current host-command environment, uppercased — `CICS` unless an `ADDRESS` instruction changed it, and restored to the caller's value when a `PROCEDURE` returns. Note that `ADDRESS()` written alone as a whole statement is the ADDRESS *instruction*, not this function; use it inside an expression (`SAY ADDRESS()`). |
 | `RANDOM([min [, max]])` | Random integer in `[min, max]` (default `[0, 999]`). |
 | `ERRORTEXT(code)` | Echoes the numeric code as a string (placeholder — bricks does not maintain the standard REXX error-text table). |
 
@@ -7734,12 +7796,13 @@ for the supported syntax.
 | Tracing | `TRACE` is parsed but emits no trace output. |
 | Settings | `OPTIONS …` parsed and accepted; recognised options are none. `NUMERIC FORM SCIENTIFIC` / `ENGINEERING` accepted syntactically, rendering is always plain decimal. |
 | External routines | No dynamic linking — every callable is either a `PROCEDURE` in the program or a built-in. |
-| Address environments | Only `ADDRESS CICS` is wired. `ADDRESS COMMAND` / `ADDRESS SYSTEM` / `ADDRESS TSO` are not recognised. |
+| Address environments | Only `ADDRESS CICS` is wired for host-command dispatch. `ADDRESS COMMAND` / `ADDRESS SYSTEM` / `ADDRESS TSO` do parse, and `ADDRESS()` reports whichever name is current, but the first host command issued under one fails with `ADDRESS handler not registered`. |
 | Terminal queue | `PUSH`, `QUEUE`, `PULL`, `PARSE PULL` are parsed; the queue is always empty. Use `EXEC CICS RECEIVE` for terminal input. |
 | PARSE | `PARSE SOURCE`, `PARSE VERSION`, `PARSE NUMERIC` are not wired. `PARSE LOWER` is not parsed (only `UPPER`). |
 | Conditions | `FAILURE`, `NOTREADY`, `LOSTDIGITS` are not implemented. `HALT` parses but never fires (bricks has no external-halt fan-in). |
 | Numeric | Arithmetic is float64 internally, then rounded to `NUMERIC DIGITS` significant figures — strict IEEE behaviour is not preserved. |
 | Built-ins | `ERRORTEXT(code)` echoes the code rather than returning the standard REXX error-text string. |
+| Variables / `DROP` | Two divergences, both visible through `SYMBOL()`. First, `DROP A.J` does not derive the tail: the DROP parser consumes a single identifier and `.` is an ordinary symbol character, so the literal tail `J` is dropped where TRL2 drops `A.3` — clear the slot with `A.J = ''` if you need the derived name. Second, after `S. = 'd'` a `DROP S.1` removes the tail but leaves the stem default in force, so `S.1` reads back as `d` and `SYMBOL('S.1')` answers `VAR` where TRL2 answers `LIT`. |
 
 ---
 
@@ -7790,6 +7853,7 @@ of them as living examples of the named-constant idiom from
 | `GETC` | `runtime/rexx/getc.rexx` | `RECEIVE` of command-line + `READ FILE` + `SEND TEXT` (no map). |
 | `INQR` | `runtime/rexx/inqr.rexx` | `EXEC CICS INQUIRE` demo: direct `INQUIRE TASK` on this task plus a `STARTBROWSE FILE` / `INQUIRE FILE NEXT` / `ENDBROWSE` loop listing every file's OPEN/ENABLE status and record/key sizes. Result painted with `SEND TEXT` (no map). See [INQUIRE / SET resources](#inquire--set-resources--file-task-transaction-terminal-program). |
 | `TIMR` | `runtime/rexx/timr.rexx` | REXX twin of `TIMC`: `START` schedules a reminder; `RETRIEVE` discriminates cold vs scheduled entry. Shares `tim1.map` + `tim2.map` with `TIMC`. |
+| `SCHD` | `runtime/rexx/schd.rexx` | Demonstrates three features in one transaction: `START ... AFTER SECONDS(n)`, `ADDRESS()` and `SYMBOL()`. Paints one PASS/FAIL row per check, then schedules itself with `AFTER SECONDS(10)`; the timer-fire path reports the payload and issues no further `START`, so the chain ends on its own. Contrast the plain `AFTER SECONDS(...)` here with the manual `HH`/`MM`/`SS` packing `TIMR` needs for `INTERVAL(hhmmss)`. |
 | `CHAT` | `runtime/rexx/chat.rexx` | Real-time multi-user chat. Self-refreshes every 2 seconds via `EXEC CICS START TRANSID('CHAT') INTERVAL(000002)`; the tick handler does `SEND MAP ... DATAONLY` so the operator's in-progress typing at the bottom of the screen is **not** clobbered by the refresh. Messages persist in the auto-created KSDS file `CHATLOG` (one record per message, key shape `YYYYMMDDHHMMSS-NNNN-TTTT` for lexicographic / chronological sort). Adapts between Model 2 (16 history rows, `chatm2.map`) and Model 4 (35 history rows, `chatm4.map`) via `EXEC CICS ASSIGN SCREENHT`. F3 exits cleanly — no further tick is scheduled, the self-refresh chain dies on its own. Colours mirror the original `tsu/chat.go` palette: BLUE/BRIGHT title, TURQUOISE clock + footer, YELLOW topic, RED status line, GREEN history rows + prompt, WHITE underscored input. |
 
 Run any TRANSID by typing it at the blank prompt after CSSN sign-on.
