@@ -10,7 +10,7 @@ The goal of `keoni-custom` is to stay as close as possible to the official upstr
 
 - **Upstream base**: `128dc2f` (SCHD sample + PROGRAMMING.md for `START AFTER`/`AT`, `CEMT INQUIRE ENQ`, REXX `ADDRESS()` / `SYMBOL()`). GitHub release is still **3.2.4** (binary-only Safari web3270 fix; no newer engine tag yet).
 - Menu system repaired so maps, PF keys, and `transactions.conf` ACLs agree (see below). Sign-on for live checks: userid `ADMIN` / password `ADMIN` (`runtime/users.conf` stores the id as `admin`).
-- Last rebase tip: (pinned in the following docs commit).
+- Last rebase tip: `7aa4a0f` (docs: update CUSTOM.md for SCHD / START AFTER rebase).
 - Fork `main` has been reset to exactly match upstream `main`.
 - This branch (`keoni-custom`) has been rebased cleanly on top of the latest upstream. **Zero conflicts** — all 25 custom commits replayed cleanly (simple `git rebase upstream/main`; no `--onto` needed — upstream was a clean 2-commit fast-forward from the prior `c59b188` base). Custom additions (DODFMR/PERS + full menu system) preserved. Follow-up: registered `SCHD` (upstream shipped `runtime/rexx/schd.rexx` without a `transactions.conf` row) and listed it on REXM.
 - All prior custom work now sits on upstream `128dc2f` (including 3.2.4 README, 3.2.3 COBOL improvements, 3.2.0 COMP-3 / SEND MAP ERASE / 32-bit, 3.19 transaction aliases, 3.1.7/3.1.6/3.1.5 JSON + SABRE + binary/release changes + all previous 3.x/2.x work).
@@ -484,6 +484,7 @@ After rebase: the fresh pre-rebase backup branch + tag were created and retained
 
 The custom commits (with new SHAs after this rebase) that now sit on top of upstream `128dc2f` are:
 
+- `7aa4a0f` docs: update CUSTOM.md for SCHD / START AFTER rebase (clean rebase on new upstream base)
 - `52decaa` feat(menus): register SCHD and list it on REXM
 - `4748326` chore: ignore downloaded binaries and root IBM Z Open Editor zapp.yaml
 - `9e74780` feat(menus): repair role-aware launcher and cover remaining transids
