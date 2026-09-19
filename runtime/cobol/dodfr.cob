@@ -68,6 +68,7 @@
           05 CP8      PIC X(5).
           05 RS8      PIC X(6).
           05 LT8      PIC X(10).
+          05 ERRMSG   PIC X(70).
 
        01 REV.
           05 LINE01   PIC X(78).
@@ -151,6 +152,18 @@
        01 DEPOK      PIC 9(1).
        01 DONE-FLAG  PIC X(1) VALUE 'N'.
        01 WS-OK      PIC X(1) VALUE 'Y'.
+       01 CHECKYMD   PIC 9(1) VALUE 0.
+       01 CHK-DATE   PIC 9(8) VALUE 0.
+       01 RSVALID    PIC 9(1) VALUE 0.
+       01 ROW-N      PIC 9(1).
+       01 WS-FROMX   PIC X(10).
+       01 WS-TOX     PIC X(10).
+       01 WS-BRX     PIC X(4).
+       01 WS-CPX     PIC X(5).
+       01 WS-RSX     PIC X(6).
+       01 WS-LTX     PIC X(10).
+       01 WS-TRIM    PIC X(10).
+       01 ROW-HAS    PIC X(1).
        01 REV-ACT    PIC X(4).
        01 EXIT-FLAG  PIC X(1) VALUE 'N'.
 
@@ -199,30 +212,7 @@
        01 LT-X       PIC Z(4)9.
 
        01 REPORT.
-          05 R01 PIC X(80).
-          05 R02 PIC X(80).
-          05 R03 PIC X(80).
-          05 R04 PIC X(80).
-          05 R05 PIC X(80).
-          05 R06 PIC X(80).
-          05 R07 PIC X(80).
-          05 R08 PIC X(80).
-          05 R09 PIC X(80).
-          05 R10 PIC X(80).
-          05 R11 PIC X(80).
-          05 R12 PIC X(80).
-          05 R13 PIC X(80).
-          05 R14 PIC X(80).
-          05 R15 PIC X(80).
-          05 R16 PIC X(80).
-          05 R17 PIC X(80).
-          05 R18 PIC X(80).
-          05 R19 PIC X(80).
-          05 R20 PIC X(80).
-          05 R21 PIC X(80).
-          05 R22 PIC X(80).
-          05 R23 PIC X(80).
-          05 R24 PIC X(80).
+          05 R-LINE OCCURS 40 TIMES PIC X(80).
 
        PROCEDURE DIVISION.
        MAIN.
@@ -263,13 +253,19 @@
                    MOVE SPACES TO SCR
                    MOVE 'E' TO GRADE
                WHEN PF04
-                   PERFORM LOAD-PERIODS
-                   PERFORM CLASSIFY-PERIODS
-                   PERFORM REVIEW-FLOW
+                   PERFORM VALIDATE-ENTRY
+                   IF WS-OK = 'Y' THEN
+                       PERFORM LOAD-PERIODS
+                       PERFORM CLASSIFY-PERIODS
+                       PERFORM REVIEW-FLOW
+                   END-IF
                WHEN OTHER
-                   PERFORM LOAD-PERIODS
-                   PERFORM CLASSIFY-PERIODS
-                   MOVE 'Y' TO DONE-FLAG
+                   PERFORM VALIDATE-ENTRY
+                   IF WS-OK = 'Y' THEN
+                       PERFORM LOAD-PERIODS
+                       PERFORM CLASSIFY-PERIODS
+                       MOVE 'Y' TO DONE-FLAG
+                   END-IF
            END-EVALUATE.
 
        REVIEW-FLOW.
@@ -447,6 +443,12 @@
            IF ISLOST = 1 THEN
                MOVE 'Y' TO P-ISLOST(I)
                MOVE 'N' TO P-CR(I)
+               IF P-FROM(I) NOT = 0 AND P-TO(I) NOT = 0 THEN
+                   MOVE P-FROM(I) TO WS-D1
+                   MOVE P-TO(I) TO WS-D2
+                   PERFORM LOST-DAYS-CH1
+                   MOVE WS-DAYS TO P-LT(I)
+               END-IF
            END-IF.
            IF ISLOST = 0 THEN
                MOVE P-CP(I) TO CP-U
@@ -481,6 +483,227 @@
                END-IF
            END-IF.
 
+       VALIDATE-ENTRY.
+           MOVE 'Y' TO WS-OK.
+           MOVE SPACES TO ERRMSG.
+           MOVE FUNCTION UPPER-CASE(GRADE) TO GRADE-U.
+           IF GRADE-U = SPACES THEN
+               MOVE 'E' TO GRADE-U
+           END-IF.
+           IF GRADE-U NOT = 'E' AND GRADE-U NOT = 'O'
+              AND GRADE-U NOT = 'W' THEN
+               MOVE 'GRADE must be E, O, or W' TO ERRMSG
+               MOVE 'N' TO WS-OK
+           END-IF.
+           IF WS-OK = 'Y' THEN
+               IF FUNCTION TRIM(ASOF) NOT = SPACES THEN
+                   MOVE FUNCTION NUMVAL(ASOF) TO CHK-DATE
+                   PERFORM CHECK-YMD
+                   IF CHECKYMD = 0 THEN
+                       MOVE 'AS OF must be a valid YYYYMMDD' TO ERRMSG
+                       MOVE 'N' TO WS-OK
+                   END-IF
+               END-IF
+           END-IF.
+           IF WS-OK = 'Y' THEN
+               IF FUNCTION TRIM(RECPEBD) NOT = SPACES THEN
+                   MOVE FUNCTION NUMVAL(RECPEBD) TO CHK-DATE
+                   PERFORM CHECK-YMD
+                   IF CHECKYMD = 0 THEN
+                       MOVE 'RECORD PEBD must be a valid YYYYMMDD'
+                           TO ERRMSG
+                       MOVE 'N' TO WS-OK
+                   END-IF
+               END-IF
+           END-IF.
+           IF WS-OK = 'Y' THEN
+               MOVE FROM1 TO WS-FROMX
+               MOVE TO1 TO WS-TOX
+               MOVE BR1 TO WS-BRX
+               MOVE CP1 TO WS-CPX
+               MOVE RS1 TO WS-RSX
+               MOVE LT1 TO WS-LTX
+               MOVE 1 TO ROW-N
+               PERFORM VALIDATE-ONE-ROW
+           END-IF.
+           IF WS-OK = 'Y' THEN
+               MOVE FROM2 TO WS-FROMX
+               MOVE TO2 TO WS-TOX
+               MOVE BR2 TO WS-BRX
+               MOVE CP2 TO WS-CPX
+               MOVE RS2 TO WS-RSX
+               MOVE LT2 TO WS-LTX
+               MOVE 2 TO ROW-N
+               PERFORM VALIDATE-ONE-ROW
+           END-IF.
+           IF WS-OK = 'Y' THEN
+               MOVE FROM3 TO WS-FROMX
+               MOVE TO3 TO WS-TOX
+               MOVE BR3 TO WS-BRX
+               MOVE CP3 TO WS-CPX
+               MOVE RS3 TO WS-RSX
+               MOVE LT3 TO WS-LTX
+               MOVE 3 TO ROW-N
+               PERFORM VALIDATE-ONE-ROW
+           END-IF.
+           IF WS-OK = 'Y' THEN
+               MOVE FROM4 TO WS-FROMX
+               MOVE TO4 TO WS-TOX
+               MOVE BR4 TO WS-BRX
+               MOVE CP4 TO WS-CPX
+               MOVE RS4 TO WS-RSX
+               MOVE LT4 TO WS-LTX
+               MOVE 4 TO ROW-N
+               PERFORM VALIDATE-ONE-ROW
+           END-IF.
+           IF WS-OK = 'Y' THEN
+               MOVE FROM5 TO WS-FROMX
+               MOVE TO5 TO WS-TOX
+               MOVE BR5 TO WS-BRX
+               MOVE CP5 TO WS-CPX
+               MOVE RS5 TO WS-RSX
+               MOVE LT5 TO WS-LTX
+               MOVE 5 TO ROW-N
+               PERFORM VALIDATE-ONE-ROW
+           END-IF.
+           IF WS-OK = 'Y' THEN
+               MOVE FROM6 TO WS-FROMX
+               MOVE TO6 TO WS-TOX
+               MOVE BR6 TO WS-BRX
+               MOVE CP6 TO WS-CPX
+               MOVE RS6 TO WS-RSX
+               MOVE LT6 TO WS-LTX
+               MOVE 6 TO ROW-N
+               PERFORM VALIDATE-ONE-ROW
+           END-IF.
+           IF WS-OK = 'Y' THEN
+               MOVE FROM7 TO WS-FROMX
+               MOVE TO7 TO WS-TOX
+               MOVE BR7 TO WS-BRX
+               MOVE CP7 TO WS-CPX
+               MOVE RS7 TO WS-RSX
+               MOVE LT7 TO WS-LTX
+               MOVE 7 TO ROW-N
+               PERFORM VALIDATE-ONE-ROW
+           END-IF.
+           IF WS-OK = 'Y' THEN
+               MOVE FROM8 TO WS-FROMX
+               MOVE TO8 TO WS-TOX
+               MOVE BR8 TO WS-BRX
+               MOVE CP8 TO WS-CPX
+               MOVE RS8 TO WS-RSX
+               MOVE LT8 TO WS-LTX
+               MOVE 8 TO ROW-N
+               PERFORM VALIDATE-ONE-ROW
+           END-IF.
+
+       VALIDATE-ONE-ROW.
+           MOVE 'N' TO ROW-HAS.
+           IF FUNCTION TRIM(WS-TOX) NOT = SPACES
+              OR FUNCTION TRIM(WS-BRX) NOT = SPACES
+              OR FUNCTION TRIM(WS-CPX) NOT = SPACES
+              OR FUNCTION TRIM(WS-RSX) NOT = SPACES
+              OR FUNCTION TRIM(WS-LTX) NOT = SPACES THEN
+               MOVE 'Y' TO ROW-HAS
+           END-IF.
+           IF FUNCTION TRIM(WS-FROMX) = SPACES THEN
+               IF ROW-HAS = 'Y' THEN
+                   MOVE SPACES TO ERRMSG
+                   STRING 'Row ' DELIMITED BY SIZE
+                          ROW-N DELIMITED BY SIZE
+                          ': FROM date required' DELIMITED BY SIZE
+                       INTO ERRMSG
+                   MOVE 'N' TO WS-OK
+               END-IF
+           ELSE
+               MOVE FUNCTION NUMVAL(WS-FROMX) TO CHK-DATE
+               PERFORM CHECK-YMD
+               IF CHECKYMD = 0 THEN
+                   MOVE SPACES TO ERRMSG
+                   STRING 'Row ' DELIMITED BY SIZE
+                          ROW-N DELIMITED BY SIZE
+                          ': FROM is not a valid date' DELIMITED BY SIZE
+                       INTO ERRMSG
+                   MOVE 'N' TO WS-OK
+               ELSE
+                   IF FUNCTION TRIM(WS-TOX) NOT = SPACES THEN
+                       MOVE FUNCTION NUMVAL(WS-TOX) TO CHK-DATE
+                       PERFORM CHECK-YMD
+                       IF CHECKYMD = 0 THEN
+                           MOVE SPACES TO ERRMSG
+                           STRING 'Row ' DELIMITED BY SIZE
+                                  ROW-N DELIMITED BY SIZE
+                                  ': TO is not a valid date'
+                                  DELIMITED BY SIZE
+                               INTO ERRMSG
+                           MOVE 'N' TO WS-OK
+                       ELSE
+                           IF FUNCTION NUMVAL(WS-FROMX) >
+                              FUNCTION NUMVAL(WS-TOX) THEN
+                               MOVE SPACES TO ERRMSG
+                               STRING 'Row ' DELIMITED BY SIZE
+                                      ROW-N DELIMITED BY SIZE
+                                      ': FROM is after TO'
+                                      DELIMITED BY SIZE
+                                   INTO ERRMSG
+                               MOVE 'N' TO WS-OK
+                           END-IF
+                       END-IF
+                   END-IF
+                   IF WS-OK = 'Y' THEN
+                       PERFORM VALID-REASON
+                       IF RSVALID = 0 THEN
+                           MOVE SPACES TO ERRMSG
+                           STRING 'Row ' DELIMITED BY SIZE
+                                  ROW-N DELIMITED BY SIZE
+                                  ': REASON must be ACT/INACT/CNFD/EXPECC/IHCA/IHFA/RTFD/UA/DES'
+                                  DELIMITED BY SIZE
+                               INTO ERRMSG
+                           MOVE 'N' TO WS-OK
+                       END-IF
+                   END-IF
+                   IF WS-OK = 'Y' THEN
+                       IF FUNCTION TRIM(WS-LTX) NOT = SPACES THEN
+                           IF FUNCTION NUMVAL(WS-LTX) < 0 THEN
+                               MOVE SPACES TO ERRMSG
+                               STRING 'Row ' DELIMITED BY SIZE
+                                      ROW-N DELIMITED BY SIZE
+                                      ': LOST days cannot be negative'
+                                      DELIMITED BY SIZE
+                                   INTO ERRMSG
+                               MOVE 'N' TO WS-OK
+                           END-IF
+                       END-IF
+                   END-IF
+               END-IF
+           END-IF.
+
+       VALID-REASON.
+           MOVE FUNCTION UPPER-CASE(WS-RSX) TO RS-U.
+           MOVE 0 TO RSVALID.
+           IF RS-U = SPACES OR RS-U = 'ACT' OR RS-U = 'INACT'
+              OR RS-U = 'CNFD' OR RS-U = 'EXPECC' OR RS-U = 'IHCA'
+              OR RS-U = 'IHFA' OR RS-U = 'RTFD' OR RS-U = 'UA/DES' THEN
+               MOVE 1 TO RSVALID
+           END-IF.
+
+       CHECK-YMD.
+           MOVE 0 TO CHECKYMD.
+           IF CHK-DATE = 0 THEN
+               CONTINUE
+           ELSE
+               MOVE CHK-DATE TO WS-DATE
+               PERFORM SPLIT-DATE
+               IF WS-Y >= 1800 AND WS-Y <= 2200 THEN
+                   IF WS-M >= 1 AND WS-M <= 12 THEN
+                       PERFORM DAYS-IN-MONTH
+                       IF WS-D >= 1 AND WS-D <= WS-DIM THEN
+                           MOVE 1 TO CHECKYMD
+                       END-IF
+                   END-IF
+               END-IF
+           END-IF.
+
        SEND-REVIEW.
            MOVE SPACES TO REV.
            IF NPER = 0 THEN
@@ -505,6 +728,7 @@
            END-STRING.
            MOVE P-TO(I) TO TMP8.
            MOVE TMP8 TO TMPX.
+           MOVE P-LT(I) TO LT-X.
            STRING FUNCTION TRIM(WS-LINE) DELIMITED BY SIZE
                   '  ' DELIMITED BY SIZE
                   TMPX DELIMITED BY SIZE
@@ -514,7 +738,9 @@
                   P-CP(I) DELIMITED BY SIZE
                   ' ' DELIMITED BY SIZE
                   P-RS(I) DELIMITED BY SIZE
-                  ' ' DELIMITED BY SIZE
+                  ' LT=' DELIMITED BY SIZE
+                  FUNCTION TRIM(LT-X) DELIMITED BY SIZE
+                  ' CR=' DELIMITED BY SIZE
                   P-CR(I) DELIMITED BY SIZE
                INTO WS-LINE
            END-STRING.
@@ -557,6 +783,7 @@
            ADD 1 TO J.
 
        PREFILL-ENTRY.
+           MOVE SPACES TO ERRMSG.
            MOVE SPACES TO FROM1.
            MOVE SPACES TO TO1.
            MOVE SPACES TO BR1.
@@ -1313,6 +1540,13 @@
            PERFORM ADD-REP.
            MOVE 1 TO I.
            PERFORM REP-PERIOD UNTIL I > NPER.
+           IF NLOST > 0 THEN
+               MOVE SPACES TO WS-LINE
+               MOVE 'Lost time analysis:' TO WS-LINE
+               PERFORM ADD-REP
+               MOVE 1 TO I
+               PERFORM REP-LOST UNTIL I > NLOST
+           END-IF.
            MOVE SPACES TO WS-LINE.
            MOVE 'ENTER/PF12=edit input  PF3=menu' TO WS-LINE.
            PERFORM ADD-REP.
@@ -1345,34 +1579,36 @@
            PERFORM ADD-REP.
            ADD 1 TO I.
 
+       REP-LOST.
+           MOVE SPACES TO WS-LINE.
+           MOVE L-FROM(I) TO TMP8.
+           MOVE TMP8 TO TMPX.
+           MOVE L-DAYS(I) TO DAYS-X.
+           STRING I DELIMITED BY SIZE
+                  '. ' DELIMITED BY SIZE
+                  TMPX DELIMITED BY SIZE
+                  ' -> ' DELIMITED BY SIZE
+               INTO WS-LINE
+           END-STRING.
+           MOVE L-TO(I) TO TMP8.
+           MOVE TMP8 TO TMPX.
+           STRING FUNCTION TRIM(WS-LINE) DELIMITED BY SIZE
+                  TMPX DELIMITED BY SIZE
+                  ' ' DELIMITED BY SIZE
+                  L-RS(I) DELIMITED BY SIZE
+                  ' deduct=' DELIMITED BY SIZE
+                  FUNCTION TRIM(DAYS-X) DELIMITED BY SIZE
+                  ' ' DELIMITED BY SIZE
+                  L-METH(I) DELIMITED BY SIZE
+               INTO WS-LINE
+           END-STRING.
+           PERFORM ADD-REP.
+           ADD 1 TO I.
+
        ADD-REP.
-           EVALUATE RCOUNT
-               WHEN 1  MOVE WS-LINE TO R01
-               WHEN 2  MOVE WS-LINE TO R02
-               WHEN 3  MOVE WS-LINE TO R03
-               WHEN 4  MOVE WS-LINE TO R04
-               WHEN 5  MOVE WS-LINE TO R05
-               WHEN 6  MOVE WS-LINE TO R06
-               WHEN 7  MOVE WS-LINE TO R07
-               WHEN 8  MOVE WS-LINE TO R08
-               WHEN 9  MOVE WS-LINE TO R09
-               WHEN 10 MOVE WS-LINE TO R10
-               WHEN 11 MOVE WS-LINE TO R11
-               WHEN 12 MOVE WS-LINE TO R12
-               WHEN 13 MOVE WS-LINE TO R13
-               WHEN 14 MOVE WS-LINE TO R14
-               WHEN 15 MOVE WS-LINE TO R15
-               WHEN 16 MOVE WS-LINE TO R16
-               WHEN 17 MOVE WS-LINE TO R17
-               WHEN 18 MOVE WS-LINE TO R18
-               WHEN 19 MOVE WS-LINE TO R19
-               WHEN 20 MOVE WS-LINE TO R20
-               WHEN 21 MOVE WS-LINE TO R21
-               WHEN 22 MOVE WS-LINE TO R22
-               WHEN 23 MOVE WS-LINE TO R23
-               WHEN 24 MOVE WS-LINE TO R24
-               WHEN OTHER CONTINUE
-           END-EVALUATE.
-           IF RCOUNT < 24 THEN
+           IF RCOUNT >= 1 AND RCOUNT <= 40 THEN
+               MOVE WS-LINE TO R-LINE(RCOUNT)
+           END-IF.
+           IF RCOUNT < 40 THEN
                ADD 1 TO RCOUNT
            END-IF.

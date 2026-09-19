@@ -46,6 +46,14 @@ DO FOREVER
     ITERATE
   END
 
+  CALL ValidateEntry
+  IF ERRTEXT \= '' THEN DO
+    MAP.ERRMSG = ERRTEXT
+    EXEC CICS SEND MAP('DODF1') ERASE END-EXEC
+    ITERATE
+  END
+  MAP.ERRMSG = ''
+
   CALL LoadPeriodsFromDODF1
   CALL ClassifyPeriods
 
@@ -516,6 +524,139 @@ IsLostReason: PROCEDURE EXPOSE ISLOST
   IF r = 'CNFD' | r = 'EXPECC' | r = 'IHCA' | r = 'IHFA' | r = 'RTFD' | r = 'UA/DES' THEN ISLOST = 1
 RETURN
 
+CheckYmd: PROCEDURE EXPOSE CHECKYMD DIM
+  PARSE ARG ymd
+  CHECKYMD = 0
+  IF LENGTH(ymd) \= 8 | DATATYPE(ymd,'W') \= 1 THEN RETURN
+  y = SUBSTR(ymd,1,4)+0
+  m = SUBSTR(ymd,5,2)+0
+  d = SUBSTR(ymd,7,2)+0
+  IF y < 1800 | y > 2200 THEN RETURN
+  IF m < 1 | m > 12 THEN RETURN
+  CALL DaysInMonth y, m
+  IF d < 1 | d > DIM THEN RETURN
+  CHECKYMD = 1
+RETURN
+
+ValidReason: PROCEDURE EXPOSE RSVALID
+  PARSE ARG r
+  r = TRANSLATE(STRIP(r))
+  RSVALID = 0
+  IF r = '' | r = 'ACT' | r = 'INACT' | r = 'CNFD' | r = 'EXPECC' |,
+     r = 'IHCA' | r = 'IHFA' | r = 'RTFD' | r = 'UA/DES' THEN RSVALID = 1
+RETURN
+
+ValidateRow: PROCEDURE EXPOSE ERRTEXT NORMDATE CHECKYMD DIM RSVALID
+  PARSE ARG fromraw, toraw, br, cp, rs, lt, rown
+  f = STRIP(fromraw)
+  t = STRIP(toraw)
+  br = STRIP(br)
+  cp = STRIP(cp)
+  rs = STRIP(rs)
+  lt = STRIP(lt)
+  has = 0
+  IF t \= '' | br \= '' | cp \= '' | rs \= '' | lt \= '' THEN has = 1
+  IF f = '' THEN DO
+    IF has = 1 THEN ERRTEXT = 'Row ' || rown || ': FROM date required'
+    RETURN
+  END
+  CALL NormDate f
+  fymd = NORMDATE
+  IF fymd = '' THEN DO
+    ERRTEXT = 'Row ' || rown || ': FROM must be YYYYMMDD'
+    RETURN
+  END
+  CALL CheckYmd fymd
+  IF CHECKYMD = 0 THEN DO
+    ERRTEXT = 'Row ' || rown || ': FROM is not a valid date'
+    RETURN
+  END
+  tymd = ''
+  IF t \= '' THEN DO
+    CALL NormDate t
+    tymd = NORMDATE
+    IF tymd = '' THEN DO
+      ERRTEXT = 'Row ' || rown || ': TO must be YYYYMMDD'
+      RETURN
+    END
+    CALL CheckYmd tymd
+    IF CHECKYMD = 0 THEN DO
+      ERRTEXT = 'Row ' || rown || ': TO is not a valid date'
+      RETURN
+    END
+    IF fymd > tymd THEN DO
+      ERRTEXT = 'Row ' || rown || ': FROM is after TO'
+      RETURN
+    END
+  END
+  CALL ValidReason rs
+  IF RSVALID = 0 THEN DO
+    ERRTEXT = 'Row ' || rown || ': REASON must be ACT/INACT/CNFD/EXPECC/IHCA/IHFA/RTFD/UA/DES'
+    RETURN
+  END
+  IF lt \= '' THEN DO
+    IF DATATYPE(lt,'N') \= 1 THEN DO
+      ERRTEXT = 'Row ' || rown || ': LOST days must be numeric'
+      RETURN
+    END
+    IF lt + 0 < 0 THEN DO
+      ERRTEXT = 'Row ' || rown || ': LOST days cannot be negative'
+      RETURN
+    END
+  END
+RETURN
+
+ValidateEntry: PROCEDURE EXPOSE MAP. ERRTEXT NORMDATE CHECKYMD DIM RSVALID
+  ERRTEXT = ''
+  g = TRANSLATE(STRIP(MAP.GRADE))
+  IF g = '' THEN g = 'E'
+  IF g \= 'E' & g \= 'O' & g \= 'W' THEN DO
+    ERRTEXT = 'GRADE must be E, O, or W'
+    RETURN
+  END
+  asofraw = STRIP(MAP.ASOF)
+  IF asofraw \= '' THEN DO
+    CALL NormDate asofraw
+    IF NORMDATE = '' THEN DO
+      ERRTEXT = 'AS OF must be YYYYMMDD'
+      RETURN
+    END
+    CALL CheckYmd NORMDATE
+    IF CHECKYMD = 0 THEN DO
+      ERRTEXT = 'AS OF is not a valid date'
+      RETURN
+    END
+  END
+  recraw = STRIP(MAP.RECPEBD)
+  IF recraw \= '' THEN DO
+    CALL NormDate recraw
+    IF NORMDATE = '' THEN DO
+      ERRTEXT = 'RECORD PEBD must be YYYYMMDD'
+      RETURN
+    END
+    CALL CheckYmd NORMDATE
+    IF CHECKYMD = 0 THEN DO
+      ERRTEXT = 'RECORD PEBD is not a valid date'
+      RETURN
+    END
+  END
+  CALL ValidateRow MAP.FROM1, MAP.TO1, MAP.BR1, MAP.CP1, MAP.RS1, MAP.LT1, 1
+  IF ERRTEXT \= '' THEN RETURN
+  CALL ValidateRow MAP.FROM2, MAP.TO2, MAP.BR2, MAP.CP2, MAP.RS2, MAP.LT2, 2
+  IF ERRTEXT \= '' THEN RETURN
+  CALL ValidateRow MAP.FROM3, MAP.TO3, MAP.BR3, MAP.CP3, MAP.RS3, MAP.LT3, 3
+  IF ERRTEXT \= '' THEN RETURN
+  CALL ValidateRow MAP.FROM4, MAP.TO4, MAP.BR4, MAP.CP4, MAP.RS4, MAP.LT4, 4
+  IF ERRTEXT \= '' THEN RETURN
+  CALL ValidateRow MAP.FROM5, MAP.TO5, MAP.BR5, MAP.CP5, MAP.RS5, MAP.LT5, 5
+  IF ERRTEXT \= '' THEN RETURN
+  CALL ValidateRow MAP.FROM6, MAP.TO6, MAP.BR6, MAP.CP6, MAP.RS6, MAP.LT6, 6
+  IF ERRTEXT \= '' THEN RETURN
+  CALL ValidateRow MAP.FROM7, MAP.TO7, MAP.BR7, MAP.CP7, MAP.RS7, MAP.LT7, 7
+  IF ERRTEXT \= '' THEN RETURN
+  CALL ValidateRow MAP.FROM8, MAP.TO8, MAP.BR8, MAP.CP8, MAP.RS8, MAP.LT8, 8
+RETURN
+
 EvalDep: PROCEDURE EXPOSE DEPOK DEPNOTE
   PARSE ARG from
   DEPOK = 0
@@ -573,7 +714,7 @@ LoadPeriodsFromDODF1: PROCEDURE EXPOSE PERIODS. MAP. ASOF NORMDATE
   CALL LoadOneRow MAP.FROM8, MAP.TO8, MAP.BR8, MAP.CP8, MAP.RS8, MAP.LT8
 RETURN
 
-ClassifyPeriods: PROCEDURE EXPOSE PERIODS. ISLOST DEPOK DEPNOTE
+ClassifyPeriods: PROCEDURE EXPOSE PERIODS. ISLOST DEPOK DEPNOTE CH1DAYS ADJ SEGDAYS
   DO i = 1 TO PERIODS.0
     PERIODS.i.CR = 'Y'
     PERIODS.i.ISLOST = 0
@@ -582,6 +723,10 @@ ClassifyPeriods: PROCEDURE EXPOSE PERIODS. ISLOST DEPOK DEPNOTE
     IF ISLOST = 1 THEN DO
       PERIODS.i.ISLOST = 1
       PERIODS.i.CR = 'N'
+      IF PERIODS.i.FROM \= '' & PERIODS.i.TO \= '' THEN DO
+        CALL ComputeLostDaysCh1 PERIODS.i.FROM, PERIODS.i.TO
+        PERIODS.i.LT = CH1DAYS
+      END
       ITERATE
     END
     IF PERIODS.i.CP = 'DEP' THEN DO
@@ -653,6 +798,7 @@ PrefillDODF1FromPeriods: PROCEDURE EXPOSE PERIODS. MAP. EDIPI NAME ASOF RECPEBD 
   MAP.ASOF = ASOF
   MAP.RECPEBD = RECPEBD
   MAP.GRADE = GRADE
+  MAP.ERRMSG = ''
   MAP.FROM1 = ''; MAP.TO1 = ''; MAP.BR1 = ''; MAP.CP1 = ''; MAP.RS1 = ''; MAP.LT1 = ''
   MAP.FROM2 = ''; MAP.TO2 = ''; MAP.BR2 = ''; MAP.CP2 = ''; MAP.RS2 = ''; MAP.LT2 = ''
   MAP.FROM3 = ''; MAP.TO3 = ''; MAP.BR3 = ''; MAP.CP3 = ''; MAP.RS3 = ''; MAP.LT3 = ''
@@ -703,6 +849,7 @@ RETURN
 
 ClearEntryMap: PROCEDURE EXPOSE MAP.
   MAP.EDIPI = ''; MAP.NAME = ''; MAP.ASOF = ''; MAP.RECPEBD = ''; MAP.GRADE = 'E'
+  MAP.ERRMSG = ''
   MAP.FROM1 = ''; MAP.TO1 = ''; MAP.BR1 = ''; MAP.CP1 = ''; MAP.RS1 = ''; MAP.LT1 = ''
   MAP.FROM2 = ''; MAP.TO2 = ''; MAP.BR2 = ''; MAP.CP2 = ''; MAP.RS2 = ''; MAP.LT2 = ''
   MAP.FROM3 = ''; MAP.TO3 = ''; MAP.BR3 = ''; MAP.CP3 = ''; MAP.RS3 = ''; MAP.LT3 = ''
