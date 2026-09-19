@@ -288,7 +288,7 @@ EXEC CICS RETURN TRANSID('MYMU') END-EXEC
 /* ================================================================== */
 
 NormDate: PROCEDURE EXPOSE NORMDATE
-  ARG raw
+  PARSE ARG raw
   s = STRIP(raw)
   NORMDATE = ''
   IF s = '' | s = '00000000' THEN RETURN
@@ -303,7 +303,7 @@ NormDate: PROCEDURE EXPOSE NORMDATE
 RETURN
 
 DaysInMonth: PROCEDURE EXPOSE DIM
-  ARG y, m
+  PARSE ARG y, m
   DIM = 31
   IF m = 4 | m = 6 | m = 9 | m = 11 THEN DIM = 30
   IF m = 2 THEN DO
@@ -315,7 +315,7 @@ DaysInMonth: PROCEDURE EXPOSE DIM
 RETURN
 
 AddCalDays: PROCEDURE EXPOSE OUTDATE DIM
-  ARG ymd, delta
+  PARSE ARG ymd, delta
   OUTDATE = ymd
   IF ymd = '' THEN RETURN
   y = SUBSTR(ymd,1,4)+0
@@ -345,14 +345,14 @@ AddCalDays: PROCEDURE EXPOSE OUTDATE DIM
 RETURN
 
 AdjustDay: PROCEDURE EXPOSE ADJ
-  ARG day, month, year
+  PARSE ARG day, month, year
   ADJ = day
   IF day = 31 THEN ADJ = 30
   IF month = 2 & (day = 28 | day = 29) THEN ADJ = 30
 RETURN
 
 ComputeSegmentDays30: PROCEDURE EXPOSE SEGDAYS ADJ
-  ARG start, end
+  PARSE ARG start, end
   SEGDAYS = 0
   IF start = '' | end = '' | start > end THEN RETURN
   ys = SUBSTR(start,1,4)+0; ms = SUBSTR(start,5,2)+0; ds = SUBSTR(start,7,2)+0
@@ -375,7 +375,7 @@ ComputeSegmentDays30: PROCEDURE EXPOSE SEGDAYS ADJ
 RETURN
 
 ComputeLostDaysCh1: PROCEDURE EXPOSE CH1DAYS ADJ SEGDAYS
-  ARG start, end
+  PARSE ARG start, end
   CH1DAYS = 0
   IF start = '' | end = '' | start > end THEN RETURN
   extra = 0
@@ -419,7 +419,7 @@ ComputeLostDaysCh1: PROCEDURE EXPOSE CH1DAYS ADJ SEGDAYS
 RETURN
 
 AddYmd30: PROCEDURE EXPOSE OUTDATE DIM
-  ARG ymd, years, months, days
+  PARSE ARG ymd, years, months, days
   OUTDATE = ymd
   IF ymd = '' THEN RETURN
   y = SUBSTR(ymd,1,4)+0
@@ -458,7 +458,7 @@ AddYmd30: PROCEDURE EXPOSE OUTDATE DIM
 RETURN
 
 CalcPebdGuess: PROCEDURE EXPOSE PEBDGUESS DIM OUTDATE
-  ARG asof, years, months, days
+  PARSE ARG asof, years, months, days
   y0 = SUBSTR(asof,1,4)+0
   m0 = SUBSTR(asof,5,2)+0
   d0 = SUBSTR(asof,7,2)+0
@@ -476,7 +476,7 @@ CalcPebdGuess: PROCEDURE EXPOSE PEBDGUESS DIM OUTDATE
 RETURN
 
 ToJdn: PROCEDURE EXPOSE JDN
-  ARG ymd
+  PARSE ARG ymd
   JDN = 0
   IF ymd = '' | LENGTH(ymd) \= 8 THEN RETURN
   y = SUBSTR(ymd,1,4)+0
@@ -489,14 +489,14 @@ ToJdn: PROCEDURE EXPOSE JDN
 RETURN
 
 IsLostReason: PROCEDURE EXPOSE ISLOST
-  ARG r
+  PARSE ARG r
   r = TRANSLATE(STRIP(r))
   ISLOST = 0
   IF r = 'CNFD' | r = 'EXPECC' | r = 'IHCA' | r = 'IHFA' | r = 'RTFD' | r = 'UA/DES' THEN ISLOST = 1
 RETURN
 
 EvalDep: PROCEDURE EXPOSE DEPOK DEPNOTE
-  ARG from
+  PARSE ARG from
   DEPOK = 0
   DEPNOTE = ''
   IF from = '' THEN DO
@@ -517,7 +517,7 @@ EvalDep: PROCEDURE EXPOSE DEPOK DEPNOTE
 RETURN
 
 LoadOneRow: PROCEDURE EXPOSE PERIODS. ASOF NORMDATE
-  ARG fromraw, toraw, br, cp, rs, lt
+  PARSE ARG fromraw, toraw, br, cp, rs, lt
   CALL NormDate fromraw
   f = NORMDATE
   IF f = '' THEN RETURN
