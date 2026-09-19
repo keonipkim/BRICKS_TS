@@ -189,6 +189,11 @@
        01 DIFF-TXT   PIC X(16).
        01 CLASS-TXT  PIC X(16).
        01 BREAK-TXT  PIC X(40).
+       01 NET-YMD    PIC X(16).
+       01 LOST-YMD   PIC X(16).
+       01 YMD-Y      PIC ZZ9.
+       01 YMD-M      PIC Z9.
+       01 YMD-D      PIC Z9.
        01 NPER-X     PIC Z9.
        01 DAYS-X     PIC Z(6)9.
        01 LT-X       PIC Z(4)9.
@@ -227,14 +232,24 @@
 
            MOVE SPACES TO SCR.
            MOVE 'E' TO GRADE.
+           MOVE 'N' TO EXIT-FLAG.
+           PERFORM SESSION-LOOP UNTIL EXIT-FLAG = 'Y'.
+           STOP RUN.
+
+       SESSION-LOOP.
            MOVE 'N' TO DONE-FLAG.
            PERFORM ENTRY-LOOP UNTIL DONE-FLAG = 'Y'.
-
            PERFORM CALCULATE-ALL.
            PERFORM PAINT-REPORT.
            EXEC CICS RECEIVE INTO(WS-LINE) END-EXEC.
-           EXEC CICS RETURN TRANSID('MYMU') END-EXEC.
-           STOP RUN.
+           EVALUATE EIBAID
+               WHEN ENTER
+               WHEN PF12
+                   PERFORM PREFILL-ENTRY
+               WHEN OTHER
+                   EXEC CICS RETURN TRANSID('MYMU') END-EXEC
+                   STOP RUN
+           END-EVALUATE.
 
        ENTRY-LOOP.
            EXEC CICS SEND MAP('DODF1') FROM(SCR) ERASE END-EXEC.
@@ -605,6 +620,8 @@
                MOVE P-BR(1) TO BR1
                MOVE P-CP(1) TO CP1
                MOVE P-RS(1) TO RS1
+               MOVE P-LT(1) TO LT-X
+               MOVE LT-X TO LT1
            END-IF.
            IF NPER >= 2 THEN
                MOVE P-FROM(2) TO TMP8
@@ -614,6 +631,8 @@
                MOVE P-BR(2) TO BR2
                MOVE P-CP(2) TO CP2
                MOVE P-RS(2) TO RS2
+               MOVE P-LT(2) TO LT-X
+               MOVE LT-X TO LT2
            END-IF.
            IF NPER >= 3 THEN
                MOVE P-FROM(3) TO TMP8
@@ -623,6 +642,8 @@
                MOVE P-BR(3) TO BR3
                MOVE P-CP(3) TO CP3
                MOVE P-RS(3) TO RS3
+               MOVE P-LT(3) TO LT-X
+               MOVE LT-X TO LT3
            END-IF.
            IF NPER >= 4 THEN
                MOVE P-FROM(4) TO TMP8
@@ -632,6 +653,8 @@
                MOVE P-BR(4) TO BR4
                MOVE P-CP(4) TO CP4
                MOVE P-RS(4) TO RS4
+               MOVE P-LT(4) TO LT-X
+               MOVE LT-X TO LT4
            END-IF.
            IF NPER >= 5 THEN
                MOVE P-FROM(5) TO TMP8
@@ -641,6 +664,8 @@
                MOVE P-BR(5) TO BR5
                MOVE P-CP(5) TO CP5
                MOVE P-RS(5) TO RS5
+               MOVE P-LT(5) TO LT-X
+               MOVE LT-X TO LT5
            END-IF.
            IF NPER >= 6 THEN
                MOVE P-FROM(6) TO TMP8
@@ -650,6 +675,8 @@
                MOVE P-BR(6) TO BR6
                MOVE P-CP(6) TO CP6
                MOVE P-RS(6) TO RS6
+               MOVE P-LT(6) TO LT-X
+               MOVE LT-X TO LT6
            END-IF.
            IF NPER >= 7 THEN
                MOVE P-FROM(7) TO TMP8
@@ -659,6 +686,8 @@
                MOVE P-BR(7) TO BR7
                MOVE P-CP(7) TO CP7
                MOVE P-RS(7) TO RS7
+               MOVE P-LT(7) TO LT-X
+               MOVE LT-X TO LT7
            END-IF.
            IF NPER >= 8 THEN
                MOVE P-FROM(8) TO TMP8
@@ -668,6 +697,8 @@
                MOVE P-BR(8) TO BR8
                MOVE P-CP(8) TO CP8
                MOVE P-RS(8) TO RS8
+               MOVE P-LT(8) TO LT-X
+               MOVE LT-X TO LT8
            END-IF.
            EXEC CICS SEND MAP('DODF1') FROM(SCR) ERASE END-EXEC.
 
@@ -694,6 +725,34 @@
            COMPUTE REM = NETDAYS - YRS * 360.
            COMPUTE MOS = REM / 30.
            COMPUTE DYS = REM - MOS * 30.
+           MOVE YRS TO YMD-Y.
+           MOVE MOS TO YMD-M.
+           MOVE DYS TO YMD-D.
+           MOVE SPACES TO NET-YMD.
+           STRING FUNCTION TRIM(YMD-Y) DELIMITED BY SIZE
+                  'y ' DELIMITED BY SIZE
+                  FUNCTION TRIM(YMD-M) DELIMITED BY SIZE
+                  'm ' DELIMITED BY SIZE
+                  FUNCTION TRIM(YMD-D) DELIMITED BY SIZE
+                  'd' DELIMITED BY SIZE
+               INTO NET-YMD
+           END-STRING.
+           COMPUTE LY = LOSTTOTAL / 360.
+           COMPUTE LR = LOSTTOTAL - LY * 360.
+           COMPUTE LM = LR / 30.
+           COMPUTE LD = LR - LM * 30.
+           MOVE LY TO YMD-Y.
+           MOVE LM TO YMD-M.
+           MOVE LD TO YMD-D.
+           MOVE SPACES TO LOST-YMD.
+           STRING FUNCTION TRIM(YMD-Y) DELIMITED BY SIZE
+                  'y ' DELIMITED BY SIZE
+                  FUNCTION TRIM(YMD-M) DELIMITED BY SIZE
+                  'm ' DELIMITED BY SIZE
+                  FUNCTION TRIM(YMD-D) DELIMITED BY SIZE
+                  'd' DELIMITED BY SIZE
+               INTO LOST-YMD
+           END-STRING.
            PERFORM DERIVE-PEBD.
            PERFORM COMPARE-PEBD.
 
@@ -1184,22 +1243,29 @@
            PERFORM ADD-REP.
            MOVE GROSSDAYS TO DAYS-X.
            MOVE SPACES TO WS-LINE.
-           STRING 'Gross days : ' DELIMITED BY SIZE
+           STRING 'Gross creditable : ' DELIMITED BY SIZE
                   DAYS-X DELIMITED BY SIZE
+                  ' days' DELIMITED BY SIZE
                INTO WS-LINE
            END-STRING.
            PERFORM ADD-REP.
            MOVE LOSTTOTAL TO DAYS-X.
            MOVE SPACES TO WS-LINE.
-           STRING 'Lost deducted : ' DELIMITED BY SIZE
+           STRING 'Lost deducted    : ' DELIMITED BY SIZE
                   DAYS-X DELIMITED BY SIZE
+                  ' days  (' DELIMITED BY SIZE
+                  LOST-YMD DELIMITED BY SIZE
+                  ')' DELIMITED BY SIZE
                INTO WS-LINE
            END-STRING.
            PERFORM ADD-REP.
            MOVE NETDAYS TO DAYS-X.
            MOVE SPACES TO WS-LINE.
-           STRING 'Net days : ' DELIMITED BY SIZE
+           STRING 'Net creditable   : ' DELIMITED BY SIZE
                   DAYS-X DELIMITED BY SIZE
+                  ' days  (' DELIMITED BY SIZE
+                  NET-YMD DELIMITED BY SIZE
+                  ')' DELIMITED BY SIZE
                INTO WS-LINE
            END-STRING.
            PERFORM ADD-REP.
@@ -1208,6 +1274,12 @@
            MOVE SPACES TO WS-LINE.
            STRING 'PEBD before lost : ' DELIMITED BY SIZE
                   TMPX DELIMITED BY SIZE
+               INTO WS-LINE
+           END-STRING.
+           PERFORM ADD-REP.
+           MOVE SPACES TO WS-LINE.
+           STRING 'Lost time 30-day : ' DELIMITED BY SIZE
+                  LOST-YMD DELIMITED BY SIZE
                INTO WS-LINE
            END-STRING.
            PERFORM ADD-REP.
@@ -1242,7 +1314,7 @@
            MOVE 1 TO I.
            PERFORM REP-PERIOD UNTIL I > NPER.
            MOVE SPACES TO WS-LINE.
-           MOVE 'ENTER or PF3 returns to the menu.' TO WS-LINE.
+           MOVE 'ENTER/PF12=edit input  PF3=menu' TO WS-LINE.
            PERFORM ADD-REP.
            EXEC CICS SEND TEXT FROM(REPORT) ERASE END-EXEC.
 

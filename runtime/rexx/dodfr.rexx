@@ -11,6 +11,8 @@ IF DATATYPE(TODAY,'W') \= 1 | LENGTH(STRIP(TODAY)) \= 8 THEN TODAY = '20260101'
 MAP.GRADE = 'E'
 EXEC CICS SEND MAP('DODF1') ERASE END-EXEC
 
+DO FOREVER /* session: entry -> report -> edit or menu */
+
 DO FOREVER
   EXEC CICS RECEIVE MAP('DODF1') END-EXEC
   IF EIBRESP \= 0 THEN DO
@@ -150,7 +152,13 @@ YRS = NETDAYS % 360
 REM = NETDAYS // 360
 MOS = REM % 30
 DYS = REM // 30
+NETBREAK = YRS || 'y ' || MOS || 'm ' || DYS || 'd'
 BREAKDOWN = YRS || ' years, ' || MOS || ' months, ' || DYS || ' days'
+LY = LOSTTOTAL % 360
+LR = LOSTTOTAL // 360
+LM = LR % 30
+LD = LR // 30
+LOSTBREAK = LY || 'y ' || LM || 'm ' || LD || 'd'
 
 IF MERGED.0 = 1 THEN PEBDBASE = MERGED.1.FROM
 ELSE IF GROSSDAYS <= 0 THEN PEBDBASE = ASOF
@@ -224,17 +232,20 @@ IF OFFICER = 1 THEN CLASSSTR = 'OFFICER (O/W)'
 ELSE CLASSSTR = 'ENLISTED'
 
 TXT = LEFT('=== DODFMR STATEMENT OF SERVICE (PAT / Ch 1) ===', 80)
-TXT = TXT || LEFT('', 80)
+TXT = TXT || LEFT('MEMBER CLASSIFICATION : ' || CLASSSTR, 80)
 TXT = TXT || LEFT('EDIPI : ' || EDIPI, 80)
 TXT = TXT || LEFT('NAME  : ' || NAME, 80)
-TXT = TXT || LEFT('Grade : ' || GRADE || '   ' || CLASSSTR, 80)
+TXT = TXT || LEFT('Grade : ' || GRADE, 80)
 TXT = TXT || LEFT('As of Date            : ' || ASOF, 80)
-TXT = TXT || LEFT('Gross creditable days : ' || GROSSDAYS, 80)
-TXT = TXT || LEFT('Lost time deducted    : ' || LOSTTOTAL, 80)
-TXT = TXT || LEFT('Net creditable days   : ' || NETDAYS || '  (' || BREAKDOWN || ')', 80)
 TXT = TXT || LEFT('', 80)
-TXT = TXT || LEFT('--- PEBD COMPARISON ---', 80)
-TXT = TXT || LEFT('PEBD before lost add  : ' || PEBDBASE, 80)
+TXT = TXT || LEFT('--- SERVICE SUMMARY (30/360) ---', 80)
+TXT = TXT || LEFT('Gross creditable days : ' || GROSSDAYS, 80)
+TXT = TXT || LEFT('Lost time deducted    : ' || LOSTTOTAL || '  (' || LOSTBREAK || ')', 80)
+TXT = TXT || LEFT('Net creditable days   : ' || NETDAYS || '  (' || NETBREAK || ')', 80)
+TXT = TXT || LEFT('', 80)
+TXT = TXT || LEFT('--- PEBD COMPARISON (Ch 1 2.4.1.4) ---', 80)
+TXT = TXT || LEFT('PEBD before lost time : ' || PEBDBASE, 80)
+TXT = TXT || LEFT('Lost time (30-day)    : ' || LOSTBREAK || '  (' || LOSTTOTAL || ' days)', 80)
 TXT = TXT || LEFT('Calculated PEBD       : ' || CALCPEBD, 80)
 TXT = TXT || LEFT('Record PEBD           : ' || RECPEBD, 80)
 TXT = TXT || LEFT('Difference            : ' || DIFF, 80)
@@ -277,10 +288,20 @@ IF DEPNOTES \= '' THEN DO
 END
 
 TXT = TXT || LEFT('', 80)
-TXT = TXT || LEFT('Press ENTER or PF3 to return to the menu.', 80)
+TXT = TXT || LEFT('ENTER/PF12=edit input   PF3=menu', 80)
 
 EXEC CICS SEND TEXT FROM(TXT) ERASE END-EXEC
+DUMMY = ''
+EXEC CICS RECEIVE INTO(DUMMY) END-EXEC
+AID = C2X(EIBAID)
+IF AID = 'F3' THEN EXEC CICS RETURN TRANSID('MYMU') END-EXEC
+IF AID = '7D' | AID = '7C' THEN DO
+  CALL PrefillDODF1FromPeriods
+  EXEC CICS SEND MAP('DODF1') ERASE END-EXEC
+  ITERATE
+END
 EXEC CICS RETURN TRANSID('MYMU') END-EXEC
+END
 
 
 /* ================================================================== */
