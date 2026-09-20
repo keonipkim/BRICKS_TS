@@ -198,9 +198,15 @@ during the catalogue walk; recursion is capped at 8 levels.
 
 `CEDA TRANSACTION` accepts a relative subdirectory path in the
 **PROGRAM** form field. `..` traversal is rejected; so are empty
-path segments (`a//b.rexx`). Absolute paths are accepted unchanged
-for the rare case of running one-off programs from outside the
-runtime tree.
+path segments (`a//b.rexx`). Absolute POSIX paths are accepted
+unchanged for the rare case of running one-off programs from
+outside the runtime tree. A path containing a `:`, a newline or a
+whitespace-preceded ` #` is **refused** — including a
+Windows-style `C:\app\prog.cob`, whose drive colon used to write
+a `transactions.conf` line the parser read back as a different
+record, shifting the groups and database fields one slot to the
+right and leaving the transaction unloadable, unreachable, and
+bound to a nonexistent database.
 
 `brickscompile` accepts either a single file or a directory. In
 directory mode it walks recursively (same depth cap + hidden-skip
@@ -1780,7 +1786,15 @@ END-EXEC.
 
 Re-authenticates the (userid, password) pair against the running
 `users.conf` and returns `NORMAL` (0) on success, `NOTAUTH` (70)
-on any failure. The verb itself is stateless — no journal entry,
+on any failure. **The password is compared exactly** — byte for
+byte, case included. (The verifier used to try the as-typed,
+upper-cased and lower-cased forms against the single stored hash,
+so up to three different inputs satisfied this verb for one
+account; `VERIFY PASSWORD` inherited that from the shared
+authenticator. Exactly one spelling is accepted now. Nothing about
+the stored hashes changed — each was always built from the exact
+enrolled password.) The userid itself is still matched
+case-insensitively. The verb itself is stateless — no journal entry,
 no lock — and reads the same in-memory user record `CSSN` consults
 at sign-on. Calling it repeatedly is harmless aside from the
 bcrypt cost on each call (the FileStore.Authenticate path spends
@@ -4519,6 +4533,20 @@ transaction via `WEB READ QUERYPARM('name')`, sharing one
 namespace with the inbound `?name=…` query string (path
 captures win on conflict).
 
+**A path capture is percent-decoded before the program sees it.**
+The request path is matched in its *escaped* form, so a
+percent-encoded `/` can never split a segment and fool a
+single-segment placeholder — but the captured value is then
+decoded, because it shares a namespace with the already-decoded
+query string. `GET /api/customer/Smith%20John` against
+`/api/customer/{id}` therefore gives `WEB READ QUERYPARM('id')`
+the value `Smith John`, the same text `?id=Smith%20John` would
+have produced. (Before this, the capture arrived raw, so one
+program could see `id="Smith%20John"` next to `q="Smith John"`
+for the very same name and the record lookup found nothing.)
+A capture whose escape sequence is malformed makes the route not
+match, and the request 404s.
+
 ### Authentication — the same `users.conf` that CSSN uses
 
 A web client identifies itself using **HTTP Basic
@@ -4547,8 +4575,10 @@ The dispatch flow per request:
    the standard credential prompt.
 2. **`Authorization: Basic base64(user:pass)`** — the credential
    is base64-decoded, split on `:`, then `auth.FileStore.Authenticate`
-   runs (same path CSSN uses). On success the user's
-   `users.conf` groups are intersected with the route's groups.
+   runs (same path CSSN uses), comparing the password
+   **exactly** — byte for byte, case included. On success the
+   user's `users.conf` groups are matched against the route's
+   groups: **any one** shared group admits the caller.
 3. **Authenticated AND a group matches** — dispatch proceeds with
    `sess.Authenticated=true`, `sess.UserID=<username>`,
    `sess.Groups=<users.conf groups>`. The dispatcher's
@@ -4564,6 +4594,22 @@ ACL policy is **opt-in**: a `web_routes.conf` row with no
 the literal `public` to permit anonymous access; add specific
 group names (`users`, `admin`, etc.) to require Basic-Auth
 against `users.conf` for a user belonging to that group.
+
+Two properties of that column are easy to get wrong:
+
+* **The list is a UNION, not an intersection.** `admin,users`
+  admits anyone in *either* group, and `public` anywhere in the
+  list makes the whole route unauthenticated — `admin,public` is
+  exactly as open as `public` alone. There is **no way to spell
+  "public AND admin"**; if the route is meant to be restricted,
+  leave `public` out. bricks warns at load when a row mixes them.
+* **A row has at most 5 fields, and a 6th is a hard error.** It
+  used to be silently discarded, so
+  `GET /admin ADMN public 5s admin` loaded as `Groups=[PUBLIC]`
+  and served the admin route to unauthenticated callers with a
+  `200`. Such a row is now refused (and the route 404s, which is
+  the safe direction to fail in). Every group goes in **one**
+  comma-separated field with no spaces.
 
 A user `alice` listed in `users.conf` as
 `alice:<bcrypt-hash>:users,admin` can run the **same** TRANSID
@@ -4609,7 +4655,7 @@ The Phase 1 verb set:
 | `WEB EXTRACT METHOD(var) PATH(var) …` | Request metadata: METHOD / SCHEME / HOST / PORT / PATH / QUERYSTRING / HTTPVERSION / CLIENTADDR / SERVERADDR. Each option is the name of a target variable. |
 | `WEB READ HTTPHEADER(name) VALUE(var) [LENGTH(var)]` | Read one inbound header. `NOTFND` when absent. |
 | `WEB STARTBROWSE HTTPHEADER` / `WEB READNEXT HTTPHEADER NAME(var) VALUE(var) [NAMELENGTH(var)] [VALUELENGTH(var)]` / `WEB ENDBROWSE HTTPHEADER` | Walk every inbound header in sorted order. `ENDFILE` when exhausted. |
-| `WEB READ QUERYPARM(name) VALUE(var)` | Read query parameter OR routing-table `{name}` capture. `NOTFND` when absent. |
+| `WEB READ QUERYPARM(name) VALUE(var)` | Read query parameter OR routing-table `{name}` capture. Both are **percent-decoded** — `%20` reaches the program as a space. `NOTFND` when absent. |
 | `WEB STARTBROWSE QUERYPARM` / `WEB READNEXT QUERYPARM …` / `WEB ENDBROWSE QUERYPARM` | Iterate every parameter / capture. |
 | `WEB READ FORMFIELD(name) VALUE(var)` | Read one `application/x-www-form-urlencoded` field. Body parsed lazily on first call. |
 | `WEB STARTBROWSE FORMFIELD` / `WEB READNEXT FORMFIELD …` / `WEB ENDBROWSE FORMFIELD` | Iterate form fields. |
@@ -4717,7 +4763,12 @@ URIMAP   WEATHER   https://api.openweathermap.org/data/2.5
 URIMAP   INTRANET  https://api.internal:8443/v1
 ```
 
-Names are 1..8 uppercase characters (CICS resource-name limit).
+Names are 1..8 uppercase characters (CICS resource-name limit),
+drawn from `A-Z`, `0-9` and the national characters `$ @ #` plus
+`_`. The charset is enforced at parse and at the `CEDA URIMAP`
+write path, so a name such as `A;B` — which used to load and then
+never match what a program asked for — is refused with
+`URIMAP name: only A-Z 0-9 $ @ # allowed`.
 The path-prefix is optional; when set, it becomes the leading
 segment of every PATH the program later supplies on `WEB SEND`
 / `WEB CONVERSE`. So `URIMAP WEATHER ...data/2.5` paired with
@@ -7618,8 +7669,16 @@ transid:lang:program[:groups[:database]]
 ```
 
 * `database` -- name of a row in `runtime/databases.conf`. The
-  value is case-sensitive and must match the row's first column
-  exactly. Whitespace around the name is trimmed.
+  match is **case-insensitive**: both sides are folded to lower
+  case, the way Postgres folds unquoted identifiers, so `:BANK`
+  and `:bank` reach the same database. (They used to be two
+  different records opening two pools onto one physical database,
+  and a `:BANK` binding against a `bank` row silently failed at
+  run time with `SQLCODE = -1`.) Whitespace around the name is
+  trimmed, and the name may not contain `:`, a newline or a
+  whitespace-preceded ` #` -- `CEDA TRANSACTION` refuses those,
+  because they produce a line the parser reads back as a
+  different record.
 * **Absent 5th field** -- the transaction binds to the **first**
   row of `databases.conf`. The first row is the deployment-wide
   default; CEDA DATABASE labels it `(def)` and refuses `D`elete on
@@ -7657,7 +7716,10 @@ reloaded on mtime change.
 A program that needs to touch a second database during a task
 issues `EXEC SQL CONNECT TO 'name'`. The named database must
 exist in `databases.conf` (the CEDA DATABASE catalogue); an
-unknown name returns `SQLCODE = -1`. An in-flight PG transaction
+unknown name returns `SQLCODE = -1`. The name is matched
+case-insensitively — it is folded to lower case, like every other
+database-name path in bricks — so `CONNECT TO 'ORDERS'` finds the
+`orders` row. An in-flight PG transaction
 on the previous database is committed implicitly (matches DB2's
 behaviour) -- programs that want to discard the previous work
 should `EXEC SQL ROLLBACK` before connecting.
@@ -8338,7 +8400,7 @@ literal: `IF EIBAID = X'F3' ...`.
 | `WEB EXTRACT TCPIPSERVICE(v) PORTNUMBER(v) IPADDRESS(v) CLIENT(v) AUTHENTICATE(v)` | Listener inspection. |
 | `WEB READ HTTPHEADER(name) VALUE(v) [LENGTH(v)]` | Inbound header by name. |
 | `WEB STARTBROWSE / READNEXT / ENDBROWSE HTTPHEADER` | Walk inbound headers. |
-| `WEB READ QUERYPARM(name) VALUE(v)` | Query parameter / path capture. |
+| `WEB READ QUERYPARM(name) VALUE(v)` | Query parameter / path capture, percent-decoded. |
 | `WEB STARTBROWSE / READNEXT / ENDBROWSE QUERYPARM` | Walk parameters. |
 | `WEB READ FORMFIELD(name) VALUE(v)` | Form-encoded field. |
 | `WEB STARTBROWSE / READNEXT / ENDBROWSE FORMFIELD` | Walk form fields. |

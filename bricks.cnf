@@ -133,27 +133,26 @@ record_cache=16
 program_cache=32
 
 # ── Time synchronisation
-# Bricks polls this NTP server every 5 minutes and applies the
-# offset in memory. It does NOT set the host OS clock (that would
-# require root). EXEC CICS ASKTIME, FORMATTIME, ABSTIME, and
 # ASSIGN DATE/TIME all consult this corrected clock.
 #
-# On startup, bricks does ONE syncronous NTP query and prints
+# On startup, bricks does ONE synchronous NTP query and prints
 # either "ntp: initial sync ok skew=±N.NNms server=X" or
 # "ntp: initial sync failed (X): ... -- continuing with host clock"
+# The background goroutine then waits a full interval before its
+# first poll, so booting never queries the server twice.
 #
 # Default when omitted: time.google.com  (Google's smear-aware
 # public NTP service; handles leap seconds gracefully).
-# Set to "off" to disable NTP entirely.
+# Disable NTP entirely with any of: off, no, false, 0, or a bare
+# "ntp_server=" with nothing after the '='. Enable it with the
+# default server using any of: on, yes, true, 1.
 #
 # IMPORTANT: NTP failures are NEVER fatal. The runtime keeps
 # serving transactions even if the server is unreachable, returns
 # garbage, or DNS fails. Each failure logs one console line and
-# the goroutine retries on the next 5-minute tick.
+# the goroutine retries on the next 12-hour tick.
 #
 ntp_server=time.google.com
-ntp_server=pool.ntp.org
-ntp_server=on
 time_zone=Z
 
 # ── Logging

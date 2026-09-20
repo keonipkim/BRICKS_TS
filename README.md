@@ -1,8 +1,5 @@
 # Bricks Transaction Server
 **Chat with BRICKS developers and master operators [here](https://discord.gg/6NWE4Gp7kR)**
-  
-**An indepeneent BRICKS developer's [thoughts](https://dwightaspencer.com/posts/25-cics-modern-frameworks/)**  
-
 
 BRICKS is a drop-in transaction server compatible with CICS. It includes
 interpreters for COBOL and REXX languages and all the usual EXEC CICS, EXEC SQL,
@@ -99,6 +96,71 @@ term=T123: PA1 break-out, transaction aborted
 
 Key=value, one per line, `#` for comments. Keys are case-insensitive.
 
+Parser rules, all enforced at startup:
+
+- **An unknown key is fatal.** A misspelled knob aborts the boot with
+  `bricks.cnf:N: unknown key "..."` rather than being ignored.
+- **A line with no `=` is fatal.** Only `#` starts a comment; `//` and
+  `;` do not.
+- **A duplicate key still follows last-wins**, but every repeat logs a
+  two-line console warning naming the line numbers and the winning
+  value — redacted for any key whose NAME contains `password`, `token`
+  or `key` (so `db_password`, `mro_token`, `tlskey` and
+  `web_client_key`; `tlscert` and `web_client_ca_bundle` are not
+  secrets and are shown), and clipped so neither line passes column 79:
+
+  ```
+  bricks.cnf: ntp_server set 3 times, lines 158,159,160
+    -> using line 160 value "on"
+  ```
+- **Quotes are resolved before comments.** One matched surrounding pair
+  (`"..."` or `'...'`) is removed and everything inside it is kept
+  verbatim, so `gmtext="Region #7 online"` works. A `#` after the
+  closing quote must be whitespace-separated to count as a comment, so
+  `banner="abc"#note` is not a well-formed quoted value and is kept
+  whole, quotes and all. In an *unquoted*
+  value, a `#` preceded by a space or tab starts an inline comment
+  (`port=2300 # main listener` → `2300`), and a `#` glued to its
+  neighbours is data (`db_password=pass#word`). A value that is
+  nothing but a comment is empty.
+- A UTF-8 BOM on the first line is ignored. CRLF line endings work.
+- A redacted value is rendered as `<redacted, N chars>` — the length
+  only, never the bytes, at any console width.
+- **Lines are capped at 1 MiB.** A longer line aborts the boot with
+  `bricks.cnf:N: cannot read line (max 1 MiB): …`.
+- **Bounded knobs are range-checked at load**, so a nonsense value
+  fails the boot instead of surfacing much later inside `net.Listen`
+  (or silently refusing every client):
+
+  | Knob | Accepted range |
+  |---|---|
+  | `port` | `1..65535` |
+  | `tlsport` | `1..65535`, checked **only when `start_TLS=yes`** |
+  | `metrics_port` | `1..65535`, checked only when `start_metrics` is on |
+  | `web3270_port` | `1..65535`, checked only when `start_web3270=yes` |
+  | `idle_timeout_secs` | `1..86400` |
+  | `max_conns_per_ip` | `1..65535` |
+  | `program_cache` | `1..16384` MB |
+  | `map_cache` | `1..1028` entries |
+  | `record_cache` | `4..4096` MB |
+  | `wrkarea` | `0..3584` bytes |
+  | `db_max_conns` | `1..1024` |
+  | `db_retry_max` | `>= 0` |
+  | `web_client_max_idle_conns` | `0..65535` (`0` = keep no idle connections) |
+  | `webserver_port` / `webserver_tls_port` | `0..65535` (`0` = off) |
+
+  The three conditional ports are deliberate: an operator who has
+  turned a listener off may leave any leftover value next to it.
+- **A boolean knob rejects anything it does not recognise.**
+  `yes`/`true`/`on`/`1` and `no`/`false`/`off`/`0` are the accepted
+  spellings; `start_TLS=ye` is a boot failure rather than a silently
+  disabled listener.
+
+See [Configuration file conventions](#configuration-file-conventions)
+for the rules `bricks.cnf` shares with the `runtime/*.conf` files —
+and for the one rule it deliberately breaks (duplicate keys here are
+**last**-wins; every other bricks conf file is **first**-wins).
+
 | Key                          | Default                       | Notes |
 |------------------------------|-------------------------------|-------|
 | `port`                       | `2300`                        | Plain-TCP listener. |
@@ -111,6 +173,7 @@ Key=value, one per line, `#` for comments. Keys are case-insensitive.
 | `start_transaction`          | (none)                        | If set, the 4-character TRANSID dispatched automatically after a successful `CSSN` sign-on — useful when a deployment has a clear "this is the app's home screen" and operators shouldn't have to type the first transid by hand. Empty / unset (the default) keeps today's behaviour: the operator lands at the blank TRANSID prompt with the `CSSNOK` success map. Rejected at startup if the value is neither empty nor exactly 4 characters, or if it equals `logon_transid` (loop guard). If the named transaction is missing from `transactions.conf` at run time, bricks logs one warning line and drops the operator at the blank prompt — no operator-facing error screen. ACLs on the target still apply: an unauthorised user lands on the standard "access denied" message. |
 | `users_file`                 | `runtime/users.conf`          | Auth source. |
 | `transactions_file`          | `runtime/transactions.conf`   | TRANSID dispatch table. |
+| `aliases_file`               | `runtime/aliases.conf`        | Optional long-alias table: one `alias:TRANSID` row per line mapping a 2–8 character operator-typed name (`sabre`) to an installed 4-character TRANSID (`SABR`). A missing file simply means no aliases — never an error. A real TRANSID always wins over an alias of the same name, and an alias may not be named after a built-in. |
 | `maps_dir`                   | `runtime/map`                 | Directory of `*.map` files. |
 | `rexx_dir`                   | `runtime/rexx`                | Directory of REXX programs. Sub-directories are supported: `transactions.conf` may reference programs as `subdir/file.rexx`. `CEDA PROGRAM` walks the tree recursively (depth cap 8, hidden-prefixed entries skipped). |
 | `cobol_dir`                  | `runtime/cobol`               | Directory of COBOL programs. Same sub-directory support as `rexx_dir`. |
@@ -118,21 +181,22 @@ Key=value, one per line, `#` for comments. Keys are case-insensitive.
 | `runtime_dir`                | `runtime`                     | Root for `maps_dir` / `rexx_dir` / `cobol_dir` / `tmp_dir` / `copybook_dir` when those aren't set explicitly. Set this to relocate the whole runtime tree in one knob. |
 | `data_dir`                   | `data`                        | Holds `files.boltdb` (FILE store + TS queues). |
 | `tmp_dir`                    | `runtime/tmp`                 | Sandbox directory for sequential text I/O (REXX `LINEIN`/`LINEOUT`, COBOL `READQ TD`/`WRITEQ TD`). Strict: ASCII only, LF-terminated, flat namespace, no traversal. See [Sequential file I/O — `tmp_dir`](#sequential-file-io--tmp_dir). |
-| `ntp_server`                 | `time.google.com`             | NTP server polled every 12 hours to correct bricks's in-memory wall clock. EIBTIME / EIBDATE / FORMATTIME consult this corrected clock. Set to `off` to disable. Failures are non-fatal — bricks logs and continues with the previous offset (or the raw host clock if no sync has ever succeeded). See [Time synchronisation](#time-synchronisation). |
+| `ntp_server`                 | `time.google.com`             | NTP server polled every 12 hours to correct bricks's in-memory wall clock. EIBTIME / EIBDATE / FORMATTIME consult this corrected clock. Set to `off` — or `no` / `false` / `0`, or a bare `ntp_server=` with an empty value — to disable; `on` / `yes` / `true` / `1` select the default server rather than a host literally named `on`. Omitting the key keeps the default. Exactly **one** synchronous query runs at startup; the background goroutine then waits a full 12 hours before its first poll. Failures are non-fatal — bricks logs and continues with the previous offset (or the raw host clock if no sync has ever succeeded). See [Time synchronisation](#time-synchronisation). |
 | `time_zone`                  | `Z` (UTC)                     | Military zone letter (`Z`=UTC, `A`–`M`=UTC+1..+12, `N`–`Y`=UTC-1..-12). Applies to operator-visible time fields; ABSTIME stays UTC milliseconds. See [Time synchronisation](#time-synchronisation). |
 | `log_location`               | `log`                         | Directory where bricks writes per-run log files. On startup a new file `YYYY-MM-DD_HH-MM-SS.log` is created; every console line is appended (with ANSI color stripped) and prefixed with a 4-character subsystem tag. Set to `off` to disable file logging. See [Logging](#logging). |
-| `idle_timeout_secs`          | `900`                         | Read deadline applied **only before sign-on** — to the LogonPrompt and to the BlankPrompt of an unauthenticated session, plus the CSSN sign-on input reads. A peer that completes telnet negotiation but never signs on is dropped after this many seconds so a half-open handshake doesn't tie up a `max_conns_per_ip` slot forever. **Once the operator has signed on, the deadline is not set** — a signed-on terminal sits at the blank prompt indefinitely and only disconnects on TCP close or an explicit `CSSF DISC` / `DISCONNECT` / `GOODNIGHT`. `CSSF LOGOFF` clears the authentication flag, so the deadline resumes for the now-unauthenticated session. |
+| `idle_timeout_secs`          | `900`                         | Read deadline applied **only before sign-on** — to the LogonPrompt and to the BlankPrompt of an unauthenticated session, plus the CSSN sign-on input reads. A peer that completes telnet negotiation but never signs on is dropped after this many seconds so a half-open handshake doesn't tie up a `max_conns_per_ip` slot forever. **Once the operator has signed on, the deadline is not set** — a signed-on terminal sits at the blank prompt indefinitely and only disconnects on TCP close or an explicit `CSSF DISC` / `DISCONNECT` / `GOODNIGHT`. `CSSF LOGOFF` clears the authentication flag, so the deadline resumes for the now-unauthenticated session. Valid range is `1..86400` seconds (one day); `0` would arm an already-expired deadline and drop every terminal at connect, so it is rejected at startup along with anything above the cap. |
 | `max_conns_per_ip`           | `8`                           | Per-client cap. |
 | `program_cache`              | `4`                           | L2 LRU pool size in MB for parsed REXX/COBOL programs (a 128-entry L1 of decoded ASTs sits in front of it). Allocated once at startup as eight contiguous byte slabs — one per shard — and reused for the life of the process; Go's GC never scans the program bytes. Valid range is `1..16384` (1 MB floor, 16 GB cap); out-of-range values are rejected at startup. Live counters for both tiers are visible in `CEMT MONITOR`. |
 | `map_cache`                  | `128`                         | LRU bound on the number of **parsed** 3270 maps held resident. The directory index — `(map name → file path, mtime, size, SHA-256)` — always covers every `*.map` in `maps_dir`, so any map remains resolvable by name; only the parsed body is bounded. A `SEND/RECEIVE MAP` for a cached map is zero-parse; an evicted map is re-parsed on next lookup (microseconds) and re-inserted. Evicted entries drop their `*Map` pointer and the Go GC reclaims them on the next cycle, capping both steady-state memory and per-GC pointer-graph walk regardless of how many maps a deployment ships. Valid range is `1..1028`; rejected at startup if out of range. Live counters and runtime resize are visible in `CEMT P M`. |
 | `record_cache`               | `16`                          | Byte budget in **MB** for the VSAM record read cache that sits in front of the bbolt file store. A keyed `READ FILE` for a cached record skips the B-tree traversal and is served from memory; every `WRITE`/`REWRITE`/`DELETE` (and SYNCPOINT rollback) invalidates the affected record, so the cache stays coherent within the process. The budget bounds the total cached record bytes; the least-recently-read records are evicted when it fills. Valid range is `4..4096` (4 MB floor, 4 GB cap); out-of-range values are rejected at startup. Live read/write rates, latency, and the hit ratio are on the `CEMT MONITOR` **VSAM File Monitor** (PF11); the since-boot hit ratio also shows on the `CEMT MONITOR` Caches panel. |
 | `wrkarea`                    | `0`                           | Byte length of the region **Common Work Area** (CWA) — the single region-wide scratch area `EXEC CICS ADDRESS CWA(ptr)` hands a COBOL program a pointer to, and whose length `EXEC CICS ASSIGN CWALENG(n)` reports. Integer bytes; valid range `0..3584` (the IBM CWA cap), rejected at startup if negative or above `3584`. The default `0` means **no CWA is allocated** — `ADDRESS CWA` then yields a NULL pointer (handle 0) and `CWALENG` returns `0`, matching real CICS on a region with no CWA. The CWA is one slice shared by every task for the life of the process; writes through the pointer are visible to other tasks (unsynchronised — the program serialises its own access). See [PROGRAMMING.md / EXEC CICS ADDRESS](PROGRAMMING.md#address--exec-cics-address). |
 | `banner`                     | `BRICKS Transaction Server`   | Shown at top of system screens. |
+| `show_welcome`               | `yes`                         | `no` drops the operator straight to the logon / blank prompt without the connect-time welcome banner and centred bricks logo splash. |
 | `gmtext`                     | `Welcome to bricks`           | **IBM CICS SIT `GMTEXT` equivalent — operator-configured "Good Morning" banner.** Painted at row 0 of the connect-time splash and row 1 of `LogonPrompt` (when `enforce_secure_login=yes`) (Turquoise intense, centred; replaces the legacy `Welcome to BRICKS HH:MM:SS` banner when set), and retrievable programmatically via `EXEC CICS INQUIRE SYSTEM GMMTEXT(var)`. **Hard caps:** max 256 bytes, and EBCDIC-037 printable bytes only (`0x20..0x7E` minus the `[ ] { } ~ \ ` `` ` `` `\| ^` deny-set per the 3270-printables memory) — any violation is a startup error, **not** a silent substitute. An empty `gmtext=` line **restores the default** (matches the `ntp_server=on` aliasing precedent). The full 256-byte value is preserved through the verb — the LogonPrompt renderer truncates to `cols-1` only at paint time, so programs reading `GMMTEXT` see the full configured value regardless of screen width. See [PROGRAMMING.md / INQUIRE SYSTEM](PROGRAMMING.md#system-inquiry--inquire-system) for the verb and bricks deviations. |
 | `dns_name`                   | (none)                        | **Bind address.** Every bricks listener — the plain-TCP and TLS 3270 listeners, and the web3270 / `/metrics` HTTP services — binds **only** to the single IP this name resolves to (a literal IP is used as-is; a hostname resolves to one address, IPv4 preferred). A `dns_name` that is set but unresolvable is a fatal startup error. When `dns_name` is **empty**, listeners fall back to binding *all* interfaces (`0.0.0.0`) and bricks logs a `WARNING` — set `dns_name` to confine the server to one interface. |
 | `start_web3270`              | `no`                          | `yes` enables the in-process browser-based 3270 emulator. |
 | `web3270_port`               | `9000`                        | HTTP port for the web3270 frontend (only used when `start_web3270=yes`). |
-| `start_metrics`              | `yes`                         | `yes` exposes a JSON `/metrics` endpoint with runtime + counter snapshots. Independent of `start_web3270`. Admin operators can flip the endpoint on/off at runtime via `CEMT PERFORM METRICS` without rewriting `bricks.cnf`. |
+| `start_metrics`              | `yes`                         | `yes` exposes a JSON `/metrics` endpoint with runtime + counter snapshots. Independent of `start_web3270`. Admin operators can flip the endpoint on/off at runtime via `CEMT PERFORM METRICS` without rewriting `bricks.cnf`. Writing `start_metrics=yes` explicitly **requires a paired `metrics_port=N` line** — an operator who opts the listener in owns the port choice rather than silently inheriting `9100`, which is often already taken on an ops box. Leaving the metrics block untouched keeps the default port. |
 | `metrics_port`               | `9100`                        | HTTP port for the dedicated `/metrics` listener. The same route is also mounted on the web3270 listener when both are on. |
 | `webserver_port`             | `0` (disabled)                | TCP port for the **static file server** — serves whatever lives under `webserver_dir` to a browser (`index.html` or 404; never a directory listing). `0`/unset disables it. Binds to `dns_name` like the other listeners. Manage it at runtime with `CEDA WEBSERVER`; watch its counters on `CEMT MONITOR`. See [Static file server](#static-file-server). |
 | `webserver_tls_port`         | `0` (none)                    | Optional HTTPS port for the static file server, reusing `tlscert`/`tlskey` (rejected at startup if those aren't set). Opens in addition to `webserver_port`. |
@@ -156,8 +220,10 @@ Key=value, one per line, `#` for comments. Keys are case-insensitive.
 | `db_user`                    | (none)                        | Postgres login. |
 | `db_password`                | (none)                        | Postgres password. URL-escaped when bricks builds the DSN, so special characters survive intact. |
 | `db_sslmode`                 | `disable`                     | Passed straight to libpq (`disable`, `require`, `verify-ca`, `verify-full`, etc.). |
-| `db_max_conns`               | `8`                           | Per-database connection pool cap (`SetMaxOpenConns` on the `*sql.DB`). |
+| `db_max_conns`               | `8`                           | Per-database connection pool cap (`SetMaxOpenConns` on the `*sql.DB`). Valid range is `1..1024`; a pool of `0` can never serve a query, so it is rejected at startup. |
 | `db_stmt_timeout`            | `30s`                         | Per-statement wall-clock cap, enforced **from the bricks client side**. The cap counts every millisecond from the moment bricks sends the SQL to the moment the last result byte arrives — round-trip time on the wire is bounded, not just the server's CPU time. (PG's own `statement_timeout` is server-side only and would miss a network-bound stall; bricks layers both, so either side firing produces SQLSTATE 57014 → SQLCODE -952 / `SQL-TIMEOUT`.) Accepts a Go duration (`5s`, `100ms`, `1m30s`), a bare integer (seconds), or `0`/`off`/`none` to disable. Cursors are exempt — only single-shot statements (SELECT INTO, INSERT, UPDATE, DELETE) get the per-statement deadline; FETCH iteration is bounded only by PG's server-side timer. |
+| `db_retry_transient`         | `yes`                         | Automatically re-issue a statement that failed with a **transient** server-side rollback (serialization failure `40001` / deadlock `40P01`, both surfaced to programs as `SQL-DEADLOCK` / `-911`). Retry fires **only on the first data statement of a task's transaction** — a deadlock victim has already had its whole transaction rolled back by PG, so re-issuing is only safe when there is no prior committed work to lose. `no` surfaces the first failure to the program unchanged. |
+| `db_retry_max`               | `1`                           | Maximum re-attempts under `db_retry_transient`; total attempts are `db_retry_max + 1`, with a 50 ms × attempt backoff between tries. Must be `>= 0` (rejected at startup otherwise); `0` disables retrying without touching `db_retry_transient`. |
 | `databases_file`             | `runtime/databases.conf`      | Catalogue of Postgres databases bricks knows about (CEDA-managed). First row is the default database for transactions that don't bind to a specific one. See [`databases.conf`](#databasesconf). |
 | `mro_name`                   | (none)                        | **Multi-Region Operation (MRO).** This region's 1–8 alphanumeric identifier — the name peers use to reach it. Required (together with `mro_port` and `mro_token`) to run an MRO listener so other regions can route transactions here. Leave all three empty for a single-region server (or a pure client that only routes outward). A missing/incomplete/invalid `mro_*` block degrades to single-region operation — bricks logs one warning and keeps running (never a boot failure). See [MRO.md](MRO.md). |
 | `mro_port`                   | (none)                        | TCP port (1025–65535) for this region's MRO TLS listener. See [MRO.md](MRO.md). |
@@ -169,6 +235,58 @@ Command-line flags (in addition to `--conf`):
 | Flag             | Notes |
 |------------------|-------|
 | `--no-console`   | Disable the framed operator console; emit raw `log.Printf` lines on stderr. Use under `nohup` / `systemd` / when piping through `tee`. |
+
+---
+
+## Configuration file conventions
+
+Every bricks configuration file — `bricks.cnf` and each
+`runtime/*.conf` — now reads its lines the same way. Learn the rules
+once and they hold everywhere:
+
+- **Whole-line comments.** A line whose first non-blank character is
+  `#` is a comment. Blank lines are ignored.
+- **Trailing comments.** A `#` **preceded by a space or a tab** starts
+  a trailing comment and is stripped, along with the whitespace in
+  front of it. A `#` glued to its neighbours is **data**, so
+  `db_password=pass#word`, a program named `rpt#1.rexx` and a
+  description of `slot#3` all survive intact.
+- **UTF-8 BOM.** A byte-order mark on line 1 (what Notepad and
+  PowerShell prepend) is ignored instead of fusing onto the first
+  key or field name.
+- **Line length.** Lines are capped at **1 MiB**. In `bricks.cnf` an
+  over-long line is a boot failure; in the `runtime/*.conf` files the
+  single oversized row is skipped and the rest of the file still
+  loads.
+- **Diagnostics.** Every parse message is `basename:line: reason` —
+  file basename only, never an absolute path — and fits inside the
+  79-column operator console.
+
+**The one deliberate difference is duplicate policy:**
+
+| File | Duplicate key / record |
+|---|---|
+| `bricks.cnf` | **LAST** definition wins (with a two-line warning) |
+| `users.conf` | **FIRST** wins, later ones skipped and logged |
+| `transactions.conf` | **FIRST** wins |
+| `aliases.conf` | **FIRST** wins |
+| `web_routes.conf` | **FIRST** wins (warned with both line numbers) |
+| `mro.conf` | **FIRST** wins |
+| `databases.conf` | **FIRST** wins |
+
+So appending a corrected copy of a row to the bottom of
+`transactions.conf` or `web_routes.conf` does **nothing** — edit the
+original row. Appending a corrected `bricks.cnf` line, by contrast,
+does take effect. The asymmetry is intentional (`bricks.cnf` has
+always been last-wins) but it is the single easiest thing to get
+wrong, so bricks warns on every duplicate in every file.
+
+Beyond the shared lexical rules, each file keeps its own validation:
+see [`users.conf`](#authentication-procedure),
+[`transactions.conf`](#per-transaction-acl),
+[`web_routes.conf`](#wapi-routing--url--transid--program),
+[`databases.conf`](#databasesconf) and
+[`mro.conf`](MRO.md#the-peer-catalogue-mroconf).
 
 ---
 
@@ -237,6 +355,58 @@ grow longer; nothing about the dispatch path changes. CEMT
 INQUIRE TRANSACTION pages through every transaction regardless
 of which front door reaches it; `CEMT INQUIRE WEB` (Phase 3) will
 do the same for routes.
+
+### Route rows — rules that bite
+
+`web_routes.conf` follows the shared
+[configuration file conventions](#configuration-file-conventions).
+Beyond those, four rules are worth knowing before you edit the file:
+
+1. **A row has at most 5 fields; a 6th is a hard error and the row is
+   refused.** This is a security fix. A 6th field used to be dropped
+   on the floor, so
+
+   ```
+   GET  /admin  ADMN  public  5s  admin
+   ```
+
+   loaded as `Groups=[PUBLIC]` — the operator's `admin` was
+   discarded — and bricks served the admin route to unauthenticated
+   callers with a `200`. The row is now rejected (a route that does
+   not load 404s, which is the safe direction to fail in), and the
+   skip warning prints the expected row shape underneath it. **Put
+   every group in ONE comma-separated field with no spaces.**
+2. **The groups list is a UNION, not an intersection.** `admin,users`
+   admits anyone in *either* group, and `admin,public` is exactly as
+   open as `public` alone: `public` anywhere in the list makes the
+   whole route unauthenticated. The semantics have not changed, but
+   bricks now warns loudly at load when a row mixes them
+   (`… mixes PUBLIC and other groups` / `-> PUBLIC wins: route is
+   open to everyone`). **There is no way to spell "public AND
+   admin".** If the route is meant to be restricted, leave `public`
+   out.
+3. **Duplicate routes (same METHOD + PATH): the FIRST row wins**, and
+   the warning names both line numbers. Appending a stricter copy of
+   a row does nothing — edit the original.
+4. **A path capture is percent-DECODED** before the program sees it,
+   so `GET /api/customer/Smith%20John` gives
+   `WEB READ QUERYPARM('id')` the value `Smith John`. See
+   [PROGRAMMING.md — server-side verb set](PROGRAMMING.md#server-side-verb-set)
+   for the programmer-facing note.
+
+A bad row still only costs that row: it is logged and skipped, and
+an oversized (>1 MiB) row no longer swallows the rest of the file.
+
+**Known limitation:** a TRANSID named by a route is **not** checked
+against `transactions.conf` at load time. A route pointing at a
+TRANSID that does not exist loads cleanly and fails **per request**;
+the console line names the method, pattern and transid so the
+offending row is findable.
+
+**URIMAP names** are charset-validated at parse and at the CEDA write
+path: 1–8 characters from `A-Z`, `0-9`, `$`, `@`, `#` and `_`. A name
+such as `A;B` used to load and then never match the name a program
+asked for.
 
 ### URIMAP — named outbound endpoints
 
@@ -513,6 +683,66 @@ go run ./cmd/brickspw "raw password"                   # just emit a hash
 
 The script refuses to overwrite an existing user without `--update`.
 
+### Passwords are exact — case and all
+
+**A password is verified byte for byte, exactly as typed.** Bricks
+used to compare the typed password against the stored hash three
+times — as typed, upper-cased and lower-cased — so a password
+enrolled as `SECRET` also opened the account when typed `secret`,
+`Secret` or `sEcReT`. That gave away roughly 8 bits of brute-force
+resistance, and `EXEC CICS VERIFY PASSWORD` inherited it. Exactly one
+spelling works now, on both front doors (CSSN on the 3270 and HTTP
+Basic auth on WAPI) and in `VERIFY PASSWORD`.
+
+**Migration: there is nothing to migrate, and nobody is locked out.**
+Every stored hash was always built from the *exact* password the user
+enrolled, so every hash in `users.conf` still verifies unchanged — no
+rehash, no reset, no file edit. The only person who notices is
+someone who has been signing on with a casing *other* than the one
+they enrolled; they must now type their actual password. If a user
+genuinely cannot remember which casing they enrolled, set a new
+password (`./add_brick_user.bash --update <user> <newpassword>
+<groups>` or CEDA USER) — that is the same procedure as any other
+forgotten password.
+
+**Password length.** The CSSN sign-on map's `PASSWORD` field is 32
+characters (it was 8), so an operator can now type a password of up
+to 32 characters at the terminal; the CEDA USER form matches. The
+field carries no UPPER/monocase attribute, so mixed case transmits
+from a 3270 verbatim. Enrolment refuses a password longer than **72
+bytes** — bcrypt silently truncates past that, which would enrol and
+then accept only the first 72 bytes while the operator believed the
+tail counted. The `add_brick_user.bash` / `cmd/brickspw` path refuses
+it too — bcrypt itself reports `bcrypt: password length exceeds 72
+bytes`, no hash is emitted and the script aborts without touching
+`users.conf`.
+
+### How `users.conf` is parsed
+
+The file follows the shared
+[configuration file conventions](#configuration-file-conventions)
+(` #` trailing comments, BOM stripped, 1 MiB line cap,
+`users.conf:N: …` diagnostics) plus these rules:
+
+- **A malformed line is skipped and logged** —
+  `users.conf:12: expected user:hash[:groups] - line skipped` — and
+  the rest of the file still loads. One fat-fingered line used to
+  abort the whole load and make the region unbootable.
+- **A file that yields zero valid users is refused**, both at boot and
+  on a hot reload, and the previously loaded store is kept. A
+  truncated or emptied `users.conf` can therefore no longer produce a
+  running region that nobody can sign on to.
+- **A duplicate userid is skipped, first definition wins** (userid
+  matching is case-insensitive). A line appended to the end of the
+  file can never silently take over an existing account.
+- **A 4th field is a loud skip.** A bcrypt hash contains no `:`, so a
+  4th field is always operator error. It used to be silently dropped
+  — and then persisted in truncated form by the next CEDA rewrite.
+
+Only an unreadable *file* (permissions, I/O error, over-long line) is
+a hard failure.
+
+
 ---
 
 ## Per-transaction ACL
@@ -585,6 +815,67 @@ A denied dispatch surfaces:
   caller hitting a non-`public` ACL).
 * In the console log: `term=T0001 transid=QAGE access denied;
   user="ALICE" groups=[USERS] required=[ADMIN]`.
+
+### How `transactions.conf` is parsed
+
+`transactions.conf` follows the shared
+[configuration file conventions](#configuration-file-conventions),
+and on top of them:
+
+- **TRANSID charset.** Exactly 4 characters, `A-Z` and `0-9` only
+  (checked per byte, so a 4-byte multi-byte string that paints as 2
+  glyphs is rejected rather than counted as 4).
+- **Reserved TRANSIDs are refused.** A row naming a built-in
+  (`CEMT`, `CEDA`, `CECI`, `IDCA`, `ISPF`, `CSSN`/`CESN`,
+  `CSSF`/`CESF`, …) is skipped with a log line, and `CEDA
+  TRANSACTION` refuses to create one. **Built-in beats table**: the
+  dispatcher checks the built-in list *before* the transaction
+  table, so such a row could never be dispatched anyway — it would
+  only show up as "installed" on CEMT and CEDA and mislead the
+  operator.
+- **Group names are charset-checked** (`A-Z`, `0-9`, `_`, `-`, `*`);
+  a row with an illegal group name is skipped. **Caveat worth
+  reading twice:** a group name that is charset-*legal* but simply
+  wrong — a typo such as `PUBILC` for `PUBLIC` — cannot be detected.
+  Because the list is a non-empty ACL that matches nobody, naming a
+  group no user holds denies the transaction to **everyone**, and it
+  surfaces as `access denied`, never as a parse error. Cross-check a
+  new group name against the `groups` column of `users.conf`.
+- **An empty PROGRAM field is rejected** (it used to resolve to the
+  bare language directory and fail at dispatch with a
+  directory-read error). MRO-tagged rows are exempt — their program
+  lives on the peer.
+- **An empty TWASIZE field means 0**, not "malformed": an explicit
+  empty field is how an operator reaches a later positional slot.
+- **Too few (`<3`) or too many (`>6`) fields skip the row.** In
+  practice a too-many-fields row is a stray `:` inside a value,
+  which would otherwise shift every later field one slot to the
+  left.
+- **A duplicate TRANSID is skipped; the first definition wins.**
+- **An oversized (>1 MiB) row is skipped and the rest of the file
+  still loads.**
+
+**CEDA writes are validated too.** A `:`, a newline, or a
+whitespace-preceded ` #` inside the PROGRAM or DATABASE field is now
+**rejected at the write path**, because those characters produced a
+line the parser read back as a *different* record: a Windows-style
+`C:\path\prog.cob` shifted the groups and database fields one slot
+to the right, so the transaction became unloadable, unreachable, and
+bound to a database that did not exist.
+
+`aliases.conf` (the optional long-alias table) uses the same reader
+and the same rules: whole-line and trailing ` #` comments are
+stripped, first-wins on duplicates, a bad row is skipped with a log
+line, an oversized row costs one row, and an alias named after a
+built-in is refused. A `#` glued to its neighbours is still data, so
+`sab#re:BOOK` is not a comment — it is an illegal alias name and is
+rejected loudly with
+`aliases.conf:N: alias "SAB#RE": need 2..8 alnum`:
+
+```
+sabre:SABR # the booking alias
+booking:BOOK
+```
 
 `CEMT INQUIRE TRANSACTION` shows each transaction's ACL in the
 `GROUPS` column (`-` for legacy 3-field entries) and a live `RES`
@@ -919,8 +1210,11 @@ ntp: initial sync failed (time.google.com): dial: timeout -- continuing with hos
 ```
 
 The returned offset is stored in an `atomic.Int64` and applied to
-every `Clock.Now()` call. A background goroutine repeats the query
-every 12 hours; each result is logged the same way.
+every `Clock.Now()` call. A background goroutine then repeats the
+query every 12 hours; each result is logged the same way. Boot
+issues **exactly one** query: the goroutine waits a full interval
+before its first poll rather than firing a second request at the
+same server milliseconds after the startup sync.
 
 **Important: NTP failures are non-fatal.** If the server is
 unreachable, returns garbage, or DNS fails, bricks logs one console
@@ -957,7 +1251,8 @@ whole-hour letter and adjust inside the program if 30-minute
 precision matters.
 
 **Disabling NTP.** Set `ntp_server = off` in `bricks.cnf` to skip
-both the startup sync and the 5-minute goroutine. Bricks then uses
+both the startup sync and the 12-hour goroutine (`no`, `false`, `0`
+and a bare `ntp_server=` all mean the same thing). Bricks then uses
 the raw host clock unchanged. Useful for air-gapped deployments
 where outbound UDP/123 is blocked.
 
@@ -1087,6 +1382,27 @@ don't bind to a specific database fall back to it. To pick a
 different default, just re-order the file (or use CEDA's add/
 delete actions).
 
+**Database names are folded to lower case**, everywhere: at parse,
+at lookup, and before `CREATE DATABASE` / `DROP DATABASE`. Postgres
+folds unquoted identifiers the same way, so `bricks` and `BRICKS`
+name one physical database and bricks must agree. Before this, the
+two spellings were two catalogue records opening two pools onto the
+*same* database, and a `transactions.conf` binding of `:BANK`
+against a `bank` row simply never matched — every statement of the
+transaction failed at run time with `SQLCODE -1`. Quoted /
+case-sensitive Postgres database names are not supported (they never
+were).
+
+The file follows the shared
+[configuration file conventions](#configuration-file-conventions)
+and parses leniently: **a malformed row is skipped with a
+`databases.conf:N: skip - …` warning and the rest of the catalogue
+still loads.** The old behaviour returned on the first bad row, so
+one typo in the last line threw away every database and left the
+region running SQL-less with `SQLCODE -1` everywhere. Duplicates
+(after lower-casing) are skipped, first row wins. Only an unreadable
+file is an error.
+
 Each transaction in `transactions.conf` can optionally bind to a
 named database via a 5th colon-separated field:
 
@@ -1131,6 +1447,21 @@ selector pattern:
 | `U` | Alter a row's description. |
 | `R` | Retest one row's connection. |
 | `L` | Show that row's user-schema tables (one-line summary). |
+
+The `STATE` column shows `ONLINE`, `OFFLINE` or `NEVER`. An
+**`OFFLINE` row now also shows WHY** — the innermost driver reason
+(`connection refused`, `password authentication failed`, …) is
+painted in red in place of that row's table / index / size count
+columns. Previously that
+reason existed only in the boot log, so once the console had
+scrolled there was no way left to find out what was wrong.
+
+CEDA DATABASE mutations are guarded against a concurrent `vi` save:
+if `databases.conf` changed on disk since the screen loaded, the
+mutation is refused with `databases.conf changed on disk; press
+ENTER and retry`, the catalogue is re-read from disk first, and the
+retry works against the new state — instead of silently clobbering
+the operator's edit.
 
 `A` + `C` is the standard add-a-database flow; `X` + `D` is the
 matching teardown. Each mutation flows through `brickslog.Audit`
@@ -1697,8 +2028,14 @@ a verbatim CICS port.
   (hidden) / GROUPS fields. The bcrypt hash is generated in-screen —
   no need to run `cmd/brickspw` and paste the hash by hand. Leaving
   the password blank on an ALTER keeps the existing hash; on a
-  DEFINE it's required. Deleting your own userid is refused so an
-  operator can't lock themselves out. Every mutation is written
+  DEFINE it's required, and is stored exactly as typed (see
+  [Passwords are exact](#passwords-are-exact--case-and-all)); a
+  password over **72 bytes** is refused, because bcrypt silently
+  truncates past that. The PASSWORD field holds 32 characters, the
+  same width as the CSSN sign-on map. Group names may be typed in
+  lower case — they are normalised before they are validated.
+  Deleting your own userid is refused so an operator can't lock
+  themselves out. Every mutation is written
   atomically to `users.conf` in canonical form (sorted by userid;
   comments are not preserved) and the in-memory view is refreshed
   immediately, so the next sign-on attempt sees the change with no
@@ -1708,8 +2045,12 @@ a verbatim CICS port.
   same `SEL` selector pattern. The form takes TRANSID (4 chars,
   uppercased), LANGUAGE (REXX or COBOL), PROGRAM (file relative to
   `rexx_dir` or `cobol_dir`), and GROUPS (CSV). Validation runs
-  before the write: bad TRANSID format, unknown language,
-  path-traversal in the program filename, malformed group tokens —
+  before the write: bad TRANSID format, a TRANSID that names a
+  **built-in** (`CEMT`, `CEDA`, `CECI`, `IDCA`, `ISPF`, … — a
+  built-in always beats a table row, so such a definition could
+  never be dispatched), unknown language, an empty program name,
+  path-traversal in the program filename, a `:` / newline / ` #`
+  inside the PROGRAM or DATABASE field, malformed group tokens —
   all refused with the message on the status line. Runtime counters
   (`Invocations`, `CacheHits`) are preserved across ALTER so an
   operator who tweaks an ACL doesn't reset the cache-hit ratio shown
