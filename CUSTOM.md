@@ -10,7 +10,7 @@ The goal of `keoni-custom` is to stay as close as possible to the official upstr
 
 - **Upstream base**: `4496a3a` / tag **3.3.2** (`fix *.cnf and *.conf files processing` — stricter `bricks.cnf` / `*.conf` parser, NTP comments, README + PROGRAMMING.md).
 - Menu system repaired so maps, PF keys, and `transactions.conf` ACLs agree (see below). Sign-on for live checks: userid `ADMIN` / password `ADMIN` (`runtime/users.conf` stores the id as `admin`).
-- Last rebase tip: *(pinned in the follow-up commit)* (docs: update CUSTOM.md for 3.3.2 rebase).
+- Last rebase tip: `3dafa16` (docs: update CUSTOM.md for 3.3.2 rebase).
 - Fork `main` has been reset to exactly match upstream `main`.
 - This branch (`keoni-custom`) has been rebased cleanly on top of the latest upstream. **Zero conflicts** — all 32 custom commits replayed cleanly (simple `git rebase upstream/main`; no `--onto` needed — upstream was a clean 1-commit fast-forward from the prior `128dc2f` base). Custom additions (DODFMR/PERS + full menu system) preserved. `bricks.cnf` still has duplicate `start_transaction` (`HELP` then `MYMU`); 3.3.2 last-wins keeps `MYMU` and will warn at boot.
 - All prior custom work now sits on upstream `4496a3a` / 3.3.2 (including SCHD / START AFTER, 3.2.4 README, 3.2.3 COBOL improvements, 3.2.0 COMP-3 / SEND MAP ERASE / 32-bit, 3.19 transaction aliases, 3.1.7/3.1.6/3.1.5 JSON + SABRE + binary/release changes + all previous 3.x/2.x work).
@@ -539,7 +539,7 @@ After rebase: the fresh pre-rebase backup branch + tag were created and retained
 
 The custom commits (with new SHAs after this rebase) that now sit on top of upstream `4496a3a` are:
 
-- *(this docs commit)* docs: update CUSTOM.md for 3.3.2 rebase (clean rebase on new upstream base)
+- `3dafa16` docs: update CUSTOM.md for 3.3.2 rebase (clean rebase on new upstream base)
 - `f8b2ce4` fix(dodf): accept grade W, surface errors, fill lost days
 - `45e1a90` feat(dodf): PAT-style Y/M/D report and return-to-edit
 - `a29b8f3` fix(dodf): use PARSE ARG so Bricks REXX accepts DODF helpers
