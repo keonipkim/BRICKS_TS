@@ -6,16 +6,16 @@ This branch contains Keoni's custom extensions and modifications on top of the u
 
 The goal of `keoni-custom` is to stay as close as possible to the official upstream while carrying a set of practical enhancements and a hierarchical role-based menu system for day-to-day use.
 
-## Current Status (as of 11 Sep 2026)
+## Current Status (as of 21 Sep 2026)
 
-- **Upstream base**: `128dc2f` (SCHD sample + PROGRAMMING.md for `START AFTER`/`AT`, `CEMT INQUIRE ENQ`, REXX `ADDRESS()` / `SYMBOL()`). GitHub release is still **3.2.4** (binary-only Safari web3270 fix; no newer engine tag yet).
+- **Upstream base**: `4496a3a` / tag **3.3.2** (`fix *.cnf and *.conf files processing` — stricter `bricks.cnf` / `*.conf` parser, NTP comments, README + PROGRAMMING.md).
 - Menu system repaired so maps, PF keys, and `transactions.conf` ACLs agree (see below). Sign-on for live checks: userid `ADMIN` / password `ADMIN` (`runtime/users.conf` stores the id as `admin`).
-- Last rebase tip: `7aa4a0f` (docs: update CUSTOM.md for SCHD / START AFTER rebase).
+- Last rebase tip: *(pinned in the follow-up commit)* (docs: update CUSTOM.md for 3.3.2 rebase).
 - Fork `main` has been reset to exactly match upstream `main`.
-- This branch (`keoni-custom`) has been rebased cleanly on top of the latest upstream. **Zero conflicts** — all 25 custom commits replayed cleanly (simple `git rebase upstream/main`; no `--onto` needed — upstream was a clean 2-commit fast-forward from the prior `c59b188` base). Custom additions (DODFMR/PERS + full menu system) preserved. Follow-up: registered `SCHD` (upstream shipped `runtime/rexx/schd.rexx` without a `transactions.conf` row) and listed it on REXM.
-- All prior custom work now sits on upstream `128dc2f` (including 3.2.4 README, 3.2.3 COBOL improvements, 3.2.0 COMP-3 / SEND MAP ERASE / 32-bit, 3.19 transaction aliases, 3.1.7/3.1.6/3.1.5 JSON + SABRE + binary/release changes + all previous 3.x/2.x work).
+- This branch (`keoni-custom`) has been rebased cleanly on top of the latest upstream. **Zero conflicts** — all 32 custom commits replayed cleanly (simple `git rebase upstream/main`; no `--onto` needed — upstream was a clean 1-commit fast-forward from the prior `128dc2f` base). Custom additions (DODFMR/PERS + full menu system) preserved. `bricks.cnf` still has duplicate `start_transaction` (`HELP` then `MYMU`); 3.3.2 last-wins keeps `MYMU` and will warn at boot.
+- All prior custom work now sits on upstream `4496a3a` / 3.3.2 (including SCHD / START AFTER, 3.2.4 README, 3.2.3 COBOL improvements, 3.2.0 COMP-3 / SEND MAP ERASE / 32-bit, 3.19 transaction aliases, 3.1.7/3.1.6/3.1.5 JSON + SABRE + binary/release changes + all previous 3.x/2.x work).
 
-**Previous status** (05 Sep 2026 / 3.2.4 README + menu repair) is preserved below for history.
+**Previous status** (11 Sep 2026 / SCHD / START AFTER rebase) is preserved below for history.
 
 ## Custom Work Included
 
@@ -521,6 +521,67 @@ The custom commits (with new SHAs after this rebase) that now sit on top of upst
 
 After rebase: the fresh pre-rebase backup branch + tag were created and retained (plus prior 3.2.4 / 3.2.3 / 3.2.0 / 3.1.7 backups).
 
+## How This Branch Was Updated (21 Sep 2026) — 3.3.2 Rebase
+
+1. Full safety backup created (following the established pattern):
+   - Local branch `keoni-custom-backup-20260921-181857` (at pre-rebase tip `927c6b3`)
+   - Tag `backup-before-3.3.2-rebase-20260921-181857`
+   (No new tarball was created in this sync.)
+
+2. Fork `main` was reset (`--hard`) to exactly match `upstream/main` at `4496a3a` (tag **3.3.2**). This was a clean fast-forward of the one upstream commit (`4496a3a` 3.3.2 fix `*.cnf` and `*.conf` files processing).
+
+3. `keoni-custom` was rebased onto the new upstream base using:
+   `git rebase upstream/main`
+   (Simple rebase — upstream/main was a clean 1-commit fast-forward from the prior base `128dc2f`; no history rewrite / `--onto` required.)
+   The rebase completed with **zero conflicts** — all 32 custom commits replayed cleanly. The only overlapping file was `bricks.cnf` (custom `start_transaction=MYMU` vs upstream NTP-comment cleanup); the hunks did not collide. Custom DODFMR/PERS and menu blocks in `runtime/transactions.conf` were unchanged by the replay.
+
+4. Updated this `CUSTOM.md`, then force-pushed fork `main` and `keoni-custom` (`origin`, `--force-with-lease`).
+
+The custom commits (with new SHAs after this rebase) that now sit on top of upstream `4496a3a` are:
+
+- *(this docs commit)* docs: update CUSTOM.md for 3.3.2 rebase (clean rebase on new upstream base)
+- `f8b2ce4` fix(dodf): accept grade W, surface errors, fill lost days
+- `45e1a90` feat(dodf): PAT-style Y/M/D report and return-to-edit
+- `a29b8f3` fix(dodf): use PARSE ARG so Bricks REXX accepts DODF helpers
+- `fc8cd68` feat(dodf): port PAT DODFMR PEBD engine to REXX and COBOL
+- `2e1b9c2` docs: pin correct tip SHA in CUSTOM.md
+- `03eab1d` docs: update CUSTOM.md for SCHD / START AFTER rebase (clean rebase on new upstream base)
+- `0341a17` feat(menus): register SCHD and list it on REXM
+- `677a7dd` chore: ignore downloaded binaries and root IBM Z Open Editor zapp.yaml
+- `ba882ae` feat(menus): repair role-aware launcher and cover remaining transids
+- `bf3efbc` docs: pin correct tip SHA in CUSTOM.md
+- `b42f3a3` docs: update CUSTOM.md for 3.2.4 README rebase (clean rebase on new upstream base)
+- `d1c5ff3` docs: pin correct tip SHA in CUSTOM.md
+- `03cb4be` docs: update CUSTOM.md for 3.2.3 rebase (clean rebase on new upstream base)
+- `8dfc24d` docs: pin correct tip SHA in CUSTOM.md
+- `6866ebb` docs: update CUSTOM.md for 3.2.0 rebase (clean rebase on new upstream base)
+- `ebc092c` docs: pin correct tip SHA in CUSTOM.md
+- `582505d` docs: update CUSTOM.md for 3.1.7 rebase (clean rebase on new upstream base)
+- `f31041f` docs: update CUSTOM.md for 3.1.4 rebase (clean rebase on new upstream base)
+- `9efda0a` docs: update CUSTOM.md for 2.8.6 rebase (clean rebase on new upstream base)
+- `880e484` docs: update CUSTOM.md for 2.8.1 rebase (clean rebase on new upstream base)
+- `928dcf1` feat(menus): sync bricks_menus/ sources to aligned runtime (post-align TXID fix); extend MYMU/REXM/COBM with missing txns (BANK,BALC,BRDS,CHAT,CSGM,MNDL/MNDU,TIME,WAPI,ESDC,WHDR,WZEN); update CUSTOM.md
+- `5732b79` docs: update CUSTOM.md for 2.7.4 rebase (clean rebase on new upstream base)
+- `7601124` Saved progress on DODFMR review flow (F4 path)
+- `60a1a89` Fix green underline bleed on DODFMR (DODF1 map)
+- `3918e5b` docs: update CUSTOM.md for 2.6.6 rebase (clean rebase on new upstream base)
+- `ae27514` docs: update CUSTOM.md for 2.6.2 rebase (new upstream base + 2.6.x highlights)
+- `c734b39` docs: add CUSTOM.md documenting keoni-custom branch purpose, history, and maintenance
+- `9639bb6` chore: untrack data/files.boltdb (runtime database)
+- `8f37d71` chore: add runtime/tmp/ to .gitignore
+- `4d556e0` fix: align TXID values in all menu REXX files to match transactions.conf
+- `af611cf` Add hierarchical role-based menu system with PF9 help
+- `b8b32ab` Add custom COBOL/REXX programs, maps, transactions, zapp config
+
+**New upstream highlights included in this rebase (3.3.2)**:
+- Stricter `bricks.cnf` / `*.conf` parser: unknown keys and lines without `=` abort boot; duplicate keys last-wins with a console warning; quotes resolved before comments; bounded knobs range-checked at load
+- NTP comments: one synchronous startup query, then 12-hour ticks; `ntp_server` accepts on/off-style values
+- `VERIFY PASSWORD` and HTTP Basic auth compare passwords **exactly** (no case-folded retries)
+- Web path captures percent-decoded; URIMAP names reject `:`, newlines, and ` #`; web route groups are a UNION (`public` anywhere opens the route)
+- GitHub tag **3.3.2** points at `4496a3a`
+
+After rebase: the fresh pre-rebase backup branch + tag were created and retained (plus prior SCHD / 3.2.4 / 3.2.3 / 3.2.0 backups).
+
 ## Future Maintenance
 
 ### Recommended Workflow
@@ -561,7 +622,7 @@ git push origin keoni-custom --force-with-lease
 
 ---
 
-**Last updated**: 11 Sep 2026 (SCHD / START AFTER rebase, zero conflicts; simple rebase on fast-forward upstream)
+**Last updated**: 21 Sep 2026 (3.3.2 rebase, zero conflicts; simple rebase on fast-forward upstream)
 **Maintainer**: Keoni (keonipkim fork)
 
 This file lives on the `keoni-custom` branch only and should be updated whenever significant custom work is added or the branch is rebased against upstream.
