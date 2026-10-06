@@ -595,7 +595,7 @@ After rebase: the fresh pre-rebase backup branch + tag were created and retained
 3. `keoni-custom` was rebased onto the new upstream base using:
    `git rebase upstream/main`
    (Simple rebase — upstream/main was a clean 3-commit fast-forward from the prior base `4496a3a`; no history rewrite / `--onto` required.)
-   The rebase completed with **zero conflicts** — all 34 custom commits replayed cleanly. The only overlapping path was `runtime/transactions.conf` (upstream added `TODO:cobol:todo.cob:PUBLIC`); Git applied that line without a manual merge. Custom DODFMR/PERS and menu registrations were preserved. `/bin/` remains gitignored, so the new `bin/*-3.3.3-*` binaries were not checked out.
+   The rebase completed with **zero conflicts** — all 34 custom commits replayed cleanly. The only overlapping path was `runtime/transactions.conf` (upstream added `TODO:cobol:todo.cob:PUBLIC`); Git applied that line without a manual merge. Custom DODFMR/PERS and menu registrations were preserved. Upstream-tracked `bin/*-3.3.3-*` binaries came along with the fast-forward (`.gitignore` only keeps new untracked downloads out of future commits).
 
 4. Updated this `CUSTOM.md`, then force-pushed fork `main` and `keoni-custom` (`origin`, `--force-with-lease`). The Omarchy clone was then `git fetch origin` + `git reset --hard` onto those tips (working tree was clean and identical to `6e413f3`, so a pull would have refused the rewritten history).
 
@@ -638,7 +638,7 @@ The custom commits (with new SHAs after this rebase) that now sit on top of upst
 - `5ba8b8e` Add custom COBOL/REXX programs, maps, transactions, zapp config
 
 **New upstream highlights included in this rebase (3.3.3–3.4.0)**:
-- 3.3.3 (`b9179bc`): per-record lock / `ENQBUSY` fix after a 320k-transaction concurrency test; `bin/*-3.3.3-*` release binaries (not checked out here; `/bin/` is gitignored)
+- 3.3.3 (`b9179bc`): per-record lock / `ENQBUSY` fix after a 320k-transaction concurrency test; `bin/*-3.3.3-*` release binaries (tracked by upstream, present after this rebase)
 - 3.3.4 (`5a13474`, tag **3.3.4**): COBOL JSON, `EVALUATE TRUE`/`ALSO`, parenthesized conditions, `STRING`/`UNSTRING` `POINTER`/`OVERFLOW`, `EXIT PARAGRAPH`; `programming_reference.pdf` replaced
 - 3.4.0 (`0d994df`, tag **3.4.0**): COBOL TODO web app (`runtime/cobol/todo.cob`), `TODO` transaction, `/api/todo/*` routes in `runtime/web_routes.conf`
 
