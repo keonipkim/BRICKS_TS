@@ -10,7 +10,7 @@ The goal of `keoni-custom` is to stay as close as possible to the official upstr
 
 - **Upstream base**: `0d994df` / tag **3.4.0** (`3.3.4 add TODO web app in COBOL` — COBOL TODO web app, `/api/todo/*` routes, `TODO` transaction). Tag **3.3.4** is the parent commit `5a13474` (COBOL JSON / EVALUATE / STRING updates + PDF). There is no 3.3.3 tag; that lock fix is `b9179bc`.
 - Menu system repaired so maps, PF keys, and `transactions.conf` ACLs agree (see below). Sign-on for live checks: userid `ADMIN` / password `ADMIN` (`runtime/users.conf` stores the id as `admin`).
-- Last rebase tip: `PENDING` (docs: update CUSTOM.md for 3.4.0 rebase).
+- Last rebase tip: `23d06ae` (docs: update CUSTOM.md for 3.4.0 rebase).
 - Fork `main` has been reset to exactly match upstream `main`.
 - This branch (`keoni-custom`) has been rebased cleanly on top of the latest upstream. **Zero conflicts** — all 34 custom commits replayed cleanly (simple `git rebase upstream/main`; no `--onto` needed — upstream was a clean 3-commit fast-forward from the prior `4496a3a` / 3.3.2 base). Custom additions (DODFMR/PERS + full menu system) preserved. Upstream `TODO` line in `runtime/transactions.conf` came along with the rebase. `bricks.cnf` still has duplicate `start_transaction` (`HELP` then `MYMU`); last-wins keeps `MYMU` and will warn at boot.
 - All prior custom work now sits on upstream `0d994df` / 3.4.0 (including 3.3.2 cnf parser, SCHD / START AFTER, 3.2.4 README, 3.2.3 COBOL improvements, 3.2.0 COMP-3 / SEND MAP ERASE / 32-bit, 3.19 transaction aliases, 3.1.7/3.1.6/3.1.5 JSON + SABRE + binary/release changes + all previous 3.x/2.x work).
@@ -601,7 +601,7 @@ After rebase: the fresh pre-rebase backup branch + tag were created and retained
 
 The custom commits (with new SHAs after this rebase) that now sit on top of upstream `0d994df` are:
 
-- `PENDING` docs: update CUSTOM.md for 3.4.0 rebase (clean rebase on new upstream base)
+- `23d06ae` docs: update CUSTOM.md for 3.4.0 rebase (clean rebase on new upstream base)
 - `8544904` docs: pin correct tip SHA in CUSTOM.md
 - `267863a` docs: update CUSTOM.md for 3.3.2 rebase (clean rebase on new upstream base)
 - `6337c0d` fix(dodf): accept grade W, surface errors, fill lost days
