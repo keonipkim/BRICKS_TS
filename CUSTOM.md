@@ -15,7 +15,7 @@ The goal of `keoni-custom` is to stay as close as possible to the official upstr
 - This branch (`keoni-custom`) has been rebased cleanly on top of the latest upstream. **Zero conflicts** — all 37 custom commits replayed cleanly (simple `git rebase upstream/main`; no `--onto` needed — upstream was a clean 1-commit fast-forward from the prior `0d994df` / 3.4.0 base). Custom additions (DODFMR/PERS + full menu system) preserved. No custom paths overlapped the 3.4.1 diff. `bricks.cnf` still has duplicate `start_transaction` (`HELP` then `MYMU`); last-wins keeps `MYMU` and will warn at boot.
 - All prior custom work now sits on upstream `300c466` / 3.4.1 (including 3.4.0 TODO web app, 3.3.2 cnf parser, SCHD / START AFTER, 3.2.4 README, 3.2.3 COBOL improvements, 3.2.0 COMP-3 / SEND MAP ERASE / 32-bit, 3.19 transaction aliases, 3.1.7/3.1.6/3.1.5 JSON + SABRE + binary/release changes + all previous 3.x/2.x work).
 - `bin/` is empty after this rebase: upstream deleted the tracked 3.3.3 binaries in 3.4.1 (the 05 Oct note that those binaries stayed tracked applied only through 3.4.0). `.gitignore` still keeps new untracked downloads out of future commits.
-- Omarchy checkout `/home/kpkim/Projects/personal/BRICKS_TS` was **not** updated in this sync. After the force-push, that clone needs `git fetch origin` and `git reset --hard` onto `origin/keoni-custom` / `origin/main` (a pull will refuse the rewritten history).
+- Omarchy checkout `/home/kpkim/Projects/personal/BRICKS_TS` was clean at the pre-rebase tip `9b97a3d` and was hard-reset to `origin/keoni-custom` and `origin/main` after the force-push (no local-only commits).
 
 **Previous status** (05 Oct 2026 / 3.4.0 rebase) is preserved below for history.
 
@@ -598,7 +598,7 @@ After rebase: the fresh pre-rebase backup branch + tag were created and retained
    (Simple rebase — upstream/main was a clean 1-commit fast-forward from the prior base `0d994df`; no history rewrite / `--onto` required.)
    The rebase completed with **zero conflicts** — all 37 custom commits replayed cleanly. No custom path overlapped the upstream diff (deleted `bin/*-3.3.3-*` plus `programming_reference.pdf`). Custom DODFMR/PERS and menu registrations were preserved.
 
-4. Updated this `CUSTOM.md`, then force-pushed fork `main` and `keoni-custom` (`origin`, `--force-with-lease`). The Omarchy clone was not touched.
+4. Updated this `CUSTOM.md`, then force-pushed fork `main` and `keoni-custom` (`origin`, `--force-with-lease`). The Omarchy clone was then `git fetch origin` + `git reset --hard` onto those tips (working tree was clean and identical to `9b97a3d`, so a pull would have refused the rewritten history).
 
 The custom commits (with new SHAs after this rebase) that now sit on top of upstream `300c466` are:
 
