@@ -2837,7 +2837,7 @@ ENDMAP * BRICKSHELPQAID
 
 MAP BRICKSHELPQWSS SIZE 24x80
   FIELD           AT 0 ,0   LEN 15   PROT BRIGHT COLOR=CYAN   "Quick Reference"
-  FIELD           AT 0 ,16  LEN 12   PROT BRIGHT COLOR=GREEN  "EXEC CICS WEB — server side"
+  FIELD           AT 0 ,16  LEN 12   PROT BRIGHT COLOR=GREEN  "EXEC CICS WEB - server side"
   FIELD           AT 0 ,72  LEN 5    PROT BRIGHT COLOR=PINK   "?QWSS"
   
   FIELD           AT 1 ,0   LEN 7    PROT COLOR=CYAN          "Command"
@@ -2886,7 +2886,7 @@ ENDMAP * BRICKSHELPQWSS
 
 MAP BRICKSHELPQWCS SIZE 24x80
   FIELD           AT 0 ,0   LEN 15   PROT BRIGHT COLOR=CYAN   "Quick Reference"
-  FIELD           AT 0 ,16  LEN 12   PROT BRIGHT COLOR=GREEN  "EXEC CICS WEB — client side"
+  FIELD           AT 0 ,16  LEN 12   PROT BRIGHT COLOR=GREEN  "EXEC CICS WEB - client side"
   FIELD           AT 0 ,72  LEN 5    PROT BRIGHT COLOR=PINK   "?QWCS"
   
   FIELD           AT 2 ,0   LEN 7    PROT COLOR=CYAN          "Command"

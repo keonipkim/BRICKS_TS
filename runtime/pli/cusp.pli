@@ -1,0 +1,463 @@
+/*********************************************************************/
+/* CUSP -- customer file maintenance, PL/I edition.                  */
+/*                                                                   */
+/* A one-program port of the REXX CUST application (cust.rexx with   */
+/* its LINKed helpers cusv.rexx and cusl.rexx). The operator sees    */
+/* the same screens and messages as under CUST, and both programs    */
+/* share the same 'customers' file, so a record added here can be    */
+/* queried there and vice versa.                                     */
+/*                                                                   */
+/*   Menu (CUST1)   action A=Add Q=Query U=Update D=Delete           */
+/*                  L=List S=Search, customer number, search term.   */
+/*   Detail (CUST2) one customer: name, address, city, phone.        */
+/*   List (CUSTL)   paged list / search result, PF7 / PF8 / PF3.     */
+/*                                                                   */
+/* On a 43-row terminal (3270 model 4) the CUST1L / CUST2L / CUSTLL  */
+/* maps are used instead, and the list shows 35 rows per page        */
+/* instead of 15. A SEND MAP that answers MAPFAIL (sized map not     */
+/* installed) falls back to the 24x80 map and stays on it.           */
+/*                                                                   */
+/* The transaction is conversational: it loops on the menu until     */
+/* the operator presses PF12, which ends the task (EXEC CICS RETURN).*/
+/*                                                                   */
+/* File layout. 'customers' is a KSDS keyed by the customer number   */
+/* (up to 8 characters, upper-cased). A record body is the four      */
+/* detail fields joined by a vertical bar: name, address, city,      */
+/* phone. The layout belongs to the application; bricks stores the   */
+/* bytes as they are.                                                */
+/*                                                                   */
+/* Where the REXX version LINKed to CUSV (key validation) and CUSL   */
+/* (list / search), CUSP calls the internal procedures VALIDATE_KEY  */
+/* and LIST_CUSTOMERS. Every EXEC CICS command codes RESP(RC), so a  */
+/* CICS condition never stops the program: each result is tested.    */
+/*********************************************************************/
+CUSP: PROC OPTIONS(MAIN);
+
+   %INCLUDE DFHAID;
+   %INCLUDE DFHRESP;
+
+   /* ---- Map structures --------------------------------------------*/
+   /* SEND MAP FROM / RECEIVE MAP INTO move map fields to the members  */
+   /* of the same name. Member lengths match the map field lengths.    */
+   /* The IN copies receive the operator's input, so the OUT copies    */
+   /* never repaint what was typed (the menu always comes back with    */
+   /* empty input fields, as under CUST).                              */
+   DCL 1 MENU,                          /* CUST1 / CUST1L              */
+         2 INFOLINE CHAR(78),
+         2 ACTION   CHAR(1),
+         2 CUSTNO   CHAR(8),
+         2 SEARCH   CHAR(30),
+         2 MSG      CHAR(60);
+   DCL 1 MENU_IN LIKE MENU;
+
+   DCL 1 DET,                           /* CUST2 / CUST2L              */
+         2 INFOLINE CHAR(78),
+         2 CUSTNO   CHAR(8),
+         2 NAME     CHAR(32),
+         2 ADDRESS  CHAR(32),
+         2 CITY     CHAR(20),
+         2 PHONE    CHAR(16),
+         2 MODE     CHAR(60),
+         2 MSG      CHAR(60);
+   DCL 1 DET_IN LIKE DET;
+
+   /* Map fields ROW1..ROWn land in the elements of ROW: CUSTL uses    */
+   /* the first 15, CUSTLL all 35. A row is 71 characters wide (see    */
+   /* FORMAT_ROW); the map field shows its first 70.                   */
+   DCL 1 LST,                           /* CUSTL / CUSTLL              */
+         2 INFOLINE CHAR(78),
+         2 ROW(35)  CHAR(71);
+
+   /* ---- Terminal and map selection --------------------------------*/
+   DCL UID       CHAR(8);
+   DCL TID       CHAR(8);
+   DCL SCRH      FIXED BIN(15);
+   DCL SUFFIX    CHAR(1) VAR INIT('');
+   DCL M_MENU    CHAR(8) VAR;
+   DCL M_DETAIL  CHAR(8) VAR;
+
+   /* ---- Current request -------------------------------------------*/
+   DCL AKT       CHAR(1) VAR;           /* action letter               */
+   DCL CKEY      CHAR(8) VAR;           /* customer number (the key)   */
+   DCL SRCH      CHAR(30) VAR;          /* search term as typed        */
+   DCL REC       CHAR(1024) VAR;        /* record body                 */
+   DCL (NM, AD, CY, PH) CHAR(1024) VAR; /* record fields               */
+   DCL RC        FIXED BIN(31);         /* RESP of the last command    */
+   DCL N         FIXED BIN(31);
+
+   /* ---- List / search state (was CUSL) ----------------------------*/
+   DCL L_MAP     CHAR(8) VAR;           /* CUSTL or CUSTLL             */
+   DCL ROWS      FIXED BIN(31);         /* rows per page, 15 or 35     */
+   DCL FILTER    CHAR(30) VAR;          /* upper-cased search term     */
+   DCL TOTAL     FIXED BIN(31);         /* records that match          */
+   DCL PAGE      FIXED BIN(31);
+   DCL NPAGES    FIXED BIN(31);
+
+   /* ================================================================*/
+   /* Main line                                                       */
+   /* ================================================================*/
+   EXEC CICS ASSIGN USERID(UID) TERMID(TID) SCREENHT(SCRH) RESP(RC);
+
+   /* A model 4 screen (43 rows) gets the L variants of every map.     */
+   IF SCRH >= 43 THEN SUFFIX = 'L';
+   M_MENU   = 'CUST1' || SUFFIX;
+   M_DETAIL = 'CUST2' || SUFFIX;
+
+   /* The menu structure is set up once, outside the loop: MENU.MSG is */
+   /* written by each action and must survive into the next SEND, so   */
+   /* the operator sees 'Customer 100 added.' and so on.               */
+   MENU = '';
+   MENU.INFOLINE = 'User: ' || TRIM(UID) || COPY(' ', 28)
+                   || 'Term: ' || TRIM(TID);
+
+   DO FOREVER;
+      CALL SEND_MENU;
+      MENU_IN = '';
+      EXEC CICS RECEIVE MAP(M_MENU) INTO(MENU_IN) RESP(RC);
+
+      /* PF12 from the menu ends the transaction.                      */
+      IF EIBAID = PF12 THEN EXEC CICS RETURN;
+
+      AKT  = UPPERCASE(TRIM(MENU_IN.ACTION));
+      CKEY = UPPERCASE(TRIM(MENU_IN.CUSTNO));
+      SRCH = TRIM(MENU_IN.SEARCH);
+      CALL DISPATCH;
+   END;
+
+   /* ================================================================*/
+   /* DISPATCH -- check the request and run the chosen action. Every  */
+   /* outcome is a message for the next menu screen.                  */
+   /* ================================================================*/
+   DISPATCH: PROC;
+      IF AKT = '' THEN
+         MENU.MSG = 'Action required (A/Q/U/D/L/S, F12=exit).';
+      ELSE IF INDEX('AQUDLS', AKT) = 0 THEN
+         MENU.MSG = 'Unknown action: ' || AKT;
+      ELSE IF AKT <> 'L' & AKT <> 'S' & CKEY = '' THEN
+         MENU.MSG = 'Customer # required.';
+      ELSE DO;
+         /* List and search need no key, so only the other actions    */
+         /* have their customer number validated.                     */
+         IF AKT <> 'L' & AKT <> 'S' THEN CALL VALIDATE_KEY(CKEY);
+
+         SELECT (AKT);
+            WHEN ('A') CALL ADD_CUSTOMER;
+            WHEN ('Q') CALL QUERY_CUSTOMER;
+            WHEN ('U') CALL UPDATE_CUSTOMER;
+            WHEN ('D') CALL DELETE_CUSTOMER;
+            WHEN ('L') CALL LIST_ACTION;
+            WHEN ('S') CALL SEARCH_ACTION;
+            OTHERWISE
+               MENU.MSG = 'Internal error: action ' || AKT
+                          || ' fell through.';
+         END;
+      END;
+   END DISPATCH;
+
+   /* ================================================================*/
+   /* VALIDATE_KEY -- normalise a customer number (was CUSV): strip   */
+   /* the blanks and upper-case it in place, and log the result.      */
+   /* ================================================================*/
+   VALIDATE_KEY: PROC(K);
+      DCL K CHAR(*) VAR;
+      K = UPPERCASE(TRIM(K));
+      PUT SKIP LIST('CUSV: validated customer number =', K);
+   END VALIDATE_KEY;
+
+   /* ================================================================*/
+   /* The four single-record actions.                                 */
+   /* ================================================================*/
+   ADD_CUSTOMER: PROC;
+      DET = '';
+      DET.CUSTNO = CKEY;
+      DET.MODE   = 'Mode: ADD -- fill in fields and press ENTER.';
+      CALL SHOW_DETAIL;
+      REC = BUILD_REC();
+      EXEC CICS WRITE FILE('customers') FROM(REC) RIDFLD(CKEY) RESP(RC);
+      IF RC = DFHRESP(DUPREC) THEN
+         MENU.MSG = 'Customer ' || CKEY || ' already exists.';
+      ELSE IF RC <> DFHRESP(NORMAL) THEN
+         MENU.MSG = 'WRITE failed RESP=' || CHAR(RC);
+      ELSE
+         MENU.MSG = 'Customer ' || CKEY || ' added.';
+   END ADD_CUSTOMER;
+
+   QUERY_CUSTOMER: PROC;
+      EXEC CICS READ FILE('customers') INTO(REC) RIDFLD(CKEY) RESP(RC);
+      IF RC = DFHRESP(NOTFND) THEN
+         MENU.MSG = 'Customer ' || CKEY || ' not found.';
+      ELSE IF RC <> DFHRESP(NORMAL) THEN
+         MENU.MSG = 'READ failed RESP=' || CHAR(RC);
+      ELSE DO;
+         CALL FILL_DETAIL('Mode: QUERY -- press ENTER to return to the menu.');
+         CALL SHOW_DETAIL;
+         MENU.MSG = 'Query of ' || CKEY || ' complete.';
+      END;
+   END QUERY_CUSTOMER;
+
+   /* READ UPDATE holds the record for this task until the REWRITE     */
+   /* (or the end of the task), so nobody changes it in between.       */
+   UPDATE_CUSTOMER: PROC;
+      EXEC CICS READ FILE('customers') INTO(REC) RIDFLD(CKEY)
+                UPDATE RESP(RC);
+      IF RC = DFHRESP(NOTFND) THEN
+         MENU.MSG = 'Customer ' || CKEY || ' not found.';
+      ELSE IF RC <> DFHRESP(NORMAL) THEN
+         MENU.MSG = 'READ UPDATE failed RESP=' || CHAR(RC);
+      ELSE DO;
+         CALL FILL_DETAIL('Mode: UPDATE -- modify and press ENTER.');
+         CALL SHOW_DETAIL;
+         REC = BUILD_REC();
+         EXEC CICS REWRITE FILE('customers') FROM(REC) RESP(RC);
+         IF RC <> DFHRESP(NORMAL) THEN
+            MENU.MSG = 'REWRITE failed RESP=' || CHAR(RC);
+         ELSE
+            MENU.MSG = 'Customer ' || CKEY || ' updated.';
+      END;
+   END UPDATE_CUSTOMER;
+
+   DELETE_CUSTOMER: PROC;
+      EXEC CICS DELETE FILE('customers') RIDFLD(CKEY) RESP(RC);
+      IF RC = DFHRESP(NOTFND) THEN
+         MENU.MSG = 'Customer ' || CKEY || ' not found.';
+      ELSE IF RC <> DFHRESP(NORMAL) THEN
+         MENU.MSG = 'DELETE failed RESP=' || CHAR(RC);
+      ELSE
+         MENU.MSG = 'Customer ' || CKEY || ' deleted.';
+   END DELETE_CUSTOMER;
+
+   /* ================================================================*/
+   /* L and S -- list or search, then report the count on the menu.   */
+   /* ================================================================*/
+   LIST_ACTION: PROC;
+      CALL LIST_CUSTOMERS('', N);
+      CALL LIST_MESSAGE(N);
+   END LIST_ACTION;
+
+   /* A blank search term lists everything and reports like L.         */
+   SEARCH_ACTION: PROC;
+      CALL LIST_CUSTOMERS(SRCH, N);
+      IF SRCH = '' THEN CALL LIST_MESSAGE(N);
+      ELSE IF N = 0 THEN MENU.MSG = 'No matching records found.';
+      ELSE MENU.MSG = 'Search: ' || SRCH || ' (' || CHAR(N) || ' matches)';
+   END SEARCH_ACTION;
+
+   LIST_MESSAGE: PROC(COUNT);
+      DCL COUNT FIXED BIN(31);
+      IF COUNT = 0 THEN MENU.MSG = 'No customers in file.';
+      ELSE MENU.MSG = 'List complete (' || CHAR(COUNT) || ' records).';
+   END LIST_MESSAGE;
+
+   /* ================================================================*/
+   /* LIST_CUSTOMERS -- the paged list (was CUSL). A record matches   */
+   /* when the filter is blank or occurs anywhere in 'key record'     */
+   /* (case-insensitive), so a search hits any field. COUNT returns   */
+   /* the number of matches; with none the list screen is skipped.    */
+   /*                                                                 */
+   /* Nothing is buffered: one browse counts the matches, and every   */
+   /* page is built by a fresh browse that skips the matches of the   */
+   /* earlier pages. Program storage stays fixed whatever the size    */
+   /* of the file.                                                    */
+   /* ================================================================*/
+   LIST_CUSTOMERS: PROC(TERM, COUNT);
+      DCL TERM  CHAR(*) VAR;
+      DCL COUNT FIXED BIN(31);
+
+      FILTER = UPPERCASE(TRIM(TERM));
+      ROWS  = 15;
+      L_MAP = 'CUSTL';
+      IF SCRH >= 43 THEN DO;
+         ROWS  = 35;
+         L_MAP = 'CUSTLL';
+      END;
+
+      CALL WALK_FILE(0, 0, TOTAL);      /* count only                  */
+      COUNT = TOTAL;
+      IF TOTAL = 0 THEN RETURN;
+
+      PAGE = 1;
+      CALL SET_NPAGES;
+
+      PAGING: DO FOREVER;
+         CALL FILL_PAGE;
+         CALL SEND_LIST;
+         EXEC CICS RECEIVE MAP(L_MAP) INTO(LST) RESP(RC);
+         SELECT;
+            WHEN (EIBAID = PF03) LEAVE PAGING;
+            WHEN (EIBAID = PF07) IF PAGE > 1 THEN PAGE = PAGE - 1;
+            WHEN (EIBAID = PF08) IF PAGE < NPAGES THEN PAGE = PAGE + 1;
+            OTHERWISE;                  /* any other key: repaint      */
+         END;
+      END PAGING;
+   END LIST_CUSTOMERS;
+
+   /* Pages needed for TOTAL rows, at least one. The division is       */
+   /* decimal; assigning it to the FIXED BIN target drops the          */
+   /* fraction, which together with the ROWS - 1 makes it a ceiling.   */
+   SET_NPAGES: PROC;
+      NPAGES = (TOTAL + ROWS - 1) / ROWS;
+      IF NPAGES = 0 THEN NPAGES = 1;
+   END SET_NPAGES;
+
+   /* FILL_PAGE -- build the list screen for PAGE: the INFOLINE and    */
+   /* ROWS rows. Every row is assigned (blank past the end), so the    */
+   /* last, shorter page shows no rows left over from the page before. */
+   FILL_PAGE: PROC;
+      DCL SEEN FIXED BIN(31);
+      LST = '';
+      IF FILTER = '' THEN
+         LST.INFOLINE = 'CUSL -- customer list   page ' || CHAR(PAGE)
+                        || ' of ' || CHAR(NPAGES)
+                        || '    total: ' || CHAR(TOTAL);
+      ELSE
+         LST.INFOLINE = 'CUSL -- search: ' || FILTER
+                        || '   page ' || CHAR(PAGE)
+                        || ' of ' || CHAR(NPAGES)
+                        || '    matched: ' || CHAR(TOTAL);
+      CALL WALK_FILE((PAGE - 1) * ROWS + 1, ROWS, SEEN);
+   END FILL_PAGE;
+
+   /* WALK_FILE -- browse 'customers' in key order. Matches number     */
+   /* FIRST .. FIRST+LIMIT-1 are formatted into LST.ROW(1..LIMIT);     */
+   /* LIMIT = 0 only counts. SEEN returns the matches visited: all of  */
+   /* them when counting, otherwise the browse stops after the last    */
+   /* row of the page.                                                 */
+   WALK_FILE: PROC(FIRST, LIMIT, SEEN);
+      DCL (FIRST, LIMIT, SEEN) FIXED BIN(31);
+      DCL BKEY CHAR(8) VAR INIT('');    /* blank key + GTEQ = start    */
+      DCL BREC CHAR(1024) VAR;
+      DCL BRC  FIXED BIN(31);
+
+      SEEN = 0;
+      EXEC CICS STARTBR FILE('customers') RIDFLD(BKEY) GTEQ RESP(BRC);
+      IF BRC <> DFHRESP(NORMAL) THEN RETURN;
+
+      DO WHILE (BRC = DFHRESP(NORMAL));
+         EXEC CICS READNEXT FILE('customers') INTO(BREC) RIDFLD(BKEY)
+                   RESP(BRC);
+         IF BRC = DFHRESP(NORMAL) THEN
+            IF MATCHES(BKEY, BREC) THEN DO;
+               SEEN = SEEN + 1;
+               IF LIMIT > 0 & SEEN >= FIRST THEN DO;
+                  LST.ROW(SEEN - FIRST + 1) = FORMAT_ROW(BKEY, BREC);
+                  IF SEEN - FIRST + 1 >= LIMIT THEN LEAVE;
+               END;
+            END;
+      END;
+      /* ENDBR in every case: the browse holds a read on the file.     */
+      EXEC CICS ENDBR FILE('customers') RESP(BRC);
+   END WALK_FILE;
+
+   MATCHES: PROC(K, R) RETURNS(BIT(1));
+      DCL (K, R) CHAR(*) VAR;
+      IF FILTER = '' THEN RETURN('1'B);
+      RETURN(INDEX(UPPERCASE(K || ' ' || R), FILTER) > 0);
+   END MATCHES;
+
+   /* FORMAT_ROW -- one list row: key, name, city, phone in columns    */
+   /* 8 / 28 / 18 / 14 wide, one blank between them (71 characters).   */
+   FORMAT_ROW: PROC(K, R) RETURNS(CHAR(71) VAR);
+      DCL (K, R) CHAR(*) VAR;
+      DCL (FNM, FAD, FCY, FPH) CHAR(1024) VAR;
+      CALL SPLIT_REC(R, FNM, FAD, FCY, FPH);
+      RETURN(LEFT(K, 8) || ' ' || LEFT(FNM, 28) || ' '
+             || LEFT(FCY, 18) || ' ' || LEFT(FPH, 14));
+   END FORMAT_ROW;
+
+   /* ================================================================*/
+   /* Record layout helpers.                                          */
+   /* ================================================================*/
+
+   /* SPLIT_REC -- split 'name|addr|city|phone' the way REXX           */
+   /* PARSE VAR R NM '|' AD '|' CY '|' PH does: missing fields come    */
+   /* back empty and PH takes the rest of the record.                  */
+   SPLIT_REC: PROC(R, F1, F2, F3, F4);
+      DCL (R, F1, F2, F3, F4) CHAR(*) VAR;
+      DCL REST CHAR(1024) VAR;
+      REST = R;
+      CALL CUT_FIELD(REST, F1);
+      CALL CUT_FIELD(REST, F2);
+      CALL CUT_FIELD(REST, F3);
+      F4 = REST;
+   END SPLIT_REC;
+
+   /* CUT_FIELD -- move S up to the first bar into F and drop it,      */
+   /* bar included, from S. With no bar all of S moves.                */
+   CUT_FIELD: PROC(S, F);
+      DCL (S, F) CHAR(*) VAR;
+      DCL P FIXED BIN(31);
+      P = INDEX(S, '|');
+      IF P = 0 THEN DO;
+         F = S;
+         S = '';
+      END;
+      ELSE DO;
+         F = SUBSTR(S, 1, P - 1);
+         S = SUBSTR(S, P + 1);
+      END;
+   END CUT_FIELD;
+
+   /* BUILD_REC -- the record body from the detail screen just read.   */
+   BUILD_REC: PROC RETURNS(CHAR(1024) VAR);
+      RETURN(TRIM(DET_IN.NAME) || '|' || TRIM(DET_IN.ADDRESS) || '|'
+             || TRIM(DET_IN.CITY) || '|' || TRIM(DET_IN.PHONE));
+   END BUILD_REC;
+
+   /* FILL_DETAIL -- the detail screen for the record in REC.          */
+   FILL_DETAIL: PROC(MODE_TEXT);
+      DCL MODE_TEXT CHAR(*) VAR;
+      CALL SPLIT_REC(REC, NM, AD, CY, PH);
+      DET = '';
+      DET.CUSTNO  = CKEY;
+      DET.NAME    = NM;
+      DET.ADDRESS = AD;
+      DET.CITY    = CY;
+      DET.PHONE   = PH;
+      DET.MODE    = MODE_TEXT;
+   END FILL_DETAIL;
+
+   /* ================================================================*/
+   /* Screen I/O. Each SEND tries the sized map first; MAPFAIL means   */
+   /* that variant is not installed, so the 24x80 map is used from     */
+   /* then on. If even that fails the map catalogue is broken and the  */
+   /* task abends CUSM rather than loop on a screen it cannot show.    */
+   /* ================================================================*/
+   SEND_MENU: PROC;
+      EXEC CICS SEND MAP(M_MENU) FROM(MENU) ERASE RESP(RC);
+      IF RC = DFHRESP(MAPFAIL) & M_MENU <> 'CUST1' THEN DO;
+         M_MENU = 'CUST1';
+         EXEC CICS SEND MAP(M_MENU) FROM(MENU) ERASE RESP(RC);
+      END;
+      IF RC <> DFHRESP(NORMAL) THEN EXEC CICS ABEND ABCODE('CUSM');
+   END SEND_MENU;
+
+   /* SHOW_DETAIL -- paint DET and read the operator's input into      */
+   /* DET_IN. The key the operator pressed does not matter here.       */
+   SHOW_DETAIL: PROC;
+      EXEC CICS SEND MAP(M_DETAIL) FROM(DET) ERASE RESP(RC);
+      IF RC = DFHRESP(MAPFAIL) & M_DETAIL <> 'CUST2' THEN DO;
+         M_DETAIL = 'CUST2';
+         EXEC CICS SEND MAP(M_DETAIL) FROM(DET) ERASE RESP(RC);
+      END;
+      IF RC <> DFHRESP(NORMAL) THEN EXEC CICS ABEND ABCODE('CUSM');
+      DET_IN = '';
+      EXEC CICS RECEIVE MAP(M_DETAIL) INTO(DET_IN) RESP(RC);
+   END SHOW_DETAIL;
+
+   /* SEND_LIST -- on fallback to CUSTL the page size drops to 15, so  */
+   /* the page count is recomputed and the page rebuilt before the     */
+   /* resend.                                                          */
+   SEND_LIST: PROC;
+      EXEC CICS SEND MAP(L_MAP) FROM(LST) ERASE RESP(RC);
+      IF RC = DFHRESP(MAPFAIL) & L_MAP <> 'CUSTL' THEN DO;
+         L_MAP = 'CUSTL';
+         ROWS  = 15;
+         CALL SET_NPAGES;
+         IF PAGE > NPAGES THEN PAGE = NPAGES;
+         CALL FILL_PAGE;
+         EXEC CICS SEND MAP(L_MAP) FROM(LST) ERASE RESP(RC);
+      END;
+      IF RC <> DFHRESP(NORMAL) THEN EXEC CICS ABEND ABCODE('CUSM');
+   END SEND_LIST;
+
+END CUSP;

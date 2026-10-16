@@ -13,7 +13,12 @@ MAP CSSN SIZE 24x80
   INPUT USERID   AT 4,11 LEN 8  UNDERSCORE COLOR=GREEN
   STOP           AT 4,20
   FIELD AT 6,0  LEN 9  PROT                        "Password:"
-  INPUT PASSWORD AT 6,11 LEN 8  HIDDEN UNDERSCORE COLOR=RED
-  STOP           AT 6,20
+* Password accepts 32 characters. It used to be LEN 8, which capped a
+* 3270-typed password at 8 bytes; the field carries no UPPER/monocase
+* attribute, so mixed case transmits verbatim and comparison is exact.
+* Attribute byte sits at col 11, so the 32 data cells are cols 12..43
+* and the closing STOP attribute lands on col 44 - well inside 79.
+  INPUT PASSWORD AT 6,11 LEN 32 HIDDEN UNDERSCORE COLOR=RED
+  STOP           AT 6,44
   CURSOR         AT 4,12
 ENDMAP

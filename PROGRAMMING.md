@@ -15,7 +15,7 @@
 
 <table>
 <tr><td><b>Document</b></td><td>Bricks Application Programming Reference</td></tr>
-<tr><td><b>Audience</b></td><td>Application programmers writing REXX or COBOL transactions for Bricks.</td></tr>
+<tr><td><b>Audience</b></td><td>Application programmers writing REXX, COBOL or PL/I transactions for Bricks.</td></tr>
 <tr><td><b>Companion</b></td><td><a href="README.md">README.md</a> — installation, configuration, and operations.</td></tr>
 <tr><td><b>Operator manual</b></td><td><a href="ISPF_editor.md">ISPF_editor.md</a> — the in-3270 source editor reference.</td></tr>
 </table>
@@ -24,7 +24,7 @@
 
 ## About this publication
 
-This reference describes the application-programming interface of the **Bricks Transaction Server**: the COBOL and REXX languages it accepts, the `EXEC CICS` command set those programs may issue, the `EXEC SQL` embedded database surface, the `EXEC CICS WEB` command family for HTTP service, the BMS-flavoured map DSL used to build 3270 panels, the VSAM and temporary-storage queue surfaces, and the catalogue of sample programs shipped under `runtime/`.
+This reference describes the application-programming interface of the **Bricks Transaction Server**: the COBOL, REXX and PL/I languages it accepts, the `EXEC CICS` command set those programs may issue, the `EXEC SQL` embedded database surface, the `EXEC CICS WEB` command family for HTTP service, the BMS-flavoured map DSL used to build 3270 panels, the VSAM and temporary-storage queue surfaces, and the catalogue of sample programs shipped under `runtime/`.
 
 Operational and installation topics — running `bricks`, editing `bricks.cnf`, signing on through CSSN, the CEMT master terminal, the `bricksload` stress tester, and the `/metrics` endpoint — are documented in the companion **README.md**.
 
@@ -44,7 +44,7 @@ The following notational conventions appear throughout the manual.
 | `{ a | b }` | A required choice between alternatives. |
 | `...` | The preceding clause may repeat. |
 
-Command syntax is shown in the `EXEC CICS … END-EXEC` form. The bare-string form (`"VERB OPTIONS"` under `ADDRESS CICS`, REXX only) is described in *Chapter 2. The EXEC CICS command environment*; both forms dispatch identically.
+Command syntax is shown in the `EXEC CICS … END-EXEC` form; PL/I writes the same command terminated by `;` instead of `END-EXEC` (*Chapter 36. EXEC CICS in PL/I*). The bare-string form (`"VERB OPTIONS"` under `ADDRESS CICS`, REXX only) is described in *Chapter 2. The EXEC CICS command environment*; both forms dispatch identically.
 
 ### Reference layout
 
@@ -56,7 +56,7 @@ Each command described in this manual follows the same five-section layout, in t
 4. **Conditions** — the `EIBRESP` values (or `SQLCODE` values, for `EXEC SQL`) the command may return, together with the cause of each.
 5. **Example** — a short, runnable fragment illustrating typical use.
 
-> **Programming Note.** Where the same verb behaves differently in COBOL and in REXX, the difference is called out in a *Programming Note* like this one. Where both languages share identical behaviour, the example uses whichever form reads most clearly.
+> **Programming Note.** Where the same verb behaves differently in COBOL, REXX and PL/I, the difference is called out in a *Programming Note* like this one. Where the languages share identical behaviour, the example uses whichever form reads most clearly.
 
 ---
 
@@ -110,7 +110,7 @@ VSAM-style KSDS files and temporary-storage / transient-data queues.
 
 ### <span style="color:#0a1f44;">Part 6. EXEC SQL command reference</span>
 
-* [Chapter 26. Embedded SQL (COBOL and REXX)](#chapter-26-embedded-sql-cobol) — `SELECT INTO`, `INSERT`, `UPDATE`, `DELETE`, `COMMIT`, `ROLLBACK`, `CONNECT TO`, cursors (`DECLARE` / `OPEN` / `FETCH` / `CLOSE`), `WHENEVER`, null indicators, the SQLCA, the SQLCODE catalogue, SYNCPOINT integration.
+* [Chapter 26. Embedded SQL (COBOL, REXX and PL/I)](#chapter-26-embedded-sql-cobol-rexx-and-pli) — `SELECT INTO`, `INSERT`, `UPDATE`, `DELETE`, `COMMIT`, `ROLLBACK`, `CONNECT TO`, cursors (`DECLARE` / `OPEN` / `FETCH` / `CLOSE`), `WHENEVER`, null indicators, the SQLCA, the SQLCODE catalogue, SYNCPOINT integration.
 
 ### <span style="color:#0a1f44;">Part 7. EXEC CICS WEB command reference</span>
 
@@ -123,6 +123,18 @@ VSAM-style KSDS files and temporary-storage / transient-data queues.
 
 * [Chapter 28. Pre-installed sample transactions](#chapter-28-pre-installed-sample-transactions)
 * [Chapter 29. Worked examples](#chapter-29-worked-examples)
+
+### <span style="color:#0a1f44;">Part 9. The PL/I language</span>
+
+* [Chapter 30. PL/I program structure](#chapter-30-pli-program-structure)
+* [Chapter 31. Data declarations](#chapter-31-data-declarations)
+* [Chapter 32. Expressions, conversions and decimal arithmetic](#chapter-32-expressions-conversions-and-decimal-arithmetic)
+* [Chapter 33. Statements and control flow](#chapter-33-statements-and-control-flow)
+* [Chapter 34. Built-in functions](#chapter-34-built-in-functions)
+* [Chapter 35. Runtime abends and the unit of work](#chapter-35-runtime-abends-and-the-unit-of-work)
+* [Chapter 36. EXEC CICS in PL/I](#chapter-36-exec-cics-in-pli)
+* [Chapter 37. %INCLUDE](#chapter-37-include)
+* [Chapter 38. Restrictions and deviations](#chapter-38-restrictions-and-deviations)
 
 ### <span style="color:#0a1f44;">Appendixes</span>
 
@@ -140,8 +152,9 @@ VSAM-style KSDS files and temporary-storage / transient-data queues.
 
 A bricks **transaction** is a 4-character TRANSID listed in
 `runtime/transactions.conf`. Each transaction names a **program** —
-either a REXX source file in `runtime/rexx/` or a COBOL source file in
-`runtime/cobol/` — and an optional access-control list:
+a REXX source file in `runtime/rexx/`, a COBOL source file in
+`runtime/cobol/` or a PL/I source file in `runtime/pli/` — and an
+optional access-control list:
 
 ```
 HELO:rexx:hello.rexx
@@ -149,6 +162,7 @@ HELP:rexx:help.rexx:public
 QAGE:rexx:qage.rexx:public,users,admin
 HELC:cobol:hello.cob:public
 GUST:cobol:gust.cob:public
+CUSP:pli:cusp.pli:PUBLIC
 ```
 
 A program that runs `EXEC SQL` against something other than the
@@ -160,7 +174,7 @@ BANK:cobol:bank.cob:public,users,admin:bank
 ```
 
 See *Database binding* in
-[Chapter 26](#chapter-26-embedded-sql-cobol-and-rexx) for the full
+[Chapter 26](#chapter-26-embedded-sql-cobol-rexx-and-pli) for the full
 contract; the short version is that an absent 5th field defaults to
 the first row of `databases.conf` and a misbinding manifests as
 `SQLCODE = -204` (relation does not exist) on every dispatch.
@@ -229,17 +243,19 @@ Programs interact with three layers:
    [Chapter 3](#chapter-3-the-map-dsl).
 2. **Persistent data**, through KSDS file commands
    ([Chapter 7](#chapter-7-ksds-file-commands)) and TS-queue commands
-   ([Chapter 9](#chapter-9-temporary-storage-commands)). Both are
+   ([Chapter 9](#chapter-9-temporary-storage-and-transient-data-commands)). Both are
    backed by an embedded bbolt B+tree at `data/files.boltdb`.
 3. **Other programs**, through `LINK` (synchronous, with COMMAREA),
    `XCTL` (transfer of control, no return), and `RETURN TRANSID`
    (pseudo-conversational chaining). The Execute Interface Block (EIB)
    exposes session and request state ([Chapter 11](#chapter-11-the-execute-interface-block-eib)).
 
-REXX and COBOL share **the same `EXEC CICS` dispatcher**
+REXX, COBOL and PL/I share **the same `EXEC CICS` dispatcher**
 (`cics/handler.go`). Every command documented in
-[Part 2](#part-2-exec-cics-command-reference) is therefore available,
-with identical syntax and identical semantics, from either language.
+[Part 4](#part-4-exec-cics-command-reference) is therefore available,
+with identical syntax and identical semantics, from all three
+languages (PL/I ends the command with `;` instead of `END-EXEC`, see
+[Chapter 36](#chapter-36-exec-cics-in-pli)).
 
 A typical pseudo-conversational task has the shape:
 
@@ -267,7 +283,9 @@ Bricks accepts two equivalent surface forms inside an `ADDRESS CICS`
 scope.
 
 **1. IBM-canonical `EXEC CICS … END-EXEC`** — the form CICS
-programmers recognize. Available from REXX and COBOL.
+programmers recognize. Available from REXX and COBOL; PL/I writes
+the same command as `EXEC CICS ... ;`
+([Chapter 36](#chapter-36-exec-cics-in-pli)).
 
 ```rexx
 ADDRESS CICS
@@ -322,13 +340,13 @@ back; `LENGTH(80)` only sets the input length.
 | Concept | Bricks implementation |
 |---|---|
 | Task | One invocation of one TRANSID (`session.TxCB`). |
-| Program | A parsed REXX or COBOL source file, cached at L1/L2. |
+| Program | A parsed REXX, COBOL or PL/I source file, cached at L1/L2. |
 | Pseudo-conversational chain | `EXEC CICS RETURN TRANSID(t) COMMAREA(d)`. |
 | Conversational | Loop in the program; each `RECEIVE MAP` blocks on input. |
 | Inter-program call | `LINK PROGRAM(name) COMMAREA(var)` (synchronous). |
 | Storage shared across tasks | KSDS files, TS queues. |
-| Storage shared within one task | REXX variables / COBOL WORKING-STORAGE only. |
-| Implicit task end | Program runs off the end, or `STOP RUN` (COBOL). |
+| Storage shared within one task | REXX variables / COBOL WORKING-STORAGE / PL/I `STATIC` only. |
+| Implicit task end | Program runs off the end, `STOP RUN` (COBOL), or `RETURN` from the PL/I MAIN procedure. |
 | Forced task end | `EXEC CICS ABEND`. |
 
 ### Response-code handling (`RESP`, `RESP2`, `DFHRESP`)
@@ -353,7 +371,32 @@ IF EIBRESP = DFHRESP(DUPREC) PERFORM HANDLE-DUP.
 resolves it to the numeric constant from
 `runtime/cobolcopy/DFHRESP.cpy` (and from the matching table in
 `cobol/parser.go`). An unknown name is a parse-time error with a
-"see DFHRESP.cpy for the list" hint.
+"see DFHRESP.cpy for the list" hint. PL/I has the same built-in,
+drawn from the same single table (`cics/resp.go`), so the numbers
+are identical in every language.
+
+**RESP and NOHANDLE make conditions non-fatal.** As in IBM CICS,
+coding `RESP(var)` or `NOHANDLE` on a command means the program has
+taken ownership of the outcome: a CICS condition (`NOTFND`,
+`MAPFAIL`, `INVREQ`, `PGMIDERR`, ...) never ends the task, whatever
+the language. The response is in `EIBRESP` and the `RESP` variable,
+`HANDLE CONDITION` / `HANDLE AID` are suppressed for that one
+command, and the program continues. A few outcomes are not
+conditions and still end the task with `RESP` coded:
+
+* the terminal connection is lost during `SEND` / `RECEIVE`;
+* `RETURN`, `XCTL` and `ABEND` (they end the task by design);
+* a `LINK`ed program that fails while it runs (abend or runtime
+  error); a `LINK` target that does not exist is the ordinary
+  condition `PGMIDERR`;
+* a blocking `SEND` in a scheduler-fired background task.
+
+Without `RESP` and `NOHANDLE`, routine file conditions (`NOTFND`,
+`DUPREC`, `ENDFILE`) are reported in `EIBRESP` and the program
+continues, while an error-class condition (for example `MAPFAIL` for
+a map that is not installed) ends a REXX or COBOL task unless a
+`HANDLE CONDITION` trap catches it. A PL/I task never ends on a CICS
+condition ([Chapter 36](#resp-resp2-and-dfhresp)).
 
 ### Length as an input bound
 
@@ -373,6 +416,57 @@ variable-length permits LENGTH-as-max-buffer. The write-back-then-
 read-as-input pattern (call 1 writes len(rec1) into LEN, call 2
 re-reads LEN as a cap) would silently corrupt subsequent reads, so
 bricks ignores the input value entirely on these verbs.
+
+### Character data: the SBCS data plane
+
+Everything a program can address is **one byte per character**, as on
+a mainframe: variables, `COMMAREA` / `DFHCOMMAREA`, `START FROM` /
+`RETRIEVE` data, TS and TD items, KSDS keys and records, `DOCUMENT`
+buffers, `ENQ` resource names and the text of `EXEC CICS` / `EXEC
+SQL` commands. The code page, *bricks SBCS*, is ISO-8859-1 (Latin-1)
+with a graphic plane in `X'80'`-`X'9F'` in place of the C1 controls:
+
+| `X'8n'` | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | A | B | C | D | E | F |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `X'80'` | € | █ | ▀ | ▄ | ▌ | ▐ | ■ | ─ | │ | ┌ | ┐ | └ | ┘ | ├ | ┤ | ┬ |
+| `X'90'` | ┴ | ┼ | ═ | ║ | • | ← | → | ↑ | ↓ | ≤ | ≥ | ≠ | ○ | ◊ | ‾ | ≡ |
+
+So every `LENGTH` / `FLENGTH`, `EIBCALEN`, `KEYLENGTH`, `MAXLENGTH`
+and `LENGERR` decision counts characters, and all 256 byte values
+survive the variable interface untouched (`EIBAID`, `COMP` /
+`COMP-3` fields inside a `COMMAREA`, `LOW-VALUES` / `HIGH-VALUES`).
+`HIGH-VALUES` (`X'FF'`) shows as `ÿ`.
+
+UTF-8 exists only outside the program. The CICS layer converts
+exactly once, where data crosses an edge. A character that has no
+SBCS byte (CJK, `—`, emoji, a real C1 control) becomes `?`; this is
+silent except for SQL results.
+
+| Edge | Into the program | Out of the program |
+|---|---|---|
+| Terminal | `RECEIVE MAP` / `RECEIVE INTO` / `CONVERSE` decode the 3270 input to SBCS | `SEND MAP` / `SEND TEXT` paint each byte as its glyph; plane glyphs travel as CP310 graphic-escape pairs (`€` is native on the 114x pages) |
+| `ARG(1)` (REXX) | the command-line tail is converted | - |
+| KSDS, TS, `START` / `RETRIEVE`, `ENQ`, `LINK` / `XCTL` / `RETURN COMMAREA`, MRO | no conversion: bytes are bytes | no conversion |
+| `tmp_dir` / `runtime_dir` files (`READQ TD`, `READNEXT` on a sequential file, `LINEIN`, IDCAMS `REPRO`) | each UTF-8 line becomes SBCS; a line that is not valid UTF-8 is taken as Latin-1 | stored as UTF-8 on disk |
+| Postgres (`EXEC SQL`) | results converted; `BYTEA` raw; a substituted `?` sets `SQLWARN8` = `SQLWARN0` = `'W'` (`SQLCODE` stays 0); `SQLERRMC` is SBCS, 70 characters | statement text and host variables bound as UTF-8 |
+| HTTP (`EXEC CICS WEB`) | see the WEB conversion rules in Part 7 | see Part 7 |
+| `DOCUMENT RETRIEVE` | SBCS by default; `CHARACTERSET('UTF-8')` delivers the UTF-8 form | - |
+| `VERIFY PASSWORD` | - | the password is checked as UTF-8, matching what was typed at sign-on |
+| `INQUIRE SYSTEM GMMTEXT` | the `bricks.cnf` text is converted | - |
+| `WRITE OPERATOR`, logs, `CEMT INQUIRE ENQ`, `CECI` result pane, IDCAMS listing | - | shown as UTF-8; control bytes as `.` or `?` |
+
+The `tmp_dir` / `runtime_dir` write path accepts TAB, LF, `X'20'`-`X'7E'`
+and `X'80'`-`X'FF'` (the plane and Latin-1); NUL, the other C0
+controls, DEL and CR are rejected with `INVREQ` and a message such as
+`byte 0x7F at offset 3 is not printable`. Error messages that echo
+program data are pure ASCII and name non-ASCII characters by code
+point (`"K\u00c4SE"`).
+
+**Deviations from z/OS:** the code page is Latin-1 plus the graphic
+plane, not an EBCDIC CCSID (037 / 1140); collation is byte order;
+EBCDIC hex constants (other than the AID bytes) need translating;
+TS queue and file names must still be ASCII; the WEB default outbound
+charset is UTF-8, not ISO-8859-1.
 
 ---
 
@@ -459,6 +553,46 @@ for usage details.
 `UNDERSCORE` is accepted as a legacy alias for hand-written bricks DSL
 maps that already use it; new maps should prefer `UNDERLINE`.
 
+### Character set
+
+Map files are UTF-8. Every character inside a quoted literal (a
+`FIELD` label or an `INPUT ... DEFAULT`) occupies exactly **one 3270
+cell**, so `LEN` counts characters, not bytes: `"ÄÖÅ"` fits `LEN 3`.
+
+The parser enforces a character fence. A literal may contain:
+
+- printable ASCII, including `` [ ] { } ~ \ ` | ^ ``;
+- Latin-1 letters and symbols `U+00A0`-`U+00FF` (Ä Ö Å ü é ß ...),
+  **except** the currency sign `¤` (`U+00A4`), which the euro
+  codepages 1140-1149 cannot show;
+- the CP310 graphic-escape glyphs: block and box drawing (`█ ▀ ▄ ▌ ▐
+  ─ │ ┌ ┐ └ ┘ ├ ┤ ┬ ┴ ┼`), `• ≤ ≥ ≠ → ← ↑ ↓`, the APL symbols, and
+  `€`.
+
+Rejected: control characters (TAB, CR, NUL, DEL, C1), invalid UTF-8,
+typographic dashes and quotes (`—` `–` `“`), emoji, CJK, and other
+alphabets that the Latin EBCDIC codepages cannot show. Outside quotes
+the DSL is ASCII only. Comments (`*`) may contain anything, and a
+UTF-8 byte order mark at the start of the file is ignored.
+
+The CP310 glyphs reach the terminal as a graphic-escape pair; a
+terminal without graphic-escape support shows a substitute instead.
+
+A rejected character makes the whole file fail to load. The error
+names the line, the code point, and the column, e.g.
+
+```
+line 3: U+2014 not displayable on 3270 (col 27)
+line 4: U+0009 control char in literal (col 30)
+line 5: invalid UTF-8 byte X'E9' (col 28)
+line 6: U+00DC outside quotes (col 33)
+```
+
+At runtime `SEND MAP` on such a map raises `MAPFAIL` with
+`SEND MAP: map "X" has bad char U+2014 at line 3`. A literal longer
+than its `LEN` is only a warning: it is truncated on the screen and
+counted as `Pass, N long` by `CEMT PERFORM RESCAN MAP`.
+
 ### Catalogue lifecycle
 
 `mapdsl.NewCatalog(dir)` parses every `*.map` file at startup and
@@ -527,7 +661,7 @@ Commands are grouped by function:
 * [Chapter 6. System services](#chapter-6-system-services)
 * [Chapter 7. KSDS files](#chapter-7-ksds-file-commands)
 * [Chapter 8. KSDS browse](#chapter-8-ksds-browse-commands)
-* [Chapter 9. Temporary storage](#chapter-9-temporary-storage-commands)
+* [Chapter 9. Temporary storage](#chapter-9-temporary-storage-and-transient-data-commands)
 
 Cross-cutting reference:
 
@@ -619,7 +753,12 @@ partial-paint behaviour:
    `SEND MAP DATAONLY`, file I/O, TS queue, ASSIGN, START. Any
    blocking verb (`RECEIVE MAP`, `SEND MAP` without DATAONLY,
    `CONVERSE`) returns `INVREQ` in that context — the scheduler
-   goroutine must not block on conn.Read.
+   goroutine must not block on conn.Read. The inline-dispatched
+   transaction must be a REXX or PL/I program; a background PL/I
+   task has no COMMAREA and no SQL connection. Like any task, it
+   commits its unit of work when it ends normally and backs it out
+   when it abends, as IBM does (REXX background tasks used to never
+   commit).
 
 This together lets a transaction self-schedule a periodic refresh
 via:
@@ -876,18 +1015,26 @@ END-EXEC
 #### Description
 
 Real-CICS `SEND TEXT`. The body is treated as a flat row-major
-buffer: every `cols` bytes (default 80) lands on the next row,
-starting at row 0. **3270 has no LF/CR**, so programs must pad each
-logical line to the column width and concatenate (REXX
-`LEFT(s,80)`, COBOL `PIC X(80)` group children).
+buffer of characters (3270 cells): every `cols` characters (default
+80) start a new row, beginning at row 0. Only the first `cols-1` of
+each row's characters are painted, because column 0 holds the row
+field's attribute byte; the last character of each `cols`-wide slice
+is dropped rather than wrapped onto the next row. **3270 has no
+LF/CR**, so programs must pad each logical line to the column width
+and concatenate (REXX `LEFT(s,80)`, COBOL `PIC X(80)` group
+children). The body is SBCS program data, one byte per character
+(see [Character data](#character-data-the-sbcs-data-plane)): each
+byte paints as its glyph, and control bytes are painted as `?`.
 
-`LENGTH(n)` truncates the body to `n` bytes; bytes past `rows*cols`
-are dropped. `ERASE` clears the screen before painting; without it,
+`LENGTH(n)` truncates the body to exactly `n` characters (a byte
+count, as in CICS, and in bricks SBCS bytes and characters are the
+same thing, so no character can be split). Characters past
+`rows*cols` are dropped. `ERASE` clears the screen before painting; without it,
 existing fields stay behind. Like `SEND MAP`, the call paints
 synchronously and waits for an AID, so the operator has time to read
 the screen before `RETURN`.
 
-Works identically from REXX and COBOL.
+Works identically from REXX, COBOL and PL/I.
 
 #### Options
 
@@ -895,7 +1042,8 @@ Works identically from REXX and COBOL.
    The buffer to paint. Can be a REXX variable or a COBOL group item.
 
 **LENGTH(n)**
-   Truncate the body to this length.
+   Truncate the body to exactly this many characters (bytes; one
+   byte is one character in bricks SBCS).
 
 **ERASE**
    Clear the screen first.
@@ -1045,6 +1193,35 @@ END-EXEC
 
 `LENGTH(n)` on `COMMAREA` is the IBM-canonical input bound —
 caller's value caps the bytes passed to the receiving program.
+Without `LENGTH`, a COBOL data area travels with its full declared
+length (trailing blanks included), as on z/OS; this holds for `LINK`,
+`XCTL` and `RETURN COMMAREA` and for `START FROM`. A binary item
+(`COMP` / `COMP-3`) travels as its raw bytes, not as decimal text. The
+auto-injected `DFHCOMMAREA` (a program that declares none gets a
+`PIC X(2000)` default) passes only the `EIBCALEN` bytes it received,
+so `RETURN COMMAREA(DFHCOMMAREA)` hands the next task the same length.
+A program on the default `DFHCOMMAREA` therefore cannot pass on more
+than it received: to grow the state, declare your own area (a
+`WORKING-STORAGE` record, `RETURN COMMAREA(WS-STATE)`, or a `LINKAGE
+SECTION` `01 DFHCOMMAREA` of the full size). On a cold start
+(`EIBCALEN` 0) whatever was `MOVE`d into the default buffer travels
+with its trailing blanks trimmed. An unsubscripted `OCCURS` table
+passed as `COMMAREA` / `FROM` travels whole, all occurrences.
+A REXX variable travels as its value.
+
+COMMAREA length rules on `LINK`, as on z/OS:
+
+* With `LENGTH(n)` the callee sees `n` bytes and only those come back:
+  the caller's bytes past `n` are left alone.
+* The callee cannot change the length: the caller always gets back
+  exactly the number of bytes it passed. A COBOL callee's view is
+  overlaid on those bytes (fields it never touched keep the caller's
+  data; a `MOVE` to the whole `DFHCOMMAREA` blank-pads as usual).
+* A REXX callee's assignment to `DFHCOMMAREA` replaces the whole area,
+  the counterpart of a COBOL `MOVE` to the whole 01: a shorter value is
+  blank-padded (`DFHCOMMAREA = 'Q'` over `ABCDEFGH` gives `Q` + seven
+  blanks), a longer one is cut. Use `OVERLAY()` or `SUBSTR()` to change
+  only part of the area.
 `CHANNEL(...)` (the CICS-TS container alternative to COMMAREA) is
 rejected with a short "not supported in bricks (use COMMAREA)"
 message — single-region bricks doesn't model channels.
@@ -1107,8 +1284,11 @@ context.
 The per-transaction ACL is rechecked on the target so a low-privilege
 caller cannot escalate by linking into an admin program.
 
-REXX and COBOL programs can LINK to each other freely; `DFHCOMMAREA`
-is marshalled as opaque bytes.
+REXX, COBOL and PL/I programs can LINK to each other freely;
+`DFHCOMMAREA` is marshalled as opaque bytes. A PL/I structure and a
+COBOL group with the same byte layout exchange packed and binary
+fields unchanged (see
+[Storage layout and COMMAREA interop with COBOL](#storage-layout-and-commarea-interop-with-cobol)).
 
 #### Options
 
@@ -1393,7 +1573,7 @@ the value.
 | Option | Returns |
 |---|---|
 | `USERID(t)` | Signed-on userid (empty until CSSN succeeds). |
-| `TERMID(t)` / `EIBTRMID(t)` | Unique 4-digit terminal id (`T0001` …). |
+| `TERMID(t)` / `EIBTRMID(t)` | Unique terminal id, `T` plus 4 digits (`T0001` …). Give COBOL and PL/I an 8-character target; a 4-character one keeps `T000`. |
 | `EIBAID(t)` | Single-byte AID character of the most recent `SEND MAP` / `RECEIVE MAP`. Compare with `C2X(EIBAID) = 'F3'` (REXX) or `EIBAID = X'F3'` (COBOL) to detect PF3, etc. |
 | `EIBCPOSN(t)` | 1-based cursor position from the most recent map response. |
 | `EIBCALEN(t)` | Length of `DFHCOMMAREA` flowed in from the caller. |
@@ -2356,7 +2536,7 @@ persist a state change.
 | `TASK(id)` | `TRANSACTION` `FACILITY` `USERID` `RUNSTATUS` `PRIORITY` | `TRANSACTION`/`FACILITY`/`USERID` are **real**. `RUNSTATUS=RUNNING`, `PRIORITY=1` are defaults. `id` is the numeric `EIBTASKN` form. |
 | `TRANSACTION(name)` | `STATUS` `PROGRAM` `PRIORITY` `TWASIZE` `PROFILE` | `PROGRAM`/`TWASIZE` are **real**. `STATUS=ENABLED`, `PRIORITY=1`, `PROFILE=DFHCICST` are defaults. |
 | `TERMINAL(id)` | `ACQSTATUS` `SERVSTATUS` `USERID` `NETNAME` | `USERID`/`NETNAME` are **real**. `ACQSTATUS=ACQUIRED`, `SERVSTATUS=INSERVICE` are defaults. |
-| `PROGRAM(name)` | `STATUS` `LANGUAGE` `PROGTYPE` `RESCOUNT` `USECOUNT` `LENGTH` | `LANGUAGE` (`COBOL`/`REXX`) and `USECOUNT` are **real**. `STATUS=ENABLED`, `PROGTYPE=PROGRAM`, `RESCOUNT=0`, `LENGTH=0` are defaults. |
+| `PROGRAM(name)` | `STATUS` `LANGUAGE` `PROGTYPE` `RESCOUNT` `USECOUNT` `LENGTH` | `LANGUAGE` (`COBOL`/`REXX`/`PLI`) and `USECOUNT` are **real**. `STATUS=ENABLED`, `PROGTYPE=PROGRAM`, `RESCOUNT=0`, `LENGTH=0` are defaults. |
 
 `SET <class>(name)` accepts the same class option and the documented
 mutation attributes (e.g. `SET FILE('x') OPENSTATUS(CLOSED)`,
@@ -2368,7 +2548,9 @@ mutation attributes (e.g. `SET FILE('x') OPENSTATUS(CLOSED)`,
 |---|---:|---|
 | NORMAL | 0 | Direct INQUIRE / SET succeeded; `INQUIRE … NEXT` returned a resource; STARTBROWSE / ENDBROWSE succeeded. |
 | END | 83 | `INQUIRE <class> NEXT` after the last resource — the browse is exhausted. |
-| NOTFND | 13 | Direct INQUIRE / SET named a resource that doesn't exist. |
+| NOTFND | 13 | Direct INQUIRE / SET named a FILE, TASK or TERMINAL that doesn't exist. |
+| PGMIDERR | 27 | Direct INQUIRE / SET PROGRAM named a program that doesn't exist (RESP2=1, as IBM). |
+| TRANSIDERR | 28 | Direct INQUIRE / SET TRANSACTION named a transaction that doesn't exist (RESP2=1, as IBM). |
 | INVREQ | 16 | Unknown resource class; an unknown attribute keyword; a direct INQUIRE with no resource name and no `NEXT`; `ENDBROWSE` with no open browse. |
 | ILLOGIC | 21 | `INQUIRE <class> NEXT` with no `STARTBROWSE` active for that class. |
 
@@ -2386,8 +2568,10 @@ mutation attributes (e.g. `SET FILE('x') OPENSTATUS(CLOSED)`,
 
 > **Bricks deviation — `SET` is acknowledge-only.** `SET FILE(…)
 > OPENSTATUS(CLOSED)`, `SET TRANSACTION(…) STATUS(DISABLED)`, etc.
-> validate that the named resource exists (`NOTFND` if not) and
-> return `NORMAL`, but **do not persist** the change — the very next
+> validate that the named resource exists (`PGMIDERR` for PROGRAM,
+> `TRANSIDERR` for TRANSACTION, `NOTFND` for FILE / TASK / TERMINAL
+> if not) and return `NORMAL`, but **do not persist** the change —
+> the very next
 > `INQUIRE` would otherwise contradict the SET. This is deliberate:
 > bricks fails honestly rather than faking a state transition it
 > can't keep.
@@ -2612,7 +2796,7 @@ end of transaction.
 > patterns: type both verbs on one `PF5` input (assembled as a
 > single command), or wrap the pair with
 > `ENQ resource HOLD … DEQ resource` so the lock persists across
-> the press. Outside `CECI` (REXX or COBOL programs running as a
+> the press. Outside `CECI` (REXX, COBOL or PL/I programs running as a
 > normal task) the lock survives until the next `SYNCPOINT` or
 > task end, matching real CICS.
 
@@ -2833,7 +3017,7 @@ idcams=DELETE  target=CUSTOMERS term=T0001 user=admin status=OK
 
 Both go through the same audit logging and same lock checks; both
 operate on the same `data/files.boltdb` buckets that `EXEC CICS WRITE`
-populates from REXX and COBOL.
+populates from REXX, COBOL and PL/I.
 
 #### Offline IDCAMS — the `idcams` CLI
 
@@ -3233,7 +3417,9 @@ Records terminate with a single LF (`0x0A`). The LF is excluded from
 the `INTO(area)` payload. A trailing line without LF is returned
 once; the next `READNEXT` returns `ENDFILE`. The byte-level encoding
 is the same as Chapter 9's TD queues — see "[The `tmp_dir`
-sandbox](#the-tmp_dir-sandbox)" for the strict ASCII rule.
+sandbox](#the-tmp_dir-sandbox)" for the encoding rule (records
+are SBCS, the file is UTF-8 on disk, and `RBA` stays a byte offset
+into that file).
 
 Bricks deviation: real ESDS uses an RDW (Record Descriptor Word) or
 fixed-length records, not LF-terminated lines. Bricks aligns the
@@ -3341,10 +3527,10 @@ Bricks supports two related queue families:
   backend, so a file written by COBOL is readable by REXX and
   vice-versa.
 
-The encoding contract for TD files is strict: ASCII bytes only
-(`0x09` TAB, `0x20`–`0x7E` printable), no EBCDIC, no UTF; lines are
-terminated by a single LF (`0x0A`); CR (`0x0D`) is rejected on write
-with `INVREQ`. The sandbox enforces a flat namespace under
+The encoding contract for TD files is strict: records are bricks
+SBCS (`0x09` TAB, `0x20`–`0x7E`, `0x80`–`0xFF`), stored as UTF-8 on
+disk; lines are terminated by a single LF (`0x0A`); CR (`0x0D`) and
+the other controls are rejected on write with `INVREQ`. The sandbox enforces a flat namespace under
 `tmp_dir` — no sub-directories, no leading dot, no `..`, no slashes
 in the queue name. See [The `tmp_dir` sandbox](#the-tmp_dir-sandbox)
 below for the full rules.
@@ -3634,8 +3820,10 @@ call per task. Trailing ASCII spaces on `data` are right-stripped
 before write — COBOL `PIC X(n)` values arrive padded to the right
 and the canonical text-file convention is to strip them. The
 payload is validated byte-by-byte: anything outside `0x09` (TAB),
-`0x0A` (LF), or `0x20`–`0x7E` (printable ASCII) causes the write
-to fail with `INVREQ` and a byte-offset diagnostic. CR (`0x0D`) is
+`0x0A` (LF), `0x20`–`0x7E` or `0x80`–`0xFF` (printable bricks SBCS,
+see [Character data](#character-data-the-sbcs-data-plane)) causes
+the write to fail with `INVREQ` and a byte-offset diagnostic; the
+line is then written as UTF-8. CR (`0x0D`) is
 explicitly rejected — bricks emits Unix-style LF-only files.
 
 #### Options
@@ -3653,7 +3841,7 @@ explicitly rejected — bricks emits Unix-style LF-only files.
 | Condition | EIBRESP | Cause |
 |---|---:|---|
 | NORMAL | 0 | Line appended. |
-| INVREQ | 16 | Missing `FROM` / invalid name / sandbox rejection / non-ASCII byte / CR in payload. |
+| INVREQ | 16 | Missing `FROM` / invalid name / sandbox rejection / control byte / CR in payload. |
 | IOERR | 17 | Underlying file-system error. |
 
 #### Example
@@ -3715,9 +3903,18 @@ no leading dot, no `..`, no slash, no backslash, no NUL. Bricks
 also runs `filepath.Rel` against every resolved path as
 defense-in-depth, so symlink shenanigans bounce too.
 
-**Encoding rules.** ASCII only — no EBCDIC, no UTF-8, no UTF-16.
-The write path validates every byte and rejects with `INVREQ` on
-the first violation, naming the offending offset and hex value.
+**Encoding rules.** Programs read and write bricks SBCS (see
+[Character data](#character-data-the-sbcs-data-plane)); the file on
+disk is UTF-8. The write path accepts TAB, LF, `0x20`-`0x7E` and
+`0x80`-`0xFF`, rejects every other control byte with `INVREQ` on
+the first violation (naming the offending offset and hex value),
+and writes the UTF-8 form. The read path converts each line back;
+a line that is not valid UTF-8 (a Latin-1 file from another tool)
+is taken byte for byte. `CHARIN` reads characters the same way: a
+byte that is not valid UTF-8 is kept as its Latin-1 character, so a
+Latin-1 file reads alike through `LINEIN` and `CHARIN`; only a
+character outside the code page becomes `?`. `CHARS()` counts file
+bytes, so it is an upper bound on the characters left.
 Lines terminate with LF only; CR is rejected on write. The read
 path splits on LF and preserves any CR bytes it finds verbatim —
 bricks does **not** silently strip them. If you need to import a
@@ -3943,7 +4140,14 @@ the old label.
 `HANDLE CONDITION` is the legacy CICS error-handling style.
 Modern programs that use `RESP(rc)` style (or REXX `SIGNAL ON ERROR`)
 do not need it; the two styles can coexist within the same program
-because both ultimately read `EIBRESP`.
+because both ultimately read `EIBRESP`. A command that codes
+`RESP(var)` or `NOHANDLE` never fires an armed trap: the suppression
+lasts for that one command, as in IBM CICS.
+
+> **Programming Note.** PL/I has no statement labels, so a PL/I
+> handler target is a parameterless internal procedure of MAIN, and
+> the task ends when it returns. See
+> [HANDLE CONDITION, HANDLE AID and HANDLE ABEND](#handle-condition-handle-aid-and-handle-abend).
 
 #### Options
 
@@ -4173,14 +4377,16 @@ The EIB is a per-task scratch area populated by the dispatcher
 before the program runs and by each `EXEC CICS` command on return.
 In bricks the EIB is exposed as a set of well-known variable names
 in the program's frame; both REXX and COBOL auto-inject the names
-that aren't already declared.
+that aren't already declared. PL/I predeclares them as fields of the
+`DFHEIBLK` structure, with fixed PL/I types (see
+[The EIB and other predeclared names](#the-eib-and-other-predeclared-names)).
 
 | Field | Set by | Meaning |
 |---|---|---|
 | `EIBAID` | `SEND MAP` / `RECEIVE MAP` | Single-byte AID character of the most recent map response. Use `C2X(EIBAID)` (REXX) or compare with `X'F3'` (COBOL) to detect PF/PA/CLEAR/ENTER. |
 | `EIBCPOSN` | `SEND MAP` / `RECEIVE MAP` | 1-based cursor position of the most recent map response. |
 | `EIBCALEN` | dispatcher (per-task entry) | Length of `DFHCOMMAREA` flowed in from the prior task or `LINK` caller. Zero when no COMMAREA was passed. |
-| `EIBTRMID` | dispatcher | This terminal's id. Same as `ASSIGN TERMID(...)`. |
+| `EIBTRMID` | dispatcher | This terminal's id. REXX gets the full id (`T0001`); the COBOL (`PIC X(4)`) and PL/I (`CHAR(4)`) fields hold 4 characters as in the IBM EIB, so they read `T000`. `ASSIGN TERMID(...)` into an 8-character area returns the full id. |
 | `EIBRESP` | every `EXEC CICS` | The response code of the most recent command (see [Chapter 12](#chapter-12-response-codes)). |
 | `EIBRESP2` | every `EXEC CICS` | The secondary response code of the most recent command (currently always 0). |
 | `RC` | every `EXEC CICS` | Mirror of `EIBRESP`, for REXX `IF RC <> 0` style. |
@@ -4217,6 +4423,20 @@ END-IF.
 ```
 
 There is no COBOL equivalent of `SIGNAL ON ERROR` yet.
+
+**PL/I:**
+
+```pli
+EXEC CICS READ FILE('CUSTOMERS') INTO(REC) RIDFLD(CKEY) RESP(RC);
+SELECT (RC);
+   WHEN (DFHRESP(NORMAL)) ;
+   WHEN (DFHRESP(NOTFND)) MSG = 'Customer not found';
+   OTHERWISE              MSG = 'I/O error, RESP=' || CHAR(RC);
+END;
+```
+
+`RC` is an ordinary `FIXED BIN(31)` variable the PL/I program
+declares; only REXX and COBOL get an automatic `RC`.
 
 ---
 
@@ -4657,18 +4877,122 @@ The Phase 1 verb set:
 | `WEB STARTBROWSE HTTPHEADER` / `WEB READNEXT HTTPHEADER NAME(var) VALUE(var) [NAMELENGTH(var)] [VALUELENGTH(var)]` / `WEB ENDBROWSE HTTPHEADER` | Walk every inbound header in sorted order. `ENDFILE` when exhausted. |
 | `WEB READ QUERYPARM(name) VALUE(var)` | Read query parameter OR routing-table `{name}` capture. Both are **percent-decoded** — `%20` reaches the program as a space. `NOTFND` when absent. |
 | `WEB STARTBROWSE QUERYPARM` / `WEB READNEXT QUERYPARM …` / `WEB ENDBROWSE QUERYPARM` | Iterate every parameter / capture. |
-| `WEB READ FORMFIELD(name) VALUE(var)` | Read one `application/x-www-form-urlencoded` field. Body parsed lazily on first call. |
-| `WEB STARTBROWSE FORMFIELD` / `WEB READNEXT FORMFIELD …` / `WEB ENDBROWSE FORMFIELD` | Iterate form fields. |
-| `WEB RECEIVE INTO(var) [MAXLENGTH(n)] [LENGTH(var)] [TYPE(var)] [MEDIATYPE(var)]` | Read the raw request body. `LENGERR` when over MAXLENGTH. |
+| `WEB READ FORMFIELD(name) VALUE(var)` | Read one `application/x-www-form-urlencoded` field. Body parsed lazily on first call. A body that is not valid form encoding (a bad escape such as `%zz`, or a `;` separator) raises `INVREQ`, on every call for that request. |
+| `WEB STARTBROWSE FORMFIELD` / `WEB READNEXT FORMFIELD …` / `WEB ENDBROWSE FORMFIELD` | Iterate form fields. `STARTBROWSE` raises `INVREQ` on a malformed body, as `READ FORMFIELD` does. |
+| `WEB RECEIVE INTO(var) [MAXLENGTH(n)] [LENGTH(var)] [TYPE(var)] [MEDIATYPE(var)] [BODYCHARSET(var)] [SRVCONVERT \| NOSRVCONVERT \| SERVERCONV(cvda) \| CHARACTERSET(s) \| INTOCCSID(n) \| INTOCODEPAGE(s)]` | Read the request body, converted per the rules below. `MAXLENGTH`, `LENGTH` and `LENGERR` count the converted characters. |
 | `WEB WRITE HTTPHEADER(name) VALUE(value)` | Set / append an outbound response header. |
-| `WEB SEND FROM(buf) [MEDIATYPE(s)] [STATUSCODE(n)]` | Emit response status + body. First `SEND` wins for status/MEDIATYPE; subsequent `SEND` calls in the same task append to the body (matches CICS). |
-| `WEB PARSE URL URL(s) SCHEMENAME(var) HOST(var) PORT(var) PATH(var) QUERYSTRING(var) [HOSTLENGTH(var)] …` | Direction-agnostic URL splitter. |
+| `WEB SEND FROM(buf) [LENGTH(n)] [MEDIATYPE(s)] [STATUSCODE(n)] [CHARACTERSET(s)] [SRVCONVERT \| NOSRVCONVERT \| SERVERCONV(cvda)] [HOSTCODEPAGE(s)]` | Emit response status + body. First `SEND` wins for status/MEDIATYPE and for the body conversion; subsequent `SEND` calls in the same task append to the body (matches CICS). |
+| `WEB PARSE URL(s) SCHEMENAME(var) HOST(var) PORT(var) PATH(var) QUERYSTRING(var) [HOSTLENGTH(var)] …` | Direction-agnostic URL splitter. |
 | `WEB CONVERTTIME DATESTRING(s) ABSTIME(var)` | RFC 1123 / 850 / asctime → milliseconds since 1970-01-01 UTC. |
+
+### Body code page conversion
+
+Program data is bricks SBCS (see
+[Character data](#character-data-the-sbcs-data-plane)); HTTP bodies
+are usually UTF-8. The same rules apply to the server verbs (`WEB
+RECEIVE`, `WEB RETRIEVE DOCTOKEN`, `WEB SEND`) and the client verbs
+(`WEB SEND` / `CONVERSE` request bodies, `WEB RECEIVE` / `CONVERSE`
+responses). A body is *text-like* when its media type is `text/*`,
+`application/json`, `xml`, `javascript`, `ecmascript`,
+`x-javascript`, `x-www-form-urlencoded`, `xhtml+xml`, or any
+`+json` / `+xml` type; anything else (images, `octet-stream`,
+`multipart/*`) always passes through unchanged.
+
+Into the program:
+
+| Content-Type of the received body | Program gets |
+|---|---|
+| text-like, `charset=utf-8` | converted to SBCS (`?` for characters outside it) |
+| text-like, no charset | converted when the bytes are valid UTF-8, else taken as Latin-1 unchanged |
+| text-like, `iso-8859-1` / `us-ascii` / `cp819` / `windows-1252` | unchanged (already SBCS) |
+| other charset, not text-like, missing or malformed | unchanged |
+| `NOSRVCONVERT`, `SERVERCONV(NOSRVCONVERT)`, `NOCLICONVERT`, `CLIENTCONV(NOCLICONVERT)`, `INTOCCSID(1208)`, `INTOCODEPAGE('UTF-8')` (on `WEB RECEIVE` also `CHARACTERSET('UTF-8')`) | unchanged (the raw UTF-8 bytes) |
+
+`BODYCHARSET(var)` returns the charset in effect (`utf-8`,
+`iso-8859-1`, the declared label, or blank for a binary body).
+
+Out of the program: the target charset is `CHARACTERSET` or
+`CLNTCODEPAGE` (server and client alike), else the `charset` parameter of `MEDIATYPE`,
+else **UTF-8** (IBM's default is ISO-8859-1; bricks deviates so a
+browser shows `ä` without extra options). A UTF-8 target converts the
+body; a Latin-1 target sends the SBCS bytes as they are. A converted
+`MEDIATYPE` without a charset gets one appended
+(`application/json; charset=utf-8`); `CHARACTERSET` (server: also
+`CLNTCODEPAGE`) overrides a contradicting parameter. `NOSRVCONVERT` / `SERVERCONV(NOSRVCONVERT)`
+(client: `NOCLICONVERT` / `CLIENTCONV(NOCLICONVERT)`) send bytes
+unchanged and leave `Content-Type` alone. Without `MEDIATYPE` (and no
+`Content-Type` written via `WEB WRITE HTTPHEADER`) the body is
+treated as text and converted, and no header is added.
+
+> **Binary bodies:** always code `MEDIATYPE` (for example
+> `MEDIATYPE('image/png')` or `'application/octet-stream'`) or
+> `NOSRVCONVERT` / `NOCLICONVERT` when the body is not text. Without
+> either, the default "treat as text" rule converts every byte from
+> `X'80'` up to a two- or three-byte UTF-8 sequence and the binary data
+> is corrupted. `LENGTH` cuts
+the SBCS characters before conversion. `SRVCONVERT`, `CLICONVERT`
+and `HOSTCODEPAGE` are accepted (they describe the default).
+
+Header values, query parameters, form fields, `WEB EXTRACT` and
+`WEB PARSE URL` results reach the program as SBCS with lengths in
+characters; lookup names (`QUERYPARM('größe')`) are matched in UTF-8.
+`WEB WRITE HTTPHEADER` sends its bytes unchanged.
+
+**Malformed form bodies are an ordinary condition.** `INVREQ` from
+`WEB READ FORMFIELD` / `WEB STARTBROWSE FORMFIELD` on a body that will
+not decode is a plain condition: code `RESP(...)` and answer the client
+with a 400. (Earlier releases ended the task with an internal error
+even when `RESP` was coded.)
+
+```cobol
+EXEC CICS WEB READ FORMFIELD('title') VALUE(WS-TITLE)
+          RESP(WS-RESP) END-EXEC
+IF WS-RESP = DFHRESP(INVREQ)
+   PERFORM SEND-400
+END-IF
+```
 
 The full REXX sample is `runtime/rexx/wapi.rexx`; in COBOL the
 helpful copybooks are `DFHWBSC` (status-code constants),
 `DFHWBUH` (common header-name literals), `DFHWBMT` (MIME-type
 literals), and `DFHWBMETH` (HTTP method literals).
+
+### COBOL server-side sample — `todo.cob` (transaction `TODO`)
+
+`runtime/cobol/todo.cob` is the first server-side COBOL WAPI sample:
+a multi-user, multi-list to-do REST API. One program serves every
+`/api/todo/...` route in `runtime/web_routes.conf` (transaction row
+`TODO:cobol:todo.cob:PUBLIC`; needs `enable_wapi=yes`) and works out
+the request from the method plus the shape of the path
+(`EVALUATE WS-SHAPE ALSO WS-METHOD`). What it shows:
+
+* **VSAM storage** in three KSDS files created on first `WRITE` —
+  `TODOUSR` (key user), `TODOLST` (user + list), `TODOITM`
+  (user + list + item). Each user only ever sees their own data.
+* **JSON both ways.** Every response object is built by
+  `JSON GENERATE` from a small flat record (lower-case names via
+  `NAME OF`, the item's `done` flag via `CONVERTING ... TO JSON
+  BOOLEAN`); arrays are joined with `STRING ... WITH POINTER`. A JSON
+  request body is read with `JSON PARSE`; form-encoded bodies still
+  work through `WEB READ FORMFIELD`.
+* **Units of work.** All input is validated before the first file
+  update; an unexpected `RESP` after an update does
+  `SYNCPOINT ROLLBACK` and answers 500. A record lock collision
+  answers 409.
+* **`EXIT PARAGRAPH`** for early returns from validation paragraphs.
+* **Auth** by `X-Todo-User` / `X-Todo-Key` headers (accounts are made
+  with `POST /api/todo/users`); the routes themselves are `public`.
+* **Latin-1 titles.** Item titles take Latin-1 letters and the
+  graphic-plane glyphs (`café`, `5 €`, `█`); the web edge turns the
+  UTF-8 body into one byte per character, so the 80-character limit
+  counts characters. User names, ids and passwords stay ASCII.
+
+A browser front end lives in `runtime/web/todo/`. When the static web
+server is on (`webserver_port` > 0), the WAPI listener also serves the
+static doc root for paths no route matches, so the app opens at
+`http://host:<wapi_port>/todo/` on the same origin as the API.
+`scripts/todo_api_test.bash [BASE]` runs an end-to-end test against a
+running instance (needs `curl` and `jq`).
 
 ## EXEC CICS WEB — client side (Phase 2a)
 
@@ -4869,7 +5193,7 @@ instead of a flat `INTO(buf)`.
 | `DOCUMENT CREATE DOCTOKEN(var) [SYMBOLLIST(s)] [LISTLENGTH(n)] [DELIMITER(s)]` | Allocate a fresh empty document; return its token in the named variable. Optional `SYMBOLLIST` seeds a `name=value&...` symbol table that subsequent INSERT SYMBOL(...) substitutes from. |
 | `DOCUMENT INSERT DOCTOKEN(t) [FROM(buf) [LENGTH(n)] \| TEXT(buf) \| BINARY(buf) \| SYMBOL(name) \| DOCUMENT(other-token)] [AT(position)]` | Append (or splice with `AT(position)`) one chunk to the document. `SYMBOL(name)` substitutes from the bound symbol list (`NOTFND` when unknown); `DOCUMENT(other-token)` splices another document verbatim (`NOTFND` when unknown); `TEXT` and `BINARY` are codepage-aware in real CICS but collapse to `FROM` in bricks (single-codepage). `LENGERR` when the resulting buffer would exceed 4 MiB. |
 | `DOCUMENT SET DOCTOKEN(t) SYMBOLLIST(s) [LISTLENGTH(n)] [DELIMITER(d)] [UNESCAPED]` | (Re-)bind the symbol list a subsequent INSERT SYMBOL substitutes from. Pass an empty `SYMBOLLIST` to clear. |
-| `DOCUMENT RETRIEVE DOCTOKEN(t) INTO(buf) LENGTH(var) [CHARACTERSET(s)] [DATAONLY \| HOSTCODEPAGE]` | Read the assembled body back into `INTO`; `LENGTH` receives the byte count. `CHARACTERSET / DATAONLY / HOSTCODEPAGE` are accepted but ignored (bricks is single-codepage ASCII). |
+| `DOCUMENT RETRIEVE DOCTOKEN(t) INTO(buf) LENGTH(var) [CHARACTERSET(s)] [DATAONLY \| HOSTCODEPAGE]` | Read the assembled body back into `INTO`; `LENGTH` receives the delivered length. The document is SBCS; `CHARACTERSET('UTF-8')` (or `'1208'`) delivers it as UTF-8 instead. Other `CHARACTERSET` values, `DATAONLY` and `HOSTCODEPAGE` are accepted and change nothing. |
 | `DOCUMENT DELETE DOCTOKEN(t)` | Release the document. `NOTFND` when the token isn't known. Forgotten documents are released at task end automatically. |
 | `WEB SEND DOCTOKEN(t) [STATUSCODE(n)] [MEDIATYPE(s)]` | Emit the named document as the outbound response body. The DOCUMENT INSERT chain has already built it; SEND just splices the bytes onto BodyOut. `NOTFND` when the token isn't known. |
 | `WEB RETRIEVE DOCTOKEN(var)` | Inbound-body-as-document. Allocates a fresh document, copies the request body into it, and returns the token. Alternative to `WEB RECEIVE INTO(buf)` for programs that prefer the document API. |
@@ -5043,8 +5367,8 @@ implementation, not part of the EXEC CICS surface.
 A bricks REXX program is a flat sequence of statements with optional
 labels and procedures. Execution begins at the first statement; the
 program ends when execution falls off the bottom, or hits `EXIT`. A
-program file is plain UTF-8 (ASCII printable + tabs + LF only is
-recommended for terminal output). There is no fixed column
+program file is plain UTF-8; see
+[REXX character set](#rexx-character-set) for what a literal may hold. There is no fixed column
 discipline — newlines and whitespace are token separators.
 
 ```rexx
@@ -5084,10 +5408,85 @@ the decoded bytes:
 | `''X` / `''B` | the empty string |
 
 The suffix is recognised only when the `X` / `B` is a standalone letter:
-`'03'XY` is the string `'03'` followed by the symbol `XY` (juxtaposition),
-*not* a hex literal. Invalid digits (`'GG'X`, `'2'B`) raise a SYNTAX error.
+`'03'XY` is the string `'03'` abutted to the symbol `XY` (it concatenates
+with no blank; see [Concatenation](#concatenation)), *not* a hex literal. Invalid digits (`'GG'X`, `'2'B`) raise a SYNTAX error.
 Decoded literals are ordinary byte strings — `C2X('F3'X)` is `'F3'`, and
 `X2C` / `D2C` / `B2X` round-trip them.
+
+### REXX character set
+
+Every REXX value — variables, stem tails, literals, built-in function
+arguments and results, and the text of `EXEC CICS` / `EXEC SQL`
+commands — is a string of bricks SBCS bytes: **one byte per
+character**, as on a mainframe. The code page is ISO-8859-1 (Latin-1)
+with a graphic plane in `X'80'`-`X'9F'` that holds, in byte order,
+`€ █ ▀ ▄ ▌ ▐ ■ ─ │ ┌ ┐ └ ┘ ├ ┤ ┬ ┴ ┼ ═ ║ • ← → ↑ ↓ ≤ ≥ ≠ ○ ◊ ‾ ≡`.
+So `LENGTH('ÄÖÅ')` is `3`, `SUBSTR`, `LEFT`, `POS` and `PARSE`
+positions count characters, `C2X('Ä')` is `'C4'`, `D2C(196)` is `'Ä'`
+and `LENGTH('█')` is `1` (`C2X` gives `'81'`).
+
+**Source text.** Program files are UTF-8. The parser converts each
+string literal to SBCS once, when the program is loaded:
+
+| Where | Allowed |
+|---|---|
+| Inside `'…'` / `"…"` | ASCII, Latin-1 `U+00A0`-`U+00FF`, and the 32 plane glyphs above |
+| Hex / binary literal | Raw bytes, never converted: `'C4'X` is `Ä`, `'C384'X` is two characters |
+| Comments | Any character (the file must be valid UTF-8) |
+| Symbols and operators | ASCII only |
+
+A UTF-8 byte order mark at the start of the file is ignored. Anything
+else is a load error that names the line, the column (a byte offset)
+and the character:
+
+```
+line 1 col 6: character U+4E2D in string literal is not in the bricks single-byte character set
+line 1 col 9: invalid UTF-8 byte X'E9' in string literal (source must be UTF-8)
+line 2 col 2: character U+00C4 is only allowed inside a string literal or comment
+```
+
+Columns count bytes of the UTF-8 file, starting at 1: in `SAY 'ÄÄ中'`
+each `Ä` takes two bytes, so the error is reported at col 10, not 8.
+An unterminated string is reported at the column of its opening quote
+(`line 2 col 5: unterminated string`).
+
+Typographic dashes and quotes (`—` `“`), emoji and CJK are therefore
+allowed in comments only.
+
+**Edges.** Conversion to and from UTF-8 happens only where data
+leaves or enters the program:
+
+* `SAY` writes UTF-8 (`SAY D2C(255)` shows `ÿ`).
+* `JSONGET` / `JSONCOUNT` hand the document to a UTF-8 JSON parser and
+  convert string results back; a character outside the code page (for
+  example `"\u4e2d"`) becomes `?`.
+* `INTERPRET` runs a REXX value, which is SBCS already: it is **not**
+  decoded a second time, so `INTERPRET "x='Ä'"` gives `LENGTH(x) = 1`.
+* `EXEC CICS` / `EXEC SQL` text, `ARG()` and every value the CICS
+  layer stores in a variable (`RECEIVE MAP`, `READQ`, `COMMAREA`,
+  `EIBAID` …) are SBCS; the terminal, Postgres and HTTP edges convert.
+* `LINEOUT` / `CHAROUT` pass the SBCS bytes to the `tmp_dir` stream
+  layer, which stores the file as UTF-8 on disk.
+
+**Case.** `UPPER()` / `LOWER()` (bricks extensions) fold the full
+Latin-1 alphabet: `UPPER('äöå')` is `'ÄÖÅ'`; `ß`, `ÿ`, `µ`, `÷`, `×`
+and the graphic plane are unchanged. Everything IBM defines folds
+`a`-`z` only (per the TRL): `PARSE UPPER`, `ARG UPPER`, one-argument
+`TRANSLATE(s)`, and symbol / compound-tail folding. With `K = 'äb'`,
+`S.K` refers to `S.äB`.
+
+**Blanks and classes.** Words, the `=` comparison's blank stripping and
+numbers recognise ASCII whitespace only; `X'A0'` (no-break space) is an
+ordinary character. `DATATYPE(s, 'A')` accepts ASCII letters and
+digits only, and `SYMBOL('Ä')` is `'BAD'`.
+
+**Error messages** that quote program data are pure ASCII; non-ASCII
+characters appear as escapes, e.g. `not numeric: "\u00c4"`.
+
+**Differences from z/OS.** The code page is Latin-1, not EBCDIC:
+`C2X('A')` is `'41'` (z/OS: `'C1'`), comparisons and `XRANGE` follow
+Latin-1 byte order, and `UPPER()` / `LOWER()` do not exist in IBM
+REXX.
 
 ### Procedures
 
@@ -5199,7 +5598,7 @@ and survives an explicit `ADDRESS` switch.
 
 * Names are case-insensitive; internally everything is uppercased
   before lookup.
-* A name begins with a letter or `_` and may continue with
+* A name begins with an ASCII letter or `_` and may continue with
   letters, digits, `_`, or `!`, `?`, `#`, `@`, `$`. Stem-tail
   segments are separated by `.`.
 * The literal `RC`, `SIGL`, `RESULT`, `SQLCODE`, `SQLSTATE`,
@@ -5606,8 +6005,8 @@ function form.
 | `STRIP(s [, opt [, ch]])` | Trim characters `ch` (default space) from `L` (left), `T` (right), or `B` (both, default). |
 | `SPACE(s [, n [, pad]])` | Collapse internal whitespace; insert `n` copies of `pad` (default 1 space) between words. `n=0` removes whitespace entirely. |
 | `CENTER(s, n [, pad])` / `CENTRE(s, n [, pad])` | Centre `s` in a field of width `n`; pad with `pad` (default space). Truncates equally from both ends when `s` is longer than `n`. |
-| `JUSTIFY(s, n [, pad])` | Right-justify the last word in width `n`, padding earlier words. |
-| `UPPER(s)` / `LOWER(s)` | ASCII case conversion. |
+| `JUSTIFY(s, n [, pad])` | Justify the words of `s` to both margins of width `n`: gaps are widened with `pad`, the extra going to the leftmost gaps first. If the single-blank form is longer than `n`, it is truncated (and a trailing blank dropped) first: `JUSTIFY('abcdef', 3)` is `'abc'`, `JUSTIFY('a b c', 2)` is `'a '`. |
+| `UPPER(s)` / `LOWER(s)` | Latin-1 case conversion (`ä` <-> `Ä`); see [REXX character set](#rexx-character-set). |
 | `REVERSE(s)` | Byte-reverse `s`. |
 | `COPIES(s, n)` | `s` repeated `n` times. |
 | `ABBREV(s, prefix [, minlen])` | Returns `1` if `prefix` is a prefix of `s` with at least `minlen` characters; else `0`. |
@@ -5627,7 +6026,7 @@ function form.
 | Signature | Returns |
 |---|---|
 | `C2X(s)` | Uppercase hex of every byte. Canonical way to compare `EIBAID` to a PF-key code: `IF C2X(EIBAID) = 'F7' THEN …` (PF7). |
-| `X2C(hex)` | Decode `hex` (spaces ignored) to a byte string. |
+| `X2C(hex)` | Decode `hex` to a byte string. An odd digit count gets a leading `0` (`X2C('F')` is `'0F'X`); `X2C('')` is `''`. Blanks are allowed between byte pairs only (`'4865 6C6C6F'`), not leading or trailing. |
 | `D2X(n [, width])` | Decimal integer to uppercase hex, optionally zero-padded to `width`. |
 | `X2D(hex [, n])` | Hex to decimal. With `n`, treats the value as an `n`-digit signed integer (two's complement when the top bit is set). |
 | `C2D(s [, n])` | Byte string to decimal. With `n`, signed two's complement over `n` bytes. |
@@ -5692,7 +6091,9 @@ The stream functions read and write text files in the `tmp_dir`
 sandbox — the same backend that powers COBOL's `EXEC CICS READQ TD`
 / `WRITEQ TD` / `DELETEQ TD` (see
 [Chapter 9](#chapter-9-temporary-storage-and-transient-data-commands)).
-The sandbox is strict: ASCII only, LF-terminated, no traversal.
+The sandbox is strict: printable bricks SBCS characters only (see
+[REXX character set](#rexx-character-set)), LF-terminated, no
+traversal. Files are stored as UTF-8 on disk.
 
 | Function | Form | Behaviour |
 |---|---|---|
@@ -5701,9 +6102,9 @@ The sandbox is strict: ASCII only, LF-terminated, no traversal.
 | `LINEOUT(name)` | close | Closes the named stream. Returns `0`. |
 | `LINEOUT(name, line)` | append | Auto-opens `name` for append on first call; appends `line || '\n'`. Returns `0` on success, `1` on error. |
 | `LINES(name)` | EOF probe | Returns `1` while more data is available, `0` at EOF. |
-| `CHARIN(name, start, n)` | byte read | Reads `n` bytes (default `1`). `start = 1` rewinds first; other `start` values are ignored. |
-| `CHAROUT(name, s)` | byte write | Appends raw bytes. Same ASCII/LF validation as `LINEOUT`. |
-| `CHARS(name)` | bytes remaining | Returns the file size minus the current read position. |
+| `CHARIN(name, start, n)` | character read | Reads `n` characters (default `1`). `start = 1` rewinds first; other `start` values are ignored. |
+| `CHAROUT(name, s)` | character write | Appends `s`. Same character/LF validation as `LINEOUT`. |
+| `CHARS(name)` | bytes remaining | Returns the file size minus the current read position, in bytes of the UTF-8 file: an upper bound on the characters left. |
 | `STREAM(name, 'S')` | state | Returns `'READY'`, `'NOTREADY'`, or `'ERROR'`. |
 | `STREAM(name, 'D')` | description | Returns a short status string (`'OK'` / parse-time reason). |
 | `STREAM(name, 'C', cmd)` | command | `OPEN READ` / `OPEN WRITE` / `OPEN APPEND` / `CLOSE` / `QUERY EXISTS` / `QUERY SIZE` / `DELETE`. |
@@ -5753,6 +6154,8 @@ literal `.` is unreachable; array indices are non-negative only (no
 wildcards, no negative indices); JSON integers beyond 2^53 lose precision
 (they decode through a float). There is no JSON *builder* — assemble
 output JSON with string concatenation, as the `WAPI` sample does.
+(COBOL programs have `JSON GENERATE` / `JSON PARSE` instead — see
+[Chapter 22](#json-generate-and-json-parse).)
 
 > **Worked example.** The **SABR** reservation transaction
 > (`runtime/rexx/book.rexx`) uses `JSONGET` / `JSONCOUNT` to parse live
@@ -5771,7 +6174,7 @@ left-associative except `**` which is right-associative.
 | 1 (lowest) | `\|` | Logical OR. Strict boolean: both sides must evaluate to `0` or `1`. Short-circuit. |
 | 2 | `&` / `&&` | Logical AND. Same strict-boolean rules. `&&` is the strict-AND alias. Short-circuit. |
 | 3 | `=` `==` `\=` `\==` `<>` `><` `<` `>` `<=` `>=` | Comparison. The strict variants (`==`, `\==`) compare byte-for-byte; the plain forms compare as numbers when both sides parse as numeric (subject to `NUMERIC FUZZ`) and as trimmed strings otherwise. `\=` and `<>` and `><` are all "not equal". |
-| 4 | `\|\|` and juxtaposition | Concatenation. `A \|\| B` joins with no separator; `A B` (whitespace between operands) joins with a single space. There is no zero-separator juxtaposition — write `\|\|` explicitly. |
+| 4 | `\|\|`, blank, abuttal | Concatenation. `A \|\| B` joins with no separator; `A B` (blanks between the terms) joins with exactly one blank; `A'/'B` (terms abutted, nothing between them) joins with no separator. See [Concatenation](#concatenation) below. |
 | 5 | `+` `-` | Addition / subtraction. |
 | 6 | `*` `/` `%` `//` | Multiplication, real division, integer division (`%` — truncates toward zero), modulo (`//` — sign of the dividend). |
 | 7 | unary `+` `-` `\` | Arithmetic sign and logical NOT. |
@@ -5780,6 +6183,45 @@ left-associative except `**` which is right-associative.
 Comparison precedence note: REXX has no separate equality vs.
 ordering precedence, so `A < B = C` parses as `(A < B) = C` —
 comparing the boolean result of `A < B` against `C`.
+
+#### Concatenation
+
+Two terms written next to each other with no operator between them
+are concatenated, as in IBM REXX. What separates them decides the
+result:
+
+| Written | Result | Rule |
+|---|---|---|
+| `'a' 'b'`, `'a'   'b'` | `a b` | One or more blanks: exactly **one** blank. |
+| `'a'"b"`, `A'/'D`, `'LEN='LENGTH(X)` | `ab`, `abc/def`, `LEN=3` | Abuttal (nothing between): **no** blank. |
+| `A/*c*/D` | `abcdef` | Only a comment between: abuttal. |
+| `'a' /*c*/'b'` | `a b` | A blank anywhere between: one blank. |
+| `'a',` (line end) `'b'` | `a b` | A continuation comma counts as a blank. |
+| `'41'X'42'X`, `(1+2)'a'`, `STEM.I'x'` | `AB`, `3a`, `Sx` | Every kind of term abuts the same way. |
+
+Arithmetic binds tighter than concatenation: `1+2'a'` is `3a`.
+
+A `(` after a term starts a function call in two cases:
+
+* **Symbol, then `(`** — `LENGTH(X)` calls `LENGTH`. Internal routines
+  (`NAME: PROCEDURE`) are searched first, then the built-ins; the name
+  is case-insensitive.
+* **Literal string immediately followed by `(`** — `'LENGTH'('abc')`
+  is `3` (IBM TRL). The name is used exactly as written, *not*
+  uppercased, and only built-in functions are searched: internal
+  routines are skipped. This is the IBM idiom for reaching a built-in
+  that an internal routine of the same name shadows. `'length'('abc')`
+  and `'x'('y')` therefore fail with `unknown function`. With a blank
+  between them, `'x' ('y')` is an ordinary blank concatenation, `x y`.
+
+After any other term, `(` simply abuts: `(A)(D)` is `abcdef`.
+
+**Difference from z/OS:** IBM REXX treats a symbol followed by a
+**blank** and then `(` as a blank concatenation (`X (Y)` is the value
+of `X`, a blank, and the value of `Y`). bricks treats it as a function
+call, exactly like `X(Y)`, so existing programs written as
+`LENGTH (S)` keep working. To concatenate in that position, write
+`X || ' ' || (Y)`.
 
 ### Restrictions / unsupported
 
@@ -5805,8 +6247,9 @@ comparing the boolean result of `A < B` against `C`.
 > the DATA DIVISION, PROCEDURE DIVISION, the EIB binding, the
 > `COPY` directive (including the standard `DFHAID`, `DFHRESP`,
 > `SQLCA`, and `DFHWB*` copybooks), and the restrictions.
-> Command-level behaviour is identical between COBOL and REXX —
-> see **Parts&nbsp;4**, **6**, and **7** for the verbs.
+> Command-level behaviour is identical between COBOL, REXX and
+> PL/I (**Part&nbsp;9**) — see **Parts&nbsp;4**, **6**, and **7** for
+> the verbs.
 
 ## Chapter 20. COBOL source format
 
@@ -5824,11 +6267,13 @@ handlers use.
   column 1.
 * **Strings** use `'...'` or `"..."` with quote-doubling for
   embedded quotes (`'don''t'`, `"say ""hi"""`).
-* **Numeric literals** are decimal digit runs, optionally signed
-  (`+`, `-`) when they appear in a context that accepts a signed
-  number (`VALUE`, `COMPUTE`, arithmetic verbs). There is no
-  COBOL-side decimal-point literal — fractional `VALUE`s use the
-  `V` in the PIC plus a digit-run interpreted against that scale.
+* **Numeric literals** are decimal digit runs with an optional
+  decimal point (`42`, `1.5`, `0.050`) and an optional sign written
+  against the digits (`-1`, `+5`, `-1.5`). They work anywhere a
+  number is accepted: `VALUE`, `MOVE`, `COMPUTE`, the arithmetic
+  verbs, and conditions (`IF B / 10 = 4.5`). A fractional literal
+  is placed by the receiving PIC's `V` (see
+  [`VALUE` on a scaled item](#value-on-a-scaled-v-item)).
 * **Hex literals** like `X'F3'` and `X"7C"` decode to their byte
   value — used for `IF EIBAID = X'F3'` to check PF3 / PF12 / etc.
   without `C2X(EIBAID) = 'F3'` round-trips.
@@ -5840,6 +6285,79 @@ handlers use.
   header, paragraph header, and top-level data item; periods
   inside an explicit `END-IF` / `END-EVALUATE` / etc. body are
   tolerated as inner punctuation, not as scope terminators.
+
+### COBOL character set
+
+COBOL program data is **one byte per character**, as on a mainframe.
+Every byte of a `PIC X` item is one character of the bricks
+single-byte character set (bricks SBCS): ISO-8859-1 (Latin-1), with
+a graphic plane in `X'80'`-`X'9F'` in place of the C1 controls:
+
+| `X'8n'` | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | A | B | C | D | E | F |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `X'80'` | € | █ | ▀ | ▄ | ▌ | ▐ | ■ | ─ | │ | ┌ | ┐ | └ | ┘ | ├ | ┤ | ┬ |
+| `X'90'` | ┴ | ┼ | ═ | ║ | • | ← | → | ↑ | ↓ | ≤ | ≥ | ≠ | ○ | ◊ | ‾ | ≡ |
+
+UTF-8 exists only at the edges (terminal, web, SQL, files, logs);
+the CICS layer converts there, once. Inside the program:
+
+* **Source** files are UTF-8; a leading byte order mark is ignored.
+  Each character of a quoted literal is converted to its single byte
+  at compile time: `'Grüße'` is 5 bytes, `FUNCTION LENGTH('Grüße')`
+  is 5, and `'█'` is `X'81'`. A character outside the table (CJK,
+  `—`, emoji, a C1 control, `U+FFFD`) or invalid UTF-8 is a compile
+  error, never a silent `?`:
+
+  ```
+  line 12 col 22: U+4E2D in literal is not a bricks SBCS character
+  line 13 col 18: invalid UTF-8 byte X'C4' in literal
+  line 14 col 20: character U+00C4 not allowed outside quotes (ASCII only)
+  ```
+
+  Names, keywords and PIC strings are ASCII only. Comments may hold
+  any Unicode text (they must still be valid UTF-8). Error columns
+  count characters, not bytes, and every error message is pure ASCII.
+* **Hex literals** are raw bytes and are never converted: `X'C4'` is
+  `Ä` (on z/OS, EBCDIC `D`). AID constants (`X'7D'`, `X'F3'`,
+  `DFHAID`) keep working because `EIBAID` holds the raw AID byte;
+  other EBCDIC hex constants need translating when porting.
+* **Byte = character** everywhere: `MOVE`, reference modification,
+  `REDEFINES`, group moves, `STRING` / `UNSTRING`, `INSPECT`,
+  `FUNCTION LENGTH` / `POS` / `REVERSE`, COMMAREA offsets and record
+  keys all count characters.
+* **`DISPLAY`** converts to UTF-8 on the way out.
+* **Case:** `FUNCTION UPPER-CASE` / `LOWER-CASE` fold a-z and the
+  Latin-1 letters (`ä` ↔ `Ä`, `þ` ↔ `Þ`), length preserved; `ß`, `ÿ`,
+  `µ`, `ª`, `º`, `×`, `÷` and the graphic plane are unchanged.
+  `INSPECT CONVERTING` is a plain byte table, so list the Latin-1
+  letters explicitly (see the `UPPR` sample, `runtime/cobol/uppr.cob`).
+* **Class tests:** `ALPHABETIC`, `ALPHABETIC-UPPER` and
+  `ALPHABETIC-LOWER` accept ASCII letters and space only (IBM):
+  `'Müller' IS ALPHABETIC` is false.
+* **Collation** is byte order: `'Ä' > 'Z'`, and `'A' THRU 'Z'` does
+  not include `Ä`. EBCDIC collation is not emulated.
+* **Figuratives:** `HIGH-VALUES` is `X'FF'` (shown as `ÿ` by `DISPLAY`,
+  on the terminal and in JSON); `LOW-VALUES` is `X'00'`.
+* **Numeric MOVE** of text: a Latin-1 letter in the sender is a data
+  exception like an ASCII letter (target zeroed, logged); non-letter
+  symbols such as `€`, `£` or NBSP are dropped like `$`.
+* **`FUNCTION TRIM`** trims ASCII blanks only; NBSP `X'A0'` is data.
+  `FUNCTION NUMVAL` rejects Latin-1 junk with an ASCII error.
+* **`FUNCTION ORD` / `CHAR` / `BYTE-LENGTH`:** `ORD('Ä')` = 197
+  (byte value + 1), `CHAR(197)` = `Ä`, `BYTE-LENGTH` = `LENGTH`.
+* **JSON** text in a `PIC X` item is SBCS. `JSON GENERATE` writes
+  every byte from `X'80'` up raw (the web edge sends it as UTF-8) and
+  uses `\u00hh` only for controls below `X'20'`; `COUNT IN` counts
+  characters. `JSON PARSE` stores a `\uXXXX` escape as its single
+  byte (`\u00e9` → `é`, `\u20ac` → `€`) or `?` when the code point is
+  not in the table.
+* **Not supported:** `PIC N`, `USAGE NATIONAL`, `PIC U`,
+  `FUNCTION NATIONAL-OF` / `DISPLAY-OF`.
+
+**Deviations from z/OS:** the code page is Latin-1 plus the graphic
+plane, not an EBCDIC CCSID (037 / 1140); hex literals denote Latin-1
+bytes; collation is Latin-1 byte order; JSON text is SBCS, not UTF-8
+(CCSID 1208).
 
 ### Divisions
 
@@ -5865,7 +6383,8 @@ The four divisions parse in their canonical order:
            STOP RUN.
 ```
 
-`LINKAGE SECTION` is not yet parsed; `DFHCOMMAREA` is auto-injected
+An optional `LINKAGE SECTION` may follow `WORKING-STORAGE` (see
+[LINKAGE SECTION](#linkage-section)); `DFHCOMMAREA` is auto-injected
 as `PIC X(2000)` if the program doesn't declare it (see
 `cobol.ensureSystemItems`), so a sub-program can `MOVE DFHCOMMAREA
 TO key` immediately. The dispatcher strips trailing space when
@@ -6065,8 +6584,9 @@ COBOL rule unless flagged):
   *redefined* item is visible through the overlay at startup.
 * `FILLER` may redefine (`05 FILLER REDEFINES D8.`); nothing
   can redefine a `FILLER` (it has no referenceable name).
-  Likewise the auto-injected system items (`EIB*`, `SQLCA*`,
-  `DFHCOMMAREA`) cannot be redefinition targets — they don't
+  Likewise the auto-injected system items (`EIB*`, `RC`, `SQLCA*`,
+  `JSON-CODE`, `JSON-STATUS`, `DFHCOMMAREA`) cannot be redefinition
+  targets — they don't
   exist yet when the DATA DIVISION parses.
 
 **Dual view** — one set of bytes, two shapes:
@@ -6243,10 +6763,13 @@ both the classic auto-injected `DFHCOMMAREA` and operator-declared
 
 **`DFHCOMMAREA`.** Bricks auto-injects `DFHCOMMAREA PIC X(2000)`
 when the program doesn't declare it, so a sub-program can
-`MOVE DFHCOMMAREA TO key` immediately. The dispatcher strips
-trailing space when reading the COBOL frame's `DFHCOMMAREA` back
-out, so a fixed-width buffer round-trips cleanly across an
-inter-language `EXEC CICS LINK`. `DFHCOMMAREA` is itself a **based**
+`MOVE DFHCOMMAREA TO key` immediately. A `LINK` hands back exactly
+as many bytes as the caller passed (IBM: the callee cannot change the
+COMMAREA length): the caller's bytes, overlaid with the callee's view
+of `DFHCOMMAREA`. Trailing blanks and `X'00'` bytes are kept, so a
+binary field at the end of the area survives. The default buffer only
+carries the `EIBCALEN` bytes the caller passed, so a program using it
+cannot hand back or forward more than it received. `DFHCOMMAREA` is itself a **based**
 01 with a default buffer: a program can `MOVE … TO DFHCOMMAREA`
 out of the box, *and* redirect it onto another area's bytes with
 `SET ADDRESS OF DFHCOMMAREA TO ptr`.
@@ -6406,23 +6929,30 @@ IBM specifies.
 | Verb | Syntax | Notes |
 |---|---|---|
 | `IF` | `IF cond [THEN] stmts [ELSE stmts] [END-IF]` | The period after the last unscoped statement closes the `IF` when `END-IF` is omitted. |
-| `EVALUATE` | `EVALUATE subject WHEN val [WHEN val] ... [WHEN OTHER stmts] END-EVALUATE` | Simple value form only — `EVALUATE TRUE` / `FALSE` are rejected at parse time. |
+| `EVALUATE` | `EVALUATE subject [ALSO subject ...] {WHEN object [ALSO object ...]} ... stmts [WHEN OTHER stmts] [END-EVALUATE]` | Full COBOL-85 form: `TRUE` / `FALSE` / condition / value subjects, `ANY`, `NOT`, `THRU` ranges, stacked `WHEN`s. See [EVALUATE](#evaluate). |
 | `PERFORM` | `PERFORM para [THRU para2]` <br> `PERFORM [para] [WITH TEST BEFORE\|AFTER] UNTIL cond` <br> `PERFORM [para] N TIMES` <br> `PERFORM [para] VARYING idx FROM x BY y UNTIL cond [AFTER ...]` <br> …any of the above with the paragraph name omitted and an in-line body closed by `END-PERFORM` | Out-of-line (named paragraph) and in-line (`END-PERFORM`) forms both work. `WITH TEST` is accepted but inert on the `N TIMES` and no-clause shapes. |
 | `GO TO` | `GO TO para` | Calculated `GO TO ... DEPENDING ON` not supported. |
 | `CONTINUE` | `CONTINUE` | Explicit no-op (used in empty `WHEN OTHER` etc.). |
 | `STOP RUN` | `STOP RUN` (or just `STOP`) | Terminate the task. |
 | `GOBACK` | `GOBACK` | Synonym for `EXIT PROGRAM`. |
-| `EXIT` | `EXIT [PROGRAM]` <br> `EXIT PERFORM [CYCLE]` | `EXIT` alone is a no-op; `EXIT PROGRAM` returns to the caller. `EXIT PERFORM` leaves the innermost **in-line** `PERFORM`, `EXIT PERFORM CYCLE` ends only the current iteration. `EXIT PARAGRAPH` / `EXIT SECTION` are not supported. |
+| `EXIT` | `EXIT [PROGRAM]` <br> `EXIT PERFORM [CYCLE]` <br> `EXIT PARAGRAPH` | `EXIT` alone is a no-op; `EXIT PROGRAM` returns to the caller. `EXIT PERFORM` leaves the innermost **in-line** `PERFORM`, `EXIT PERFORM CYCLE` ends only the current iteration. `EXIT PARAGRAPH` ends the current paragraph (see [EXIT PARAGRAPH](#exit-paragraph)). `EXIT SECTION` is a parse error — bricks has no sections. |
 
 #### Strings
 
 | Verb | Syntax |
 |---|---|
-| `STRING` | `STRING src1 [DELIMITED BY (SIZE \| 'lit')] src2 ... INTO tgt [ON OVERFLOW stmts] [END-STRING]` |
-| `UNSTRING` | `UNSTRING src DELIMITED BY 'lit' INTO t1 t2 ... [ON OVERFLOW stmts] [END-UNSTRING]` |
+| `STRING` | `STRING src ... DELIMITED [BY] (SIZE \| delim) ... INTO tgt [[WITH] POINTER ptr] [[ON] OVERFLOW stmts] [NOT [ON] OVERFLOW stmts] [END-STRING]` — see [STRING and UNSTRING](#string-and-unstring) |
+| `UNSTRING` | `UNSTRING src [DELIMITED [BY] [ALL] d1 [OR [ALL] d2] ...] INTO {t [DELIMITER [IN] d] [COUNT [IN] c]} ... [[WITH] POINTER ptr] [TALLYING [IN] n] [[ON] OVERFLOW stmts] [NOT [ON] OVERFLOW stmts] [END-UNSTRING]` |
 | `INSPECT TALLYING` | `INSPECT subject TALLYING counter FOR (ALL \| LEADING \| CHARACTERS) [needle] [BEFORE/AFTER INITIAL delim] [, ...]` |
 | `INSPECT REPLACING` | `INSPECT subject REPLACING (ALL \| LEADING \| FIRST \| CHARACTERS) [needle] BY replacement [BEFORE/AFTER INITIAL delim] [, ...]` |
 | `INSPECT CONVERTING` | `INSPECT subject CONVERTING from TO to [BEFORE/AFTER INITIAL delim]` |
+
+#### JSON
+
+| Verb | Syntax |
+|---|---|
+| `JSON GENERATE` | `JSON GENERATE tgt FROM rec [COUNT [IN] n] [NAME [OF] item [IS] {'lit' \| OMITTED} ...] [SUPPRESS ...] [CONVERTING ...] [[ON] EXCEPTION stmts] [NOT [ON] EXCEPTION stmts] [END-JSON]` — see [JSON GENERATE and JSON PARSE](#json-generate-and-json-parse) |
+| `JSON PARSE` | `JSON PARSE src INTO rec [WITH DETAIL] [NAME ...] [SUPPRESS item ...] [CONVERTING ...] [[ON] EXCEPTION stmts] [NOT [ON] EXCEPTION stmts] [END-JSON]` |
 
 #### I/O and external
 
@@ -6617,6 +7147,45 @@ them, matching IBM. An `EXIT PERFORM` written in a performed
 *paragraph* is a program error, not a way to break the caller's loop,
 and is reported as `EXIT PERFORM outside an in-line PERFORM`.
 
+### EXIT PARAGRAPH
+
+`EXIT PARAGRAPH` (COBOL 2002, IBM Enterprise COBOL 6) ends the current
+paragraph at once. Control goes wherever the end of that paragraph
+would have gone:
+
+* under `PERFORM para` (also `TIMES` / `UNTIL` / `VARYING`) — back to
+  the performer, or on to the next iteration;
+* under `PERFORM a THRU b` — on to the next paragraph of the range;
+* when execution simply fell into the paragraph — on to the next
+  paragraph.
+
+It works at any nesting depth — inside `IF`, `EVALUATE`, an
+`ON OVERFLOW` phrase or an in-line `PERFORM`. Inside an in-line
+`PERFORM` it leaves the whole paragraph, not just the loop (use
+`EXIT PERFORM` for that).
+
+```cobol
+VALIDATE-INPUT.
+    IF WS-NAME = SPACES
+        MOVE 'NAME REQUIRED' TO WS-MSG
+        EXIT PARAGRAPH
+    END-IF
+    PERFORM CHECK-DUPLICATE.
+```
+
+With `WS-NAME` blank, the `PERFORM VALIDATE-INPUT` returns with
+`WS-MSG` = `NAME REQUIRED` and `CHECK-DUPLICATE` is not run.
+
+`EXIT PARAGRAPH.` written as a sentence of its own is fine. (Earlier
+bricks releases read it as `EXIT.` followed by a new paragraph named
+`PARAGRAPH`, so the program compiled and silently did the wrong
+thing.)
+
+`EXIT SECTION` is rejected at parse time with
+`EXIT SECTION needs SECTIONs, not supported in bricks COBOL`: bricks
+has no PROCEDURE DIVISION sections, so there is nothing for it to
+leave.
+
 ### PERFORM VARYING ... AFTER
 
 ```cobol
@@ -6701,6 +7270,79 @@ IF WK-MTH EQUAL 7     DISPLAY 'JULY'.
 IF WK-MTH EQUAL TO 7  DISPLAY 'JULY'.
 IF WK-MTH IS EQUAL TO 7  DISPLAY 'JULY'.
 ```
+
+### Combined conditions and parentheses
+
+Conditions combine with `NOT`, `AND` and `OR` (precedence
+`NOT` > `AND` > `OR`) and can be grouped with parentheses anywhere a
+condition is allowed (`IF`, `PERFORM UNTIL`, `EVALUATE` objects):
+
+```cobol
+IF A = 0 OR (A = 1 AND B = 2) ...
+IF NOT (WS-CODE = 'X' OR WS-CODE = 'Y') ...
+IF ((A + 1) * 2 = B) OR (C = 1) ...
+```
+
+`NOT` must be followed by a condition: `IF NOT NOT A = 1` is rejected
+with `NOT must be followed by a condition`.
+
+**Division in a condition** follows IBM's intermediate-result rule
+(Enterprise COBOL Programming Guide, Appendix A): a quotient keeps
+`(d2 - d1)` or `dmax` decimal places, whichever is greater. `d2` and
+`d1` are the decimal places of the dividend and the divisor; `dmax` is
+the largest number of decimal places of any operand in the relation,
+both sides counted, divisors and exponents excluded. The quotient is
+truncated, not rounded:
+
+| Condition | Values | Compares | Result |
+|---|---|---|---|
+| `IF 5 / 2 > 2` | — | `2 > 2` | false (as on z/OS) |
+| `IF A / 2 > 2` | `A PIC 9(3)` = 5 | `2 > 2` | false |
+| `IF B / 10 = 4.5` | `B PIC 9(3)` = 45 | `4.5 = 4.5` | true (the literal gives `dmax` 1) |
+
+An `EVALUATE` subject and each object are evaluated on their own
+operands (their own `dmax`): `EVALUATE B / 10 WHEN 4.5` does **not**
+match for `B = 45`, because `B / 10` alone has no decimal places and
+gives 4. `COMPUTE`, subscripts and reference modifiers are not
+affected — `COMPUTE` still divides at the receiving field's scale.
+
+A parenthesis that opens an arithmetic operand still works:
+`IF (A + 1) > B` and `IF (A + 1) * 2 = B OR (C = 1)` read the first
+group as arithmetic because a relational or arithmetic operator
+follows it.
+
+### Abbreviated combined relation conditions
+
+After a relation, later relations in the same condition may omit the
+subject, or the subject and the operator; the last stated subject and
+operator are filled in (IBM rules):
+
+| Written | Means |
+|---|---|
+| `A = 1 OR 2 OR 3` | `A = 1 OR A = 2 OR A = 3` |
+| `A > 1 AND < 9` | `A > 1 AND A < 9` |
+| `A NOT = 1 AND 2` | `A NOT = 1 AND A NOT = 2` |
+| `A > B AND NOT < C OR D` | `(A > B AND A NOT < C) OR A NOT < D` |
+| `A > 5 AND NOT 9` | `A > 5 AND NOT (A > 9)` |
+| `NOT A = B OR C` | `NOT (A = B) OR A = C` |
+
+A `NOT` directly in front of a relational operator belongs to the
+operator and is carried along with it; any other `NOT` is the logical
+NOT. A level-88 condition-name after `AND` / `OR` is a condition, not
+an implied object (`IF A = 1 OR WS-DONE`). As in Enterprise COBOL, an
+omitted subject may not open a parenthesised group:
+`A = B AND (< C OR D)` is rejected with
+`a relational operator cannot start a parenthesised condition`.
+A group that starts with a full relation may use the short forms
+inside it: `IF B = 0 AND (A = 4 OR 5 OR 6)`.
+
+> **Changed behaviour.** Earlier bricks releases accepted these forms
+> but evaluated them wrongly: `IF A = 1 OR 2 OR 3` was true whatever
+> the value of `A`, and `IF C NOT = 'L' AND 'H'` dropped the `NOT` on
+> the second part, so it was true for `C = 'H'`. Both now follow the
+> IBM rules above
+> (`C NOT = 'L' AND C NOT = 'H'` is false for `C = 'H'`). Check old
+> programs that relied on the previous results.
 
 ### Class condition tests
 
@@ -6797,15 +7439,22 @@ The shipped intrinsic library is:
 
 | Function | Args | Result |
 |---|---|---|
-| `FUNCTION UPPER-CASE(s)` | 1 alphanumeric | s uppercased. |
-| `FUNCTION LOWER-CASE(s)` | 1 alphanumeric | s lowercased. |
-| `FUNCTION TRIM(s)` | 1 alphanumeric | s with leading and trailing spaces removed (both ends; one-arg form). |
-| `FUNCTION REVERSE(s)` | 1 alphanumeric | s reversed (rune-aware). |
-| `FUNCTION LENGTH(s)` | 1 alphanumeric | numeric byte length of the operand's storage (PIC X(8) → 8). |
+| `FUNCTION UPPER-CASE(s)` | 1 alphanumeric | s uppercased: a-z and the Latin-1 letters (`ä` → `Ä`); `ß` / `ÿ` unchanged. |
+| `FUNCTION LOWER-CASE(s)` | 1 alphanumeric | s lowercased: A-Z and the Latin-1 letters (`Ä` → `ä`). |
+| `FUNCTION TRIM(s)` | 1 alphanumeric | s with leading and trailing ASCII blanks removed (both ends; one-arg form). NBSP `X'A0'` is kept. |
+| `FUNCTION REVERSE(s)` | 1 alphanumeric | s reversed character by character. |
+| `FUNCTION LENGTH(s)` | 1 alphanumeric | numeric character count of the operand's storage (PIC X(8) → 8; `'Grüße'` → 5). |
+| `FUNCTION BYTE-LENGTH(s)` | 1 alphanumeric | same as `LENGTH` (one byte per character). |
+| `FUNCTION ORD(c)` | 1 one-character | ordinal position of c: byte value + 1 (`ORD('A')` = 66, `ORD('Ä')` = 197). |
+| `FUNCTION CHAR(n)` | 1 integer 1-256 | the character whose ordinal position is n (`CHAR(197)` = `Ä`). |
 | `FUNCTION NUMVAL(s)` | 1 alphanumeric | numeric value of s after stripping leading / trailing whitespace; errors on non-numeric content (does not silently coerce to zero). |
-| `FUNCTION POS(needle, haystack)` | 2 alphanumeric | 1-based byte position of needle in haystack, or 0 when not found. Mirrors REXX's `POS()`. Empty needle returns 0. |
+| `FUNCTION POS(needle, haystack)` | 2 alphanumeric | 1-based character position of needle in haystack, or 0 when not found. Mirrors REXX's `POS()`. Empty needle returns 0. |
 
-Numeric-returning intrinsics (`LENGTH`, `NUMVAL`, `POS`) participate
+See [COBOL character set](#cobol-character-set) for how characters
+map to bytes.
+
+Numeric-returning intrinsics (`LENGTH`, `BYTE-LENGTH`, `NUMVAL`,
+`POS`, `ORD`) participate
 in `IF` / `EVALUATE` / arithmetic comparisons as numeric operands, so
 `IF FUNCTION POS(NEEDLE, HAY) > 0` works without an intermediate
 `COMPUTE`. The remaining intrinsics return alphanumeric and compare
@@ -6891,12 +7540,353 @@ content of the subject rather than against the padding.
 IBM's CONVERTING form is now supported (see the Converting paragraph
 above).
 
-### EVALUATE limitations
+### EVALUATE
 
-`EVALUATE` only supports the simple value form. `EVALUATE TRUE` /
-`EVALUATE FALSE` is rejected at parse time with a hint to rewrite as
-`IF/ELSE` — those forms (and `WHEN ... THRU ...` ranges,
-multi-subject `ALSO` clauses, condition-name arms) are deferred.
+```cobol
+EVALUATE subject-1 [ALSO subject-2 ...]
+   {WHEN object-1 [ALSO object-2 ...]} ...
+       statements
+   [WHEN OTHER statements]
+[END-EVALUATE]
+```
+
+A subject is a data item, literal, arithmetic expression, a condition,
+`TRUE` or `FALSE`. Each `WHEN` must list exactly one object per
+subject, separated by `ALSO`; a mismatch is a parse error
+(`WHEN has 1 object(s) but EVALUATE has 2 subject(s)`). Objects
+pair with their subject like this:
+
+| Subject | Allowed objects |
+|---|---|
+| item / literal / arithmetic expression | `[NOT] value`, `[NOT] value THRU value`, `ANY` |
+| `TRUE`, `FALSE`, or a condition | a condition (88-level names, `NOT`, `AND` / `OR`, parentheses), `TRUE`, `FALSE`, `ANY` |
+
+`THRU` (or `THROUGH`) is an inclusive range: `WHEN 1 THRU 5` means
+`subject >= 1 AND subject <= 5`, compared with the same rules as `IF`.
+Several `WHEN` phrases in a row share one body. The first matching
+`WHEN` runs, with no fall-through; `WHEN OTHER` runs when none
+matched. Every subject is evaluated once. `END-EVALUATE` may be
+left out when a period ends the statement.
+
+A `WHEN` takes one value. `WHEN 'A' OR 'B'` is rejected with
+`WHEN takes one value - write alternatives as separate WHEN lines`;
+stack the `WHEN`s instead (`WHEN 'A'` / `WHEN 'B'` sharing one body).
+This does not apply to a condition object (under `EVALUATE TRUE`,
+`FALSE` or a condition subject), where `OR` is part of the condition:
+`WHEN A = 1 OR B = 2` and the abbreviated `WHEN A = 1 OR 3` both
+work.
+
+```cobol
+EVALUATE TRUE
+    WHEN WS-QTY = 0          MOVE 'EMPTY' TO WS-STATE
+    WHEN WS-QTY < 10
+    WHEN RUSH-ORDER          MOVE 'LOW'   TO WS-STATE
+    WHEN OTHER               MOVE 'OK'    TO WS-STATE
+END-EVALUATE
+
+EVALUATE WS-ACTION ALSO WS-LEVEL
+    WHEN 'A' ALSO 1 THRU 3   PERFORM ADD-BASIC
+    WHEN 'A' ALSO ANY        PERFORM ADD-FULL
+    WHEN NOT 'Q' ALSO ANY    PERFORM OTHER-ACTION
+END-EVALUATE
+
+EVALUATE WS-QTY > 0 ALSO RUSH-ORDER
+    WHEN TRUE  ALSO TRUE     PERFORM SHIP-NOW
+    WHEN TRUE  ALSO FALSE    PERFORM SHIP-LATER
+    WHEN FALSE ALSO ANY      PERFORM BACKORDER
+END-EVALUATE
+```
+
+### STRING and UNSTRING
+
+**STRING** joins the sending items into the receiver. `DELIMITED BY
+SIZE` moves the whole item — a data item at its full PIC width
+(trailing spaces included), a literal exactly as written; `DELIMITED
+BY x` stops at the first `x`. Several sending items may share one
+`DELIMITED BY`. bricks never trims a sending identifier: to drop its
+padding, use `DELIMITED BY SPACE`. The receiver must not be
+reference-modified (parse error
+`STRING INTO receiver must not be reference-modified`, as IBM
+requires).
+
+* Without `POINTER` the receiver is space-filled first, then written
+  (bricks behaviour; IBM leaves unwritten positions alone).
+* With `[WITH] POINTER ptr` the IBM rules apply: writing starts at
+  position `ptr`, `ptr` goes up by one per character, and the rest of
+  the receiver keeps its contents — so successive `STRING`s can build
+  a line piece by piece.
+* Overflow: the data did not fit, or `ptr` was < 1 or past the end at
+  the start (then nothing moves). `ON OVERFLOW` runs on overflow,
+  `NOT ON OVERFLOW` otherwise.
+
+```cobol
+01 WS-NAME  PIC X(10) VALUE 'JOE SMITH'.
+01 WS-LINE  PIC X(12) VALUE '............'.
+01 WS-PTR   PIC 99.
+01 WS-TRUNC PIC X VALUE 'N'.
+...
+MOVE 1 TO WS-PTR
+STRING 'Name: ' DELIMITED BY SIZE
+       WS-NAME  DELIMITED BY SPACE
+    INTO WS-LINE WITH POINTER WS-PTR
+    ON OVERFLOW MOVE 'Y' TO WS-TRUNC
+END-STRING
+DISPLAY WS-LINE '|' WS-PTR
+```
+
+Output: `Name: JOE...|10` — the literal keeps its trailing space, the
+last three dots are untouched, and `WS-PTR` points at the next free
+position.
+
+**UNSTRING** splits the sending item, scanning from `POINTER`
+(default 1) over its full length. The sending item must be a data
+item, as in IBM; a literal, figurative constant or function is
+rejected with `UNSTRING source must be a data item, got "..."`.
+
+* each receiver gets the characters up to the next delimiter; with
+  several delimiters (`OR`) the first one found wins, and on a tie the
+  first one listed; `ALL` treats a run of the same delimiter as one;
+  two delimiters in a row (without `ALL`) give an empty field, i.e.
+  spaces or zeros;
+* `DELIMITER IN` receives the delimiter that ended the field (spaces at
+  the end of the data), `COUNT IN` the field's length; both need
+  `DELIMITED BY` (else `DELIMITER IN / COUNT IN need DELIMITED BY`);
+* without `DELIMITED BY` each receiver takes as many characters as its
+  own size;
+* `TALLYING IN` is increased by the number of receivers filled;
+  `POINTER` ends one past the last character examined;
+* receivers that are not reached keep their contents. When the data
+  is used up exactly on a delimiter (`'a|b|'` in a 4-byte field with
+  three receivers), the third receiver is not reached and keeps its
+  old value, as IBM specifies. Earlier bricks versions set it to
+  spaces;
+* overflow: `POINTER` < 1 or past the end at the start, or characters
+  are left over when every receiver is filled. `END-UNSTRING` is
+  optional.
+
+```cobol
+01 WS-REC    PIC X(20) VALUE 'AB   CD,EF'.
+01 WS-F1     PIC X(5).
+01 WS-F2     PIC X(5).
+01 WS-D1     PIC X.
+01 WS-N1     PIC 99.
+01 WS-PTR    PIC 99 VALUE 1.
+01 WS-FIELDS PIC 99 VALUE 0.
+...
+UNSTRING WS-REC DELIMITED BY ALL SPACES OR ','
+    INTO WS-F1 DELIMITER IN WS-D1 COUNT IN WS-N1
+         WS-F2
+    WITH POINTER WS-PTR TALLYING IN WS-FIELDS
+    ON OVERFLOW DISPLAY 'MORE DATA'
+END-UNSTRING
+DISPLAY WS-F1 '|' WS-D1 '|' WS-N1 '|' WS-F2 '|' WS-PTR '|' WS-FIELDS
+```
+
+Output: `MORE DATA`, then `AB   | |02|CD   |09|02`. The run of spaces
+after `AB` is one delimiter (`ALL`), `WS-F2` stops at the comma, and
+`EF` plus the padding are left over, which is the overflow.
+`POINTER` 9 is where a second `UNSTRING` would carry on.
+
+> **Changed behaviour.** Earlier bricks releases read
+> `INTO B COUNT IN P` as a second receiver (the qualified name
+> `COUNT IN P`); the program compiled and then failed at run time.
+> `DELIMITER IN`, `COUNT IN`, `WITH POINTER` and `TALLYING IN` are now
+> recognised wherever IBM allows them.
+
+### JSON GENERATE and JSON PARSE
+
+The IBM Enterprise COBOL 6.4 statements turn a record into JSON text
+and back, so a web API program no longer has to build or pick apart
+JSON by hand. Both work on plain alphanumeric fields, which is exactly
+what `EXEC CICS WEB RECEIVE INTO` and `WEB SEND FROM` use.
+
+```cobol
+01 LST-REC.
+   05 LST-KEY.
+      10 LST-USER   PIC X(16).
+      10 LST-ID     PIC 9(6).
+   05 LST-NEXTITEM  PIC 9(8).
+   05 LST-COUNT     PIC 9(5).
+   05 LST-NAME      PIC X(80).
+01 JSON-BUF         PIC X(4000).
+01 JS-LEN           PIC 9(5).
+
+    JSON GENERATE JSON-BUF FROM LST-REC COUNT IN JS-LEN
+        NAME OF LST-REC IS OMITTED LST-ID IS 'id' LST-NAME IS 'name'
+        SUPPRESS LST-USER LST-NEXTITEM
+        ON EXCEPTION PERFORM FAIL-JSON
+    END-JSON
+    EXEC CICS WEB SEND FROM(JSON-BUF) LENGTH(JS-LEN) END-EXEC
+```
+
+gives `{"LST-KEY":{"id":12},"LST-COUNT":3,"name":"Buy milk"}`.
+
+#### Special registers
+
+| Register | Shape | Meaning |
+|---|---|---|
+| `JSON-CODE` | `PIC S9(9) BINARY` | 0 after a successful statement, else the exception code (tables below). |
+| `JSON-STATUS` | `PIC 9(9) BINARY` | Set by `JSON PARSE`: the sum of the non-exception reason codes. |
+
+Both are declared automatically, like `EIBRESP` and `SQLCODE`.
+JSON-STATUS is additive (1 + 2 = 3 means "an item had no member and a
+member had no item"); `IF JSON-STATUS = 0` tests for a perfect match.
+
+#### JSON GENERATE
+
+```
+JSON GENERATE identifier-1 FROM identifier-2
+   [COUNT [IN] identifier-3]
+   [NAME [OF] identifier-4 [IS] {literal | OMITTED} ...]
+   [SUPPRESS {identifier-5 [WHEN fig [OR fig] ...]
+             | EVERY [NUMERIC | NONNUMERIC] WHEN fig [OR fig] ...} ...]
+   [CONVERTING {identifier-6 TO JSON BOOLEAN USING {condition-name | literal}
+              | identifier-6 TO JSON NULL USING fig} ...]
+   [[ON] EXCEPTION imperative] [NOT [ON] EXCEPTION imperative]
+[END-JSON]
+```
+
+`fig` is `ZERO`, `SPACE`, `LOW-VALUE` or `HIGH-VALUE` (singular or
+plural). The phrases must appear in the order shown (a phrase out of
+order is a parse error, as in IBM's syntax diagram); entries of
+`SUPPRESS` and `CONVERTING` may be separated by `ALSO`.
+
+* **Shape.** `{"REC":{...}}` names the `FROM` item. `NAME OF rec IS
+  OMITTED` drops that wrapper, which is what web clients want. The
+  `FROM` item may be a group, an elementary item, a subscripted
+  occurrence, or a whole `OCCURS` table — with `OMITTED` the table
+  becomes an anonymous array `[{...},{...}]`, and an elementary item
+  becomes just its value (`1234`, `"BOB"`; IBM APAR PH58384).
+* **Names.** A member's name is its data name; `NAME OF item IS
+  'lit'` replaces it. bricks upper-cases data names when it reads the
+  source, so `05 Cust-Name` comes out as `"CUST-NAME"` (IBM keeps the
+  source spelling). Use `NAME` for lower-case JSON names.
+* **Groups** become objects, **`OCCURS`** items arrays. `FILLER`,
+  `REDEFINES` items (and everything below them) and `USAGE POINTER`
+  items are left out. A group whose members are all left out or
+  suppressed disappears; the outermost item is always written, even as
+  `{"REC":{}}`.
+* **Numbers** are written as JSON numbers without leading zeros, with a
+  `-` sign and a decimal point from the PIC's `V`: `PIC 9(6)` 12 gives
+  `12`, `PIC S9(3)V999` gives `-63.435`, `PIC 9V99` 1.5 gives `1.50`
+  (fraction zeros stay), zero gives `0`. COMP and COMP-3 work the same.
+  Numeric-edited items are strings, trimmed of leading and trailing
+  spaces.
+* **Text** loses its trailing spaces; leading spaces stay. A field of
+  only spaces is written as `" "` (IBM). `"` and `\` are escaped, as
+  are control characters (`\t \n \r \b \f`, others below `X'20'` as
+  `\u00hh`). Every byte from `X'80'` up (Latin-1, the graphic plane,
+  HIGH-VALUES `X'FF'`) is written raw: the JSON text is SBCS like the
+  receiving `PIC X` item, and the web edge converts it to UTF-8 (see
+  [COBOL character set](#cobol-character-set)).
+* **SUPPRESS** `item` leaves that item (or group) out. `item WHEN fig`
+  and `EVERY [NUMERIC | NONNUMERIC] WHEN fig` leave out an elementary
+  item whose value matches: `ZERO` matches numbers equal to zero and
+  text of only `0` characters; `SPACE`, `LOW-VALUE`, `HIGH-VALUE` match
+  DISPLAY items only. Elements of an elementary `OCCURS` table are not
+  suppressed one by one (that would shift the positions of the rest).
+* **CONVERTING** `item TO JSON BOOLEAN USING cond-name | literal`
+  writes `true` when the item satisfies the condition-name (which must
+  be an 88 of that item) or equals the literal, otherwise `false`.
+  `item TO JSON NULL USING fig` writes `null` when the item is all
+  `fig`.
+* **COUNT IN** receives the number of characters generated. The rest
+  of the receiver is filled with spaces. The receiver may be
+  subscripted or reference-modified (`JSON GENERATE BUF(8:30) ...`);
+  then only that window is written and space-filled, and the
+  too-small test and `COUNT IN` are relative to it.
+* **Exception.** If the receiver is too small, `JSON-CODE` is 1, the
+  receiver holds what fit, `COUNT IN` holds the receiver's length and
+  `ON EXCEPTION` runs. Without `ON EXCEPTION` the program just
+  continues. Otherwise `JSON-CODE` is 0 and `NOT ON EXCEPTION` runs.
+
+#### JSON PARSE
+
+```
+JSON PARSE identifier-1 INTO identifier-2
+   [WITH DETAIL]
+   [NAME [OF] identifier-3 [IS] {literal | OMITTED} ...]
+   [SUPPRESS identifier-4 ...]
+   [CONVERTING {identifier-5 FROM JSON BOOLEAN USING
+               {cond-1 [AND cond-2] | literal-1 [AND literal-2]}} ...]
+   [[ON] EXCEPTION imperative] [NOT [ON] EXCEPTION imperative]
+[END-JSON]
+```
+
+```cobol
+01 IN-REC.
+   05 IN-TITLE PIC X(80).
+   05 IN-PRIO  PIC X.
+   05 IN-DONE  PIC X.
+
+*> body: {"title":"Buy milk","priority":"H","done":true}
+    JSON PARSE WS-BODY INTO IN-REC
+        NAME OF IN-REC IS OMITTED IN-TITLE IS 'title'
+             IN-PRIO IS 'priority' IN-DONE IS 'done'
+        CONVERTING IN-DONE FROM JSON BOOLEAN USING 'Y' AND 'N'
+        ON EXCEPTION PERFORM BAD-REQUEST
+    END-JSON
+```
+
+* identifier-1 holds the text (it may be reference-modified); trailing
+  spaces and LOW-VALUES are ignored.
+* **Matching.** Without `OMITTED` the text must be `{"IN-REC":{...}}`.
+  With `NAME OF IN-REC IS OMITTED` the outermost object's members map
+  straight onto IN-REC's subordinates (or, for a whole `OCCURS` table,
+  the outermost array onto its occurrences). Data names match
+  case-insensitively; a `NAME` literal replaces the data name and
+  matches case-sensitively. `FILLER` and `REDEFINES` items never match;
+  `SUPPRESS` items are skipped.
+* **Values** are assigned with `MOVE` rules: a number (exponent
+  allowed) or a string holding a number goes to numeric and
+  numeric-edited items, aligned on the decimal point (extra fraction
+  digits are truncated); strings and numbers go to alphanumeric items
+  (padded / truncated on the right). Objects go to groups, arrays to
+  `OCCURS` items. `true` / `false` need a `CONVERTING` entry: the item
+  gets literal-1 / cond-1's value for true and literal-2 / cond-2's
+  value for false. `null` leaves the item unchanged. A `\uXXXX` escape
+  is stored as its single SBCS byte (`\u00e9` → `é`, `\u20ac` → `€`),
+  or `?` when the code point has none (CJK, emoji, C1 controls). Raw
+  bytes of the JSON text are copied as they are.
+* Members with no matching item are ignored and items with no member
+  keep their contents; `JSON-STATUS` reports it:
+
+| JSON-STATUS | Meaning (IBM) |
+|---|---|
+| 1 | An item had no matching name, so it was not changed. |
+| 2 | A JSON name matched no item. |
+| 4 | An item had duplicate names with the same value. |
+| 8 | A table had more elements than the JSON array. |
+| 16 | A JSON array had more values than the table (extras ignored). |
+| 32 | An item was not changed because the value was `null`. |
+| 64 | A table element was not changed because the value was `null`. |
+| 128 | SIZE ERROR in a numeric assignment (stored anyway, high digits lost). |
+| 256 | Text was truncated in an alphanumeric assignment (stored anyway). |
+
+| JSON-CODE | Exception (IBM) |
+|---|---|
+| 100 | The JSON text is invalid (also: nesting deeper than 64 levels, top level not an object). |
+| 101 | The JSON text is empty or only whitespace. |
+| 102 | Extra characters after the outermost value. |
+| 103 | Duplicate names with different values; the leftmost was kept. |
+| 104 | A value does not fit its item (object into an elementary item, text into a numeric item, ...). |
+| 106 | No JSON name matched any item. In the `{"REC":{...}}` form the outer name matching the `INTO` item already counts as a match, so `{"REC":{"foo":1}}` is code 0 with JSON-STATUS 3. |
+| 107 | `true` / `false` for an item without `CONVERTING`. |
+| 108 | A top-level array without `NAME ... OMITTED` on an `OCCURS` item. |
+
+An exception stops the statement and runs `ON EXCEPTION`. The whole
+text is checked before anything is stored, so invalid JSON (100-102)
+leaves the record untouched; a later exception (103, 104, 107) leaves
+the members before it assigned. `WITH DETAIL` writes one log line per
+statement with `JSON-CODE`, `JSON-STATUS` and the reason.
+
+**Differences from IBM:** names come out upper-case (see above); the
+single condition-name form `USING cond-1` cannot set "false" because
+bricks has no `88 ... WHEN SET TO FALSE` — JSON `false` gives code 104,
+so use `USING cond-1 AND cond-2`. Invalid JSON text leaves the whole
+record untouched, where IBM may already have updated part of it. `ENCODING`, `IGNORING`,
+`INDICATING`, `CONVERTING ... FROM JSON NULL` and `OCCURS DEPENDING
+ON` are not supported.
 
 ---
 
@@ -7029,7 +8019,11 @@ in Chapter 6 for the verbs that produce pointer handles, and
 
 `EIBRESP`, `EIBRESP2`, `EIBAID`, `EIBCPOSN`, `EIBCALEN`, `EIBTRMID`,
 `RC`, and `DFHCOMMAREA` are auto-injected if not declared, so most
-programs need no boilerplate. After every `EXEC CICS`, `EIBRESP`
+programs need no boilerplate. The same goes for the SQLCA fields
+(`SQLCODE`, `SQLSTATE`, `SQLERRMC`, ... — see Chapter 26) and the
+`JSON-CODE` / `JSON-STATUS` special registers set by `JSON GENERATE`
+and `JSON PARSE` (see
+[JSON GENERATE and JSON PARSE](#json-generate-and-json-parse)). After every `EXEC CICS`, `EIBRESP`
 and `EIBRESP2` are populated by the handler the same way they are
 for REXX. The legacy "test `EIBRESP` after every verb" pattern is
 the most common idiom; for non-local error handling without a REXX-style
@@ -7057,8 +8051,8 @@ The COBOL parser collects every token between `EXEC CICS` and
 * **`DFHCOMMAREA` is the COMMAREA marshalling slot.** Caller passes
   bytes in via the frame; sub-program reads with
   `MOVE DFHCOMMAREA TO ...`, mutates a working copy, and
-  `MOVE ... TO DFHCOMMAREA`. Trailing space is stripped by the
-  dispatcher on the way back out.
+  `MOVE ... TO DFHCOMMAREA`. The caller gets back exactly the length
+  it passed, trailing blanks and binary bytes included.
 
 * **Command-line arguments arrive via `EXEC CICS RECEIVE
   INTO(...)`.** When the operator types `EXAM 1 2 3` at the blank
@@ -7078,8 +8072,8 @@ fill them row by row, or compose a single `PIC X(n*80)` with a
 matching `MOVE` per row.
 
 The full `EXEC CICS` verb set is documented in
-[Part 2](#part-2-exec-cics-command-reference); behaviour is identical
-between REXX and COBOL.
+[Part 4](#part-4-exec-cics-command-reference); behaviour is identical
+between REXX, COBOL and PL/I.
 
 ---
 
@@ -7357,25 +8351,1664 @@ program cache.
 
 ---
 
+# Part 9. The PL/I language
+
+> **Part&nbsp;9 begins here.** Bricks ships a third front end beside
+> REXX and COBOL: an interpreter for a business subset of IBM
+> Enterprise PL/I (`pli/`). PL/I programs issue the same
+> `EXEC CICS` and `EXEC SQL` commands, through the same handler, as
+> the other two languages; only the statement terminator differs
+> (`EXEC CICS ... ;`). The chapters that follow describe program
+> structure, declarations, decimal arithmetic, statements, the
+> built-in functions, the abend model that replaces ON-units, the
+> CICS binding (EIB, maps, COMMAREA, handlers), `%INCLUDE`, and the
+> deliberate deviations from Enterprise PL/I. Command-level
+> behaviour is described in **Parts&nbsp;4**, **5**, **6** and
+> **7**.
+
+The subset is defined so that a mainframe PL/I programmer can read
+any bricks PL/I program without a manual. Where Enterprise PL/I has
+a trap that hurts business code (implicit FLOAT declarations, SIZE
+disabled by default, intermediate decimal overflow, undefined
+uninitialised storage), the subset takes the safer behaviour and
+says so. Every such case is listed in
+[Chapter 38](#chapter-38-restrictions-and-deviations).
+
+The shipped sample is `CUSP` (`runtime/pli/cusp.pli`), a
+one-program PL/I port of the REXX `CUST` application; see
+[Chapter 28](#chapter-28-pre-installed-sample-transactions) and
+[Porting CUST to PL/I](#g-porting-cust-to-pli).
+
+## Chapter 30. PL/I program structure
+
+A bricks PL/I program is one source file holding exactly one
+external procedure. A program that bricks dispatches as a
+transaction (or reaches through `EXEC CICS LINK` / `XCTL`) has
+`OPTIONS(MAIN)`:
+
+```pli
+/* HELP - minimum PL/I transaction: paint HELO1 and end. */
+HELLOP: PROC OPTIONS(MAIN);
+   DCL 1 SCR,
+         2 INFOLINE CHAR(78),
+         2 GREETING CHAR(20),
+         2 FOOTER   CHAR(60);
+   DCL UID CHAR(8);
+   DCL RC  FIXED BIN(31);
+
+   EXEC CICS ASSIGN USERID(UID) RESP(RC);
+   SCR = '';
+   SCR.GREETING = 'Hello, ' || TRIM(UID);
+   SCR.FOOTER   = 'Press any key.';
+   EXEC CICS SEND MAP('HELO1') FROM(SCR) ERASE RESP(RC);
+   EXEC CICS RETURN;
+END HELLOP;
+```
+
+The task ends normally (and commits its unit of work) when MAIN
+executes `RETURN`, falls off its `END`, or issues
+`EXEC CICS RETURN` or `XCTL`.
+
+### Source rules
+
+| Item | Rule |
+|---|---|
+| Source form | Free form. There are no margins; statements end with `;`. |
+| Case | Keywords and identifiers are case-insensitive. |
+| Identifiers | Up to 31 characters: `A-Z 0-9 _ # @ $`, starting with a letter or `_ # @ $`. |
+| Comments | `/* ... */`, may span lines, **not** nested. |
+| Character constants | `'O''BRIEN'` (doubled quote as escape). Double quotes (`"ABC"`) are accepted too. |
+| Bit constants | `'1'B`, `'0101'B` |
+| Hex constants | `'C1C2'X` (character), `'00FF'XN` (numeric) |
+| Constant suffixes | Only `B`, `X` or `XN` written directly after the closing quote are a suffix; any other word there is the next token, so `IF S = 'A'THEN` is valid, as in IBM PL/I. |
+| Numeric constants | `123`, `123.45`, `.5`. No exponent form: there is no FLOAT. |
+| Abbreviations | `DCL PROC CHAR DEC BIN PIC VAR INIT AUTO EXT OTHER` |
+
+**Reserved words.** Enterprise PL/I has no reserved words. The
+bricks subset reserves the statement keywords so the parser never
+has to guess:
+
+`IF DO END SELECT WHEN OTHERWISE OTHER CALL RETURN LEAVE ITERATE PUT EXEC DCL DECLARE PROC PROCEDURE ELSE`
+
+None of these may name a variable, a procedure or a label
+(`DCL SELECT CHAR(1);` fails with `RESERVED NAME SELECT`). Every
+other keyword (`THEN`, `TO`, `BY`, `WHILE`, attribute names) is
+recognised by context. Names of the form `_<digits>_` (`_1_`,
+`_42_LEAF`) are reserved for compiler-generated aliases
+([Chapter 36](#chapter-36-exec-cics-in-pli)).
+
+**Built-in names.** A built-in function name
+([Chapter 34](#chapter-34-built-in-functions)) cannot be redeclared
+as a level-1 variable or a procedure: `DCL INDEX FIXED BIN(31);` and
+`DCL DAYS(12) ...` are compile errors (`BUILTIN NAME DAYS`). A
+structure member (level 2 or deeper) may share a built-in name, which
+is what lets a map structure carry a field called `SEARCH`
+([Maps as structures](#maps-as-structures)). `DCL name BUILTIN;` is
+accepted and documents that `name` means the built-in.
+
+### PL/I character set
+
+Program data is one byte per character in the bricks single-byte
+character set (bricks SBCS), exactly as for REXX and COBOL (see
+[REXX character set](#rexx-character-set) and
+[COBOL character set](#cobol-character-set) for the code page). The
+source file is UTF-8 and every quoted constant is converted to SBCS
+once, at compile time:
+
+* Inside quotes: ASCII, Latin-1 and the bricks graphic plane. Any
+  other character is `CHARACTER U+4E2D NOT IN CODE PAGE`.
+* Comments may hold any valid UTF-8 text.
+* Outside quotes and comments only ASCII is allowed, plus the PL/I
+  NOT sign `¬` (U+00AC).
+
+**The NOT sign.** PL/I's native NOT is `¬`. It is EBCDIC 037
+`X'5F'`, the key a 3270 keyboard has, so a program typed in the
+ISPF editor (area 4) on a 3270 uses `¬`, `¬=`, `¬<` and `¬>`. An
+ASCII keyboard usually lacks `¬`; bricks accepts `^` as the same
+operator (`^=`, `^<`, `^>`), and `<>` for not-equal. OR is `|` or
+`!`. The shipped `cusp.pli` uses `<>` so it reads the same in
+every editor:
+
+```pli
+   IF A ¬= 2 THEN PUT SKIP LIST('not-sign');
+   IF A ^= 2 THEN PUT SKIP LIST('caret');
+   IF A <> 2 THEN PUT SKIP LIST('angle');
+   IF ¬F & (A = B ! A > B) THEN PUT SKIP LIST('or-bang');
+```
+
+> **Programming Note.** `^` is not an EBCDIC 037 printable. Use it
+> only in source edited outside bricks. Never put `^` (or `|`) in a
+> character constant that is painted on a 3270 screen.
+
+### Procedures
+
+```pli
+ORDPRICE: PROC OPTIONS(MAIN);
+   DCL AMT FIXED DEC(13,2) INIT(199.99);
+   PUT SKIP LIST('TAX', CALCTAX(AMT));      /* called before its PROC */
+   CALL SHOW('done');
+
+   CALCTAX: PROC(A) RETURNS(FIXED DEC(13,2));
+      DCL A FIXED DEC(13,2);
+      RETURN (ROUND(A * 0.0825, 2));
+   END CALCTAX;
+
+   SHOW: PROC(MSG);
+      DCL MSG CHAR(*) VAR;
+      PUT SKIP LIST(MSG);
+   END SHOW;
+END ORDPRICE;
+```
+
+* **Internal procedures** may be nested and see their parents'
+  variables through lexical scope. Names resolve over the whole
+  enclosing block, so a procedure may be called before its `PROC`
+  statement and a variable may be declared anywhere in its block.
+  The usual layout, used by `cusp.pli`, is declarations first, then
+  the main line, then the internal procedures.
+* **Parameters** are passed by reference. `CHAR(*)` (length taken
+  from the argument) is allowed on parameters only.
+* **Function procedures** declare `RETURNS(attrs)` and are used in
+  expressions. `CALL` of a function is a compile error
+  (`CALL OF FUNCTION F`). A function that reaches its `END` without
+  `RETURN(value)` abends `ABEN`.
+* **`RECURSIVE`.** A procedure that is already active may call
+  itself, directly or indirectly, only if it is declared
+  `RECURSIVE`; otherwise the call abends `ABEN`. Call nesting is
+  limited to 1000.
+* **`OPTIONS(MAIN)`** procedures take no parameters (compile error
+  `MAIN PROC HAS NO PARAMETERS`). Input arrives through the
+  COMMAREA, `RECEIVE` or `RETRIEVE`.
+* An external procedure **without** `OPTIONS(MAIN)` is a callable
+  subprogram, reached through an `ENTRY ... EXTERNAL` declaration
+  ([External entries](#external-entries)).
+
+### Where programs live
+
+| Item | Location |
+|---|---|
+| Programs | `pli_dir` in `bricks.cnf` (default `runtime/pli`), extension `.pli` |
+| Include members | `pli_include_dir` in `bricks.cnf` (default `runtime/pliinc`), one file per member, `NAME.inc` ([Chapter 37](#chapter-37-include)) |
+| Transactions | `runtime/transactions.conf`, language `pli` |
+
+```
+# bricks.cnf
+pli_dir=runtime/pli
+pli_include_dir=runtime/pliinc
+```
+
+Both keys default under `runtime_dir`, like `rexx_dir`, `cobol_dir`
+and `copybook_dir`, so a fresh install needs neither line.
+
+A transaction names its program with the language token `pli`:
+
+```
+CUSP:pli:cusp.pli:PUBLIC
+```
+
+The token is exactly `pli` (case-insensitive). The spellings `PL/I`
+and `PL1` are rejected, so `transactions.conf` keeps one form per
+language. The optional 5th field (database binding) works as for
+the other languages ([Chapter 26](#database-binding-transactionsconf-5th-field)).
+
+### Checking and editing programs
+
+* **`brickscompile`** accepts `.pli` files and directories holding
+  them. It resolves `%INCLUDE` through the `pli_include_dir` of the
+  nearest `bricks.cnf`:
+
+  ```
+  $ go run ./cmd/brickscompile runtime/pli/cusp.pli
+  runtime/pli/cusp.pli: OK
+         lines     463
+    procedures      23
+    statements     188
+     EXEC CICS      22
+  ```
+
+  A compile error names the line, the column and a short ASCII
+  message, for example `line 4 col 4: UNDECLARED QTYY`. An error
+  inside an include member is prefixed with the member name
+  (`DFHAID line 3 col 1: ...`).
+* **`CEDA TRANSACTION`** accepts `PLI` in the LANGUAGE field (the
+  hint reads `(REXX, COBOL or PLI)`). **`CEDA PROGRAM`** and
+  **`CEMT PERFORM PROGRAMS`** (`CEMT P R P`) list the `.pli` files
+  under `pli_dir` with a SYNTAX verdict (`OK` or `ERR L<n>`);
+  include members are not programs and are not listed.
+* **ISPF area 4** (`4 - Edit PL/I programs`) edits `pli_dir` with
+  PL/I highlighting and validates the buffer before save with the
+  same parser, `%INCLUDE` included (see
+  [`ISPF_editor.md`](ISPF_editor.md)).
+* **`EXEC CICS INQUIRE PROGRAM(name) LANGUAGE(v)`** returns `PLI`
+  for a PL/I program.
+
+### Caching and storage per task
+
+The compiled program is cached like REXX and COBOL programs. The
+cache key covers the program file and every include member it uses,
+so editing a member recompiles every program that includes it
+([Chapter 37](#chapter-37-include)). Each task gets its own storage:
+there is no shared mutable state between tasks
+([Storage classes](#storage-classes-automatic-and-static)).
+
 ---
+
+## Chapter 31. Data declarations
+
+Every variable is declared with `DECLARE` (`DCL`). There are **no
+implicit declarations**: in Enterprise PL/I an undeclared `QTYY`
+silently becomes a FLOAT variable, in bricks it is the compile error
+`UNDECLARED QTYY`.
+
+### Data types
+
+| Type | Syntax | Limits | Use |
+|---|---|---|---|
+| Fixed decimal | `FIXED DEC(p,q)` | p <= 31, 0 <= q <= p | Money, quantities, rates. The default for business data. |
+| Fixed binary | `FIXED BIN(p)` | Signed: 15, 31 or 63; other values round up | Counters, subscripts, lengths |
+| 64-bit integer | `FIXED BIN(63)`, `UNSIGNED FIXED BIN(64)` | +-9.22x10^18 / 0 to 1.84x10^19 | IDs, timestamps, record counts |
+| Character | `CHAR(n)` | 1 <= n <= 32767 | Fixed-length text, blank padded |
+| Varying character | `CHAR(n) VAR` | n <= 32767 | Variable-length text |
+| Bit | `BIT(n)` | 1 <= n <= 64 | Flags; `BIT(1)` is the boolean type |
+| Numeric picture | `PIC '...'` | <= 31 digit positions | Edited output, zoned input |
+| Character picture | `PIC 'XXX'`, `PIC 'AAA'` | | Validated text |
+
+* **`FIXED` is required.** `DEC(7,2)` and `BIN(31)` without `FIXED`
+  would mean FLOAT in Enterprise PL/I; here they are the compile
+  error `FIXED REQUIRED`.
+* **`UNSIGNED`** is allowed only with `FIXED BIN`, precisions 8, 16,
+  32 and 64 (others round up). `SIGNED` is the default and may be
+  written. `FIXED BIN(64)` without `UNSIGNED` is a synonym for
+  `FIXED BIN(63)`.
+* **Not available:** `FLOAT`, `COMPLEX`, `POINTER`, `OFFSET`,
+  `AREA`, `LABEL`, `FORMAT`, `FILE`, `HANDLE`, `ORDINAL`, `UNION`,
+  and the storage attributes `BASED`, `CONTROLLED`, `DEFINED`,
+  `ALIGNED` and `EXTERNAL` on variables.
+
+```pli
+   DCL PRICE    FIXED DEC(9,2)  INIT(1234.56);
+   DCL QTY      FIXED BIN(31)   INIT(12);
+   DCL TXN_ID   FIXED BIN(63)   INIT(9000000000);
+   DCL BYTES    UNSIGNED FIXED BIN(64);
+   DCL NAME     CHAR(20)        INIT('ACME');
+   DCL NOTE     CHAR(100) VAR   INIT('short');
+   DCL FLAGS    BIT(8)          INIT('10100000'B);
+   DCL ZIP      PIC '99999'     INIT(1234);
+   DCL MONEY    PIC '$$$,$$9V.99' INIT(1234.5);
+```
+
+`ZIP` holds `01234` and `MONEY` holds ` $1,234.50`. `HUGE(QTY)` is
+`2147483647`; `HUGE(BYTES)` is `18446744073709551615`.
+
+### Picture characters
+
+| Char | Meaning |
+|---|---|
+| `9` | Digit |
+| `Z` | Digit; a leading zero becomes a blank |
+| `*` | Digit; a leading zero becomes `*` |
+| `V` | Implied decimal point. Aligns the value; not printed. |
+| `.` `,` `/` `B` | Insertion characters (`B` inserts a blank); suppressed inside a zero-suppressed field |
+| `$` `S` `+` `-` | Sign or currency: static once, drifting when repeated |
+| `CR` `DB` | Trailing credit / debit marker, shown only for a negative value |
+| `X` `A` | Any character / alphabetic or blank (character pictures) |
+
+* A `.` written without `V` is only an insertion character, as in
+  Enterprise PL/I: `PIC '999.99'` has scale 0. Write `'999V.99'`.
+* Repetition factors are accepted: `PIC '(5)9'` is `'99999'`.
+* Assigning a negative value to a picture with no sign position
+  (`S + - CR DB`) is the `ABSZ` abend; the sign is never dropped
+  silently. A `+` sign position shows a blank for a negative value.
+
+### Structures and arrays
+
+```pli
+   DCL MAX_LINES FIXED BIN(31) VALUE(3);
+   DCL 1 ORDER,
+         2 CUST_ID    CHAR(8)       INIT('C0042'),
+         2 LINE_COUNT FIXED BIN(15) INIT(2),
+         2 LINE(MAX_LINES),
+           3 SKU      CHAR(12),
+           3 QTY      PIC '99999',
+           3 PRICE    FIXED DEC(9,2);
+   DCL 1 SAVE_ORDER LIKE ORDER;
+   DCL MDAYS(12) FIXED BIN(15) INIT(31,28,31,30,31,30,31,31,30,31,30,31);
+   DCL TABLE(5) FIXED DEC(5,2) INIT((5)0);
+   DCL GRID(0:2, 1:4) CHAR(4);
+   DCL (A, B, C) FIXED DEC(9,2) INIT(1.5);
+   DCL BAR CHAR(6) INIT((3)'AB');
+```
+
+* **Levels** run from 1 to 15; arrays of structures are allowed.
+* **Arrays** have up to 3 dimensions, counting dimensions inherited
+  from enclosing structure arrays. Bounds are constants or `VALUE`
+  names; the default lower bound is 1 (`GRID(0:2, 1:4)` overrides
+  it).
+* **Qualified references.** `ORDER.LINE(1).QTY` is the full form. A
+  subscript may sit at any level, so `ORDER.LINE.QTY(1)` is the same
+  element. Partial qualification is allowed while it stays
+  unambiguous: `ORDER.QTY(2)` works, but a bare `QTY(2)` here is
+  `AMBIGUOUS QTY` because `SAVE_ORDER` has a `QTY` too.
+* **`LIKE`** copies the layout of a structure, every member
+  attribute and `INIT` included, but not the storage class. A
+  parameter declared with `LIKE` ignores the copied `INIT`: its
+  storage is the argument's.
+* **Factored attributes**: `DCL (A, B, C) FIXED DEC(9,2) INIT(1.5);`
+  gives all three names the same attributes.
+
+### INIT, VALUE and default values
+
+* `INIT(...)` sets the initial value. A factor before a constant is
+  an iteration factor for an array (`INIT((5)0)` is five zeros) and
+  a string repetition for a scalar (`INIT((3)'AB')` is `'ABABAB'`).
+  A repetition longer than the target (`CHAR(n)`: n characters,
+  otherwise 32767) is `INIT VALUE TOO LONG FOR name`; more values than
+  the array has elements is `TOO MANY INIT VALUES`.
+* `VALUE(expr)` declares a **named constant**. It cannot be assigned,
+  it may be used as an array bound, and inside `EXEC CICS` it is
+  folded into the command text. The shipped `DFHAID` and `DFHRESP`
+  members are made of `VALUE` declarations.
+* **Deterministic defaults.** Enterprise PL/I leaves uninitialised
+  storage undefined. Bricks gives every variable without `INIT` a
+  fixed starting value each time its storage is allocated:
+
+  | Type | Initial value |
+  |---|---|
+  | `CHAR(n)`, character `PIC` | all blanks |
+  | `FIXED DEC`, `FIXED BIN`, numeric `PIC` | 0 |
+  | `BIT(n)` | all `'0'B` |
+  | `CHAR(n) VAR` | length 0 |
+
+### Storage classes: AUTOMATIC and STATIC
+
+| Class | Lifetime |
+|---|---|
+| `AUTOMATIC` (`AUTO`, the default) | One procedure invocation. `INIT` (or the default value) is applied again on every entry. |
+| `STATIC` | **One task.** Initialised the first time the program runs in the task, then shared by every activation of that program in the task, including activations reached by `EXEC CICS LINK` and by a `CALL` to an external entry. Never shared between tasks. |
+
+```pli
+   COUNTER: PROC;
+      DCL CALLS FIXED BIN(31) STATIC INIT(0);    /* once per task  */
+      DCL LOCAL FIXED BIN(31) INIT(0);           /* every entry    */
+      CALLS = CALLS + 1;
+      LOCAL = LOCAL + 1;
+      PUT SKIP LIST('CALLS', CALLS, 'LOCAL', LOCAL);
+   END COUNTER;
+```
+
+Called three times in one task the PUT lines read `CALLS 1 LOCAL 1`,
+`CALLS 2 LOCAL 1`, `CALLS 3 LOCAL 1`. The next task starts again at
+`CALLS 1`.
+
+**Storage limits.** bricks runs in a fixed memory budget:
+
+* One program may declare at most **1 MiB** of `AUTOMATIC` storage
+  (all procedures together) plus `STATIC` storage. More is the
+  compile error `STORAGE LIMIT EXCEEDED`.
+* One task may hold at most **8 MiB** of live activations. Every
+  active call holds its `AUTOMATIC` storage until it returns, so deep
+  recursion over a large `AUTOMATIC` area counts each level; a call
+  to an external procedure also counts its `STATIC`. The call that
+  would pass the limit abends `ABST`.
+
+> **Programming Note.** STATIC is per task, not per region. State
+> that must outlive the task or be seen by other tasks belongs in a
+> KSDS file, a TS queue or the database, never in program storage.
+
+### Storage layout and COMMAREA interop with COBOL
+
+All data is `UNALIGNED`: there is no padding between structure
+members, and the byte image of every type is fixed. A structure
+passed as a COMMAREA, a map area or a file record therefore has the
+same bytes in PL/I and COBOL. `STG(x)` (`STORAGE`) returns the
+declared size, `CSTG(x)` (`CURRENTSTORAGE`) the current size.
+
+| PL/I declaration | Bytes | Encoding | COBOL equivalent |
+|---|---|---|---|
+| `CHAR(n)` | n | characters | `PIC X(n)` |
+| `CHAR(n) VAR` | 2+n | 2-byte big-endian length, then n bytes (tail written as blanks) | `05 L PIC S9(4) COMP.` + `05 T PIC X(n).` |
+| `FIXED DEC(p,q)` | p/2+1 | packed decimal, sign nibble `C`/`D`; even p has a leading zero nibble | `PIC S9(p-q)V9(q) COMP-3` |
+| `FIXED BIN(15)` | 2 | big-endian two's complement | `PIC S9(4) COMP` |
+| `FIXED BIN(31)` | 4 | big-endian two's complement | `PIC S9(9) COMP` |
+| `FIXED BIN(63)` | 8 | big-endian two's complement | `PIC S9(18) COMP` |
+| `UNSIGNED FIXED BIN(8/16/32/64)` | 1/2/4/8 | big-endian unsigned | `PIC 9(n) COMP` of the same width |
+| `BIT(n)` | ceil(n/8) | bits from the high-order end, unused low bits zero | `PIC X(ceil(n/8))` |
+| `PIC '...'` | one per picture character (`V` excluded) | character image as displayed | the matching `PIC 9...` / edited `PIC` (DISPLAY) |
+
+Reads of packed data also accept the sign nibbles `F`, `A`, `E`
+(plus) and `B` (minus), so a COBOL unsigned `COMP-3` item reads
+correctly. A structure's size is the sum of its members' sizes, an
+array's the element size times the element count. Example:
+
+```pli
+   DCL 1 CUST_AREA,
+         2 CA_KEY      CHAR(8),
+         2 CA_BALANCE  FIXED DEC(11,2),
+         2 CA_COUNT    FIXED BIN(31),
+         2 CA_FLAGS    BIT(8),
+         2 CA_NOTE     CHAR(20) VAR,
+         2 CA_ZONED    PIC '9999';
+```
+
+`STG(CUST_AREA)` is 45 (8 + 6 + 4 + 1 + 22 + 4). The COBOL program
+on the other side of the `LINK` declares the same 45 bytes:
+
+```cobol
+       01 CUST-AREA.
+          05 CA-KEY      PIC X(8).
+          05 CA-BALANCE  PIC S9(9)V99 COMP-3.
+          05 CA-COUNT    PIC S9(9) COMP.
+          05 CA-FLAGS    PIC X.
+          05 CA-NOTE-LEN PIC S9(4) COMP.
+          05 CA-NOTE     PIC X(20).
+          05 CA-ZONED    PIC 9(4).
+```
+
+> **Programming Note.** A PL/I numeric picture is its character
+> image, one byte per picture character: `PIC '9999'` holding 42 is
+> the four characters `0042`, the same bytes as a COBOL `PIC 9(4)`
+> DISPLAY item. A signed picture (`PIC 'S9999'`) puts the sign in
+> its own leading byte (`+0042`, five bytes), which is not the COBOL
+> zoned overpunch. Carry signed values as `FIXED DEC` / `COMP-3`.
+
+---
+
+## Chapter 32. Expressions, conversions and decimal arithmetic
+
+### Operator precedence
+
+Highest first:
+
+| Level | Operators | Associativity |
+|---|---|---|
+| 1 | `**`, prefix `+` `-` `¬` | right |
+| 2 | `*` `/` | left |
+| 3 | `+` `-` | left |
+| 4 | `\|\|` | left |
+| 5 | `=` `¬=` `<` `>` `<=` `>=` `¬<` `¬>` | non-chaining |
+| 6 | `&` | left, short-circuit |
+| 7 | `\|` | left, short-circuit |
+
+* **`=` is both assignment and comparison.** At statement level the
+  first `=` assigns, so `F = I = 0;` stores the result of the
+  comparison `I = 0` (a `BIT(1)`) in `F`.
+* **Comparisons do not chain.** `A < B < C` is the compile error
+  `CHAINED COMPARISON`;
+  write `A < B & B < C`.
+* **Conditions** (`IF`, `WHILE`, `UNTIL`, boolean `WHEN`) need a
+  `BIT` expression; a non-zero bit string is true.
+* **Short-circuit.** When both operands of `&` or `|` are `BIT(1)`,
+  the right operand is evaluated only if needed. Otherwise both are
+  evaluated and the operation is bitwise.
+* `**` takes a non-negative integer constant exponent and is
+  evaluated as repeated multiplication. Prefix minus binds tighter
+  than `*` but `**` is applied first: `-2 ** 2` is `-4`.
+
+```pli
+   IF I > 0 & TAB(I) = 5 THEN PUT SKIP LIST('hit');
+   ELSE PUT SKIP LIST('no hit, no ABSR');
+```
+
+With `I = 0` the subscript `TAB(I)` is never evaluated, so the
+statement does not abend `ABSR`.
+
+### Fixed-decimal precision
+
+Every arithmetic result has a precision `(p,q)` computed at compile
+time from its operands, with N = 31:
+
+| Op | Integer digits | Scale q |
+|---|---|---|
+| `+` `-` | max(p1-q1, p2-q2) + 1 | max(q1, q2) |
+| `*` | (p1-q1) + (p2-q2) + 1 | q1 + q2 |
+| `/` | (p1-q1) + q2 | 31 - integer digits |
+
+The result is then clamped:
+
+```
+int' = min(int, 31)
+q'   = min(q, 31 - int')
+p'   = int' + q'
+```
+
+The exact value is truncated toward zero to scale `q'`. Only if the
+integer part still needs more than `int'` digits does `ABFO`
+(FIXEDOVERFLOW) fire.
+
+**The bricks rule.** When a result would need more than 31 digits,
+scale digits are dropped to make room; an intermediate result never
+overflows on the right. This removes the classic Enterprise PL/I
+trap where `25 + 1/3` raises FIXEDOVERFLOW:
+
+* `1/3`: both constants are `DEC(1,0)`. Integer digits
+  (1-0)+0 = 1, scale 31-1 = 30: `DEC(31,30)`, `0.333...3`.
+* `25 + 1/3`: integer digits max(2, 1)+1 = 3, scale max(0, 30) =
+  30; the clamp gives q' = min(30, 31-3) = 28:
+  `25.3333333333333333333333333333` (28 decimals). No overflow.
+
+**Worked example: an invoice line.**
+
+```pli
+   DCL PRICE FIXED DEC(7,2) INIT(19.99);
+   DCL QTY   FIXED DEC(5,0) INIT(3);
+   DCL RATE  FIXED DEC(5,4) INIT(0.0825);
+   DCL TOTAL FIXED DEC(9,2);
+   DCL TAX   FIXED DEC(9,2);
+
+   TOTAL = PRICE * QTY;              /* DEC(13,2): 59.97            */
+   TAX   = TOTAL * RATE;             /* 4.947525 truncated to 4.94  */
+   TAX   = ROUND(TOTAL * RATE, 2);   /* 4.95                        */
+```
+
+* `PRICE * QTY`: integer digits (7-2)+(5-0)+1 = 11, scale 2+0 = 2,
+  so `DEC(13,2)`; the value 59.97 fits `TOTAL`.
+* `TOTAL * RATE`: integer digits (9-2)+(5-4)+1 = 9, scale 2+4 = 6:
+  `DEC(15,6)` = 4.947525. Assigning it to `DEC(9,2)` **truncates**
+  to 4.94.
+* `ROUND(x, 2)` rounds half away from zero: 4.95. Use `ROUND`
+  wherever money is rounded.
+
+**Division is always decimal.** `/` never produces a binary result.
+`FIXED BIN` operands of `/` convert to `FIXED DEC` first, so `7/2`
+is `3.5` (shown with its full scale,
+`3.500000000000000000000000000000`), not `3`. To drop the fraction
+use `TRUNC`, an integer target, or `DIVIDE` with an explicit
+precision:
+
+```pli
+   DCL N     FIXED BIN(31)  INIT(7);
+   DCL R     FIXED DEC(9,2);
+   R = N / 2;
+   PUT SKIP LIST(R, TRUNC(N / 2), DIVIDE(N, 2, 5, 1));
+```
+
+The PUT line reads `3.50 3 3.5`.
+
+**Explicit precision.** `ADD(x, y, p, q)`, `MULTIPLY(x, y, p, q)`
+and `DIVIDE(x, y, p, q)` compute the result at exactly `(p,q)`.
+
+### Mixed binary and decimal
+
+* **BIN op DEC.** The binary operand converts to decimal, not the
+  other way round: `BIN(15)` becomes `DEC(5,0)`, `BIN(31)`
+  `DEC(10,0)`, `BIN(63)` `DEC(19,0)`, `UNSIGNED BIN(64)`
+  `DEC(20,0)`. Decimal constants (`1`, `0.5`) are decimal, so
+  `N + 1` with a `FIXED BIN(31)` `N` is a decimal addition.
+* **BIN op BIN.** `+`, `-` and `*` are computed as `BIN(63)`
+  (int64); an overflow is `ABFO`, never a wraparound. Any `UNSIGNED`
+  operand makes the operation unsigned 64-bit; going below 0 or
+  above 2^64-1 is `ABFO`.
+* **Pictures** compute as the `FIXED DEC(p,q)` their digit
+  positions and `V` imply.
+* A `CHAR` operand of an arithmetic operator converts to
+  `FIXED DEC(31,8)`.
+
+### Truncation versus ROUND
+
+Assignment between arithmetic types **truncates** the scale to the
+target's scale; it never rounds. If the integer part does not fit
+the target, the task abends `ABSZ` (SIZE is always enabled):
+
+```pli
+   DCL X  FIXED DEC(7,3) INIT(-2.675);
+   DCL Y  FIXED DEC(7,2);
+   DCL I  FIXED BIN(31);
+   Y = X;
+   I = X;
+   PUT SKIP LIST(Y, ROUND(X, 2), I, CEIL(X), FLOOR(X), TRUNC(X));
+```
+
+The PUT line reads `-2.67 -2.68 -2 -2 -3 -2`. Assigning `12345.67` to a
+`FIXED DEC(5,2)` abends `ABSZ` instead of keeping `345.67`.
+
+### Conversions
+
+| From -> To | Rule |
+|---|---|
+| arithmetic -> arithmetic | Scale truncated to the target; `ABSZ` if the integer part does not fit. |
+| `CHAR` -> arithmetic | Optional blanks, optional sign, digits, optional `.`. An all-blank string is 0. Anything else abends `ABCV`. |
+| arithmetic -> `CHAR` | Minimal form: no leading blanks, `-` only when negative, every scale digit kept (`12.50`, `-3.00`). Use `EDIT` or a `PIC` for formatted output. |
+| `CHAR` -> `CHAR` | Padded with blanks or truncated on the right; truncation is silent. |
+| `CHAR` <-> `BIT` | Only `'0'` and `'1'` characters; anything else is `ABCV`. |
+| arithmetic -> `BIT` | Compile error (`ARITHMETIC TO BIT`). Use `BIT(x, n)`. |
+
+```pli
+   AMT = '  -12.5 ';                 /* -12.50                     */
+   N   = '';                         /* 0                          */
+   S   = AMT;                        /* '-12.50'                   */
+   C   = 'ABCDEFG';                  /* CHAR(5): 'ABCDE'           */
+   PUT SKIP LIST(CHAR(42), EDIT(AMT, 'ZZZ9V.99-'));
+```
+
+`CHAR(42)` is `'42'` (never a right-justified field) and the `EDIT`
+result is `'  12.50-'`.
+
+* **Comparisons.** Two `CHAR` operands compare after padding the
+  shorter with blanks, in SBCS byte order (`'AB' = 'AB   '` is
+  true). A `CHAR` compared with a number is converted to the number
+  exactly (`'42' = 42.0` is true). Comparing a `BIT` with a number is
+  a compile error; `BIT` against `CHAR` compares as characters.
+* **Pictures** give their character image where a string is
+  expected (concatenation, `CHAR` target, `PUT LIST`) and their
+  value where a number is expected. Picture data that does not match
+  its picture abends `ABCV` only when used as a number.
+* **`||`** of two bit strings with at most 64 bits in total is a bit
+  string; every other concatenation is character.
+
+**Validate first.** There is no `ON CONVERSION`. Check data before
+converting it:
+
+```pli
+   IF VERIFY(TXT, '0123456789') = 0 THEN QTY = TXT;
+   ELSE PUT SKIP LIST('not numeric at', VERIFY(TXT, '0123456789'));
+   IF VALIDDATE('20260230', 'YYYYMMDD') THEN PUT SKIP LIST('date ok');
+   ELSE PUT SKIP LIST('bad date');
+```
+
+`VALID(picvar)` tests a picture variable, which is how map input
+received into a numeric `PIC` member is checked
+([Maps as structures](#maps-as-structures)).
+
+---
+
+## Chapter 33. Statements and control flow
+
+### Assignment
+
+```pli
+   A, B = 1.5;                       /* several targets            */
+   MONTHLY = 0;                      /* scalar to every element    */
+   OUT_REC = '';                     /* every CHAR blank, numbers 0 */
+   OUT_REC = IN_REC, BY NAME;        /* members with matching names */
+   SUBSTR(LINE, 5, 5) = 'TOTAL';     /* SUBSTR pseudovariable      */
+```
+
+* A scalar assigned to an array or structure is assigned to every
+  element, each with its own conversion. `REC = '';` is the idiom to
+  clear a whole map structure: `''` blanks the `CHAR` members and
+  converts to 0 for the numeric ones.
+* `BY NAME` copies only the members whose names match, whatever
+  their order, converting each. Members without a partner are left
+  alone.
+* `SUBSTR(s, i, n) = v` replaces `n` characters of `s` from
+  position `i`. A position outside the string is `ABSR`.
+
+### IF, DO groups and loops
+
+```pli
+   IF BAL < 0 THEN FLAG = '1'B;
+   ELSE DO;
+      ...
+   END;
+
+   DO I = 1 TO N;               ... END;
+   DO I = N TO 1 BY -1;         ... END;
+   DO I = 1 TO N WHILE(¬FOUND); ... END;
+   DO WHILE(MORE);              ... END;
+   DO UNTIL(DONE);              ... END;   /* tested after the body */
+   DO FOREVER;                  ... END;   /* DO LOOP also accepted */
+```
+
+* `DO; ... END;` is both the block and the loop construct. There
+  are no `BEGIN` blocks.
+* `TO` and `BY` are evaluated once, at loop entry; `BY` may precede
+  `TO`. `DO I = X;` with no `TO`, `BY`, `WHILE` or `UNTIL` runs once.
+* The control variable is reloaded at every iteration. Do not
+  change it in the body. An overflow while incrementing it is
+  `ABSZ`.
+
+### SELECT
+
+```pli
+   SELECT (SHIP);
+      WHEN ('EXP')        DAYS_ = 1;
+      WHEN ('STD', 'GRD') DAYS_ = 5;
+      OTHERWISE           DAYS_ = 0;
+   END;
+   SELECT;
+      WHEN (DAYS_ > 3) PUT SKIP LIST('slow', DAYS_);
+      WHEN (DAYS_ > 0) PUT SKIP LIST('fast', DAYS_);
+      OTHERWISE;
+   END;
+```
+
+If no `WHEN` matches and there is no `OTHERWISE`, the task abends
+`ABSL`. Write `OTHERWISE;` when no action is intended.
+
+### LEAVE and ITERATE
+
+```pli
+   OUTER: DO I = 1 TO 3;
+      DO J = 1 TO 3;
+         IF J = 2 THEN ITERATE;
+         IF I = 3 THEN LEAVE OUTER;
+         S = S || CHAR(I) || CHAR(J) || ' ';
+      END;
+   END OUTER;
+```
+
+`S` ends as `'11 13 21 23 '`.
+
+* A label is allowed only on a `PROC` or a `DO`; it names the
+  target of `LEAVE`, `ITERATE` and `END name`.
+* `LEAVE` and `ITERATE` **without a label** apply to the innermost
+  *iterative* `DO` (one with a control variable, `WHILE`, `UNTIL`,
+  `FOREVER` or `LOOP`), never to an enclosing simple `DO;` group. So
+  `IF X THEN DO; ...; LEAVE; END;` inside a loop leaves the loop. A
+  labelled `LEAVE` may leave a simple group.
+
+### CALL, RETURN and arguments
+
+```pli
+   CALL VALIDATE(ORDER, RC);
+   RETURN;                     /* from a subroutine, or from MAIN  */
+   RETURN (TOTAL);             /* from a function                  */
+```
+
+`RETURN` in MAIN ends the transaction normally and commits.
+
+Arguments are passed by reference. If the argument is an expression
+or a constant, or its attributes differ from the parameter's, a
+**dummy argument** (a temporary) is passed instead, and the
+procedure's writes to it are not seen by the caller:
+
+```pli
+   DCL N  FIXED BIN(31)  INIT(1);
+   DCL D  FIXED DEC(5,0) INIT(1);
+   CALL BUMP(N);              /* same attributes: by reference   */
+   CALL BUMP(D);              /* DEC vs BIN: a dummy is passed    */
+   CALL BUMP(N + 0);          /* an expression: a dummy           */
+   PUT SKIP LIST(N, D);       /* 11 1                             */
+
+   BUMP: PROC(X);
+      DCL X FIXED BIN(31);
+      X = X + 10;
+   END BUMP;
+```
+
+Declare a parameter `CHAR(*)` or `CHAR(*) VAR` to accept strings of
+any length by reference, as `cusp.pli`'s `VALIDATE_KEY` does to
+normalise the caller's key in place.
+
+### PUT LIST
+
+`PUT [SKIP] LIST(expr, ...)` is accepted, evaluates its items, and
+**discards** the line, exactly as REXX `SAY` and COBOL `DISPLAY` are
+discarded in a running transaction: it reaches neither the terminal
+nor the bricks log (at high transaction rates every line would
+otherwise hit the operator console). The line it would form
+separates items by a blank, shows strings without quotes, numbers
+in minimal form and bits as `0`/`1`:
+
+```pli
+   PUT SKIP LIST('READ', KEY, 'BAL', BAL, OK);
+```
+
+would form `READ C0042    BAL -12.50 1`. The examples in this part
+quote PUT LIST lines this way, to show values. To see values while
+debugging a transaction, paint them with `EXEC CICS SEND TEXT` or
+write them to a TS queue (`EXEC CICS WRITEQ TS QUEUE('DEBUG')
+FROM(LINE)`) and browse it with CECI.
+
+Stream I/O (`GET`, `PUT EDIT`, `FORMAT`) and record I/O are not
+available: the terminal is reached through `EXEC CICS SEND`, files
+through `EXEC CICS READ` / `WRITE`.
+
+### External entries
+
+A call to another program is declared with `ENTRY ... EXTERNAL`:
+
+```pli
+ORDTOT: PROC OPTIONS(MAIN);
+   DCL CALCDISC ENTRY(FIXED DEC(13,2), CHAR(8))
+                RETURNS(FIXED DEC(13,2)) EXTERNAL;
+   DCL GROSS FIXED DEC(13,2) INIT(250.00);
+   DCL CUST  CHAR(8)         INIT('C0042');
+   GROSS = GROSS - CALCDISC(GROSS, CUST);
+   PUT SKIP LIST('NET', GROSS);
+END ORDTOT;
+```
+
+```pli
+/* CALCDISC - external subprogram (no OPTIONS(MAIN)) */
+CALCDISC: PROC(AMT, CUST) RETURNS(FIXED DEC(13,2));
+   DCL AMT  FIXED DEC(13,2);
+   DCL CUST CHAR(8);
+   IF SUBSTR(CUST, 1, 1) = 'C' THEN RETURN(ROUND(AMT * 0.10, 2));
+   RETURN(0);
+END CALCDISC;
+```
+
+* The entry name is resolved as the member `<name>.pli` in
+  `pli_dir` (case-insensitive), through the program cache. It needs
+  no `transactions.conf` row.
+* The callee runs in the caller's task and unit of work, and shares
+  the task's STATIC storage.
+* If the member is missing, is an `OPTIONS(MAIN)` program, or its
+  parameter list or `RETURNS` does not match the `ENTRY`
+  declaration, the call abends `ABEN`.
+
+`CALL` reaches PL/I subprograms only. To call a REXX or COBOL
+program, or a PL/I `OPTIONS(MAIN)` program, use `EXEC CICS LINK`
+([LINK, XCTL and RETURN](#link-xctl-and-return-across-languages)).
+
+---
+
+## Chapter 34. Built-in functions
+
+All built-ins below are available without declaration. Arguments in
+`[ ]` are optional.
+
+### String functions
+
+| Function | Result |
+|---|---|
+| `SUBSTR(s, i [, n])` | Substring; also an assignment target. A position or length outside `1 .. LENGTH(s)+1` is `ABSR` (the check cannot overflow: `SUBSTR(s, 2, HUGE(n))` is `ABSR` too); `SUBSTR(s, LENGTH(s)+1)` is `''`. |
+| `INDEX(s, t [, start])` | Position of `t` in `s`, or 0 |
+| `LENGTH(s)` | Current length |
+| `MAXLENGTH(s)` | Declared length of a `VAR` string |
+| `TRIM(s [, lead [, trail]])` | Blanks trimmed from both ends; `TRIM(s, lead)` trims `lead` characters on the left and blanks on the right |
+| `LEFT(s, n [, pad])` / `RIGHT(s, n [, pad])` | Left- / right-justify into `n` characters |
+| `COPY(s, n)` | `s` repeated `n` times; a result longer than 32767 characters is `ABSR` |
+| `TRANSLATE(s, to [, from])` | Character mapping; the first occurrence in `from` wins; `to` is blank padded |
+| `VERIFY(s, set [, start])` | Position of the first character of `s` not in `set`, or 0 |
+| `SEARCH(s, set [, start])` | Position of the first character of `s` in `set`, or 0 |
+| `UPPERCASE(s)` / `LOWERCASE(s)` | Changes `a-z` / `A-Z` only, as in Enterprise PL/I |
+| `REVERSE(s)` | Characters in reverse order |
+
+```pli
+   T2 = TRIM(S);                       /* 'Hello, World'          */
+   PUT SKIP LIST(INDEX(T2, 'o'), INDEX(T2, 'o', 6));    /* 5 9    */
+   PUT SKIP LIST(LEFT('AB', 5, '*'), RIGHT('AB', 5, '0'));
+   PUT SKIP LIST(TRANSLATE('A-B-C', ' ', '-'), TRIM('000120', '0'));
+```
+
+The last two lines form `AB*** 000AB` and `A B C 120`.
+
+### Arithmetic functions
+
+| Function | Result |
+|---|---|
+| `ABS(x)`, `SIGN(x)` | Absolute value; -1, 0 or 1 |
+| `MOD(x, y)` | Remainder, always >= 0 (`MOD(-7, 3)` = 2) |
+| `REM(x, y)` | Remainder with the sign of `x` (`REM(-7, 3)` = -1); exact for decimals: `x - y * TRUNC(x / y)` |
+| `MAX(x, y, ...)`, `MIN(x, y, ...)` | Largest / smallest argument |
+| `ROUND(x, n)` | Rounded half away from zero at `n` decimal places |
+| `TRUNC(x)`, `CEIL(x)`, `FLOOR(x)` | Toward zero / up / down to an integer |
+| `ADD(x, y, p, q)`, `MULTIPLY(x, y, p, q)`, `DIVIDE(x, y, p, q)` | Result at the explicit precision `(p,q)` |
+| `HUGE(x)` / `TINY(x)` | Largest / smallest value of `x`'s type (0 for `UNSIGNED`) |
+
+### Conversion and validation functions
+
+| Function | Result |
+|---|---|
+| `CHAR(x [, n])` | Minimal character form of a number, for every type (`CHAR(42)` is `'42'`); `n` pads or truncates |
+| `DEC(x, p [, q])`, `FIXED(x, p [, q])` | Fixed decimal at `(p,q)` |
+| `BIN(x, p)` | Fixed binary; `BIN(b)` of a `BIT(64)` reads two's complement, a shorter bit string as unsigned |
+| `BIT(x [, n])` | Bit string; of a number, the rightmost `n` bits of its 64-bit two's-complement integer part, so `BIN(BIT(x, 64), 63) = x`; of a character variable without `n`, the variable's declared length (at most 64) |
+| `EDIT(x, 'picture')` | `x` formatted through a picture, as `CHAR` |
+| `VALID(picvar)` | `'1'B` if a picture variable holds data matching its picture |
+| `STRING(struct)` | The structure's `CHAR` and `PIC` members concatenated |
+
+### Aggregate and storage functions
+
+| Function | Result |
+|---|---|
+| `HBOUND(a [, d])`, `LBOUND(a [, d])`, `DIM(a [, d])` | Upper bound, lower bound, extent of dimension `d` (default 1) |
+| `SUM(a)` | Sum of all elements |
+| `STORAGE(x)` / `STG(x)` | Declared byte size (see [the layout table](#storage-layout-and-commarea-interop-with-cobol)) |
+| `CURRENTSTORAGE(x)` / `CSTG(x)` | Current byte size; for a `VAR` string 2 + current length |
+
+### Date and time functions
+
+Patterns use `YYYY YY MM DD DDD HH MI SS 999` plus literal
+separators. `YY` uses the window 1950-2049 and `DDD` is the day of
+the year.
+
+| Function | Result |
+|---|---|
+| `DATETIME([pat])` | Current task-clock time; default pattern `'YYYYMMDDHHMISS999'` |
+| `DATE()` | `'YYMMDD'`; kept for compatibility, prefer `DATETIME` |
+| `TIME()` | `'HHMISS999'` |
+| `DAYS(d [, pat])` | Date to day number (Lilian: 1 = 15 Oct 1582) |
+| `DAYSTODATE(n [, pat])` | Day number to date; default pattern `'YYYYMMDD'` |
+| `VALIDDATE(d [, pat])` | `'1'B` if `d` is a real calendar date |
+
+Day numbers run from 1 (15 Oct 1582) to 3074324 (31 Dec 9999); a
+date outside that range or a malformed date string abends `ABCV`.
+`DDD` runs from 1 to 365 (366 in a leap year); `000` is not a date,
+so `VALIDDATE('2026000', 'YYYYDDD')` is `'0'B`. A letter or digit in
+a pattern that is not part of a field makes the pattern invalid:
+`ABCV` for `DATETIME`, `DAYS` and `DAYSTODATE`, `'0'B` for
+`VALIDDATE`.
+Date arithmetic goes through day numbers:
+
+```pli
+   D = DAYSTODATE(DAYS('20260131', 'YYYYMMDD') + 30, 'YYYYMMDD');
+```
+
+gives `'20260302'`. The clock is the region's NTP-corrected clock,
+the same one `EXEC CICS ASKTIME` reads.
+
+### CICS constants and the ABEND routine
+
+| Name | Result |
+|---|---|
+| `DFHRESP(cond)` | Compile-time `EIBRESP` value of a condition: `DFHRESP(NOTFND)` is 13. An unknown name is a compile error (`UNKNOWN CONDITION NOTFOUND`). |
+| `DFHVALUE(cvda)` | Compile-time CVDA value: `OPEN` 18, `CLOSED` 19, `ENABLED` 23, `DISABLED` 24, `READABLE` .. `NOTALTERABLE` 50 .. 57 |
+| `CALL ABEND('code')` | Abends the task with the given 1-4 character code ([Chapter 35](#chapter-35-runtime-abends-and-the-unit-of-work)) |
+
+`DFHRESP` uses the same single table as COBOL's `DFHRESP(name)` and
+the shipped `DFHRESP.cpy` / `DFHRESP.inc` members, so the numbers
+cannot drift between languages.
+
+---
+
+## Chapter 35. Runtime abends and the unit of work
+
+Enterprise PL/I handles runtime conditions with ON-units (`ON
+CONVERSION`, `ON SIZE`, `SIGNAL`, `REVERT`). Bricks PL/I has none:
+`ON` is the compile error `ON NOT SUPPORTED`. Instead every runtime
+condition is **deterministic and fatal**. It:
+
+1. abends the transaction with a short code,
+2. rolls back the task's unit of work (every abend rolls back,
+   whatever raised it), and
+3. logs program, procedure, file, source line and statement text.
+
+The operator sees only the short form, for example
+`ABSZ CUSP.ADD_CUSTOMER L42` (`ABSZ CUSP L42` for a statement in
+MAIN itself). The bricks log carries the detail on one line (shown
+here wrapped):
+
+```
+term=T0001 transid=CALC: PL/I ABEND ABZD (ZERODIVIDE) PROGRAM CALCP
+  PROC TOTALS FILE calcp.pli LINE 6: ZERODIVIDE | X = 10 / Y ;
+```
+
+### Abend codes
+
+| Code | Condition | Raised when |
+|---|---|---|
+| `ABCV` | CONVERSION | An invalid character string is converted to a number or a bit string; a bad date |
+| `ABSZ` | SIZE | The integer part does not fit the target of an assignment; a negative value to `UNSIGNED` or to a picture without a sign. Always enabled. |
+| `ABFO` | FIXEDOVERFLOW | An intermediate result needs more than 31 integer digits, or a 64-bit binary operation overflows |
+| `ABZD` | ZERODIVIDE | Division, `MOD` or `REM` by zero |
+| `ABSR` | SUBSCRIPTRANGE / STRINGRANGE | A subscript or `SUBSTR` position is out of bounds. Always checked. |
+| `ABSL` | SELECT | No `WHEN` matched and there is no `OTHERWISE` |
+| `ABEN` | ENTRY | An external entry is missing or does not match its `ENTRY` declaration; a non-`RECURSIVE` procedure re-entered; call depth over 1000; a function without `RETURN(value)` |
+| `ABHB` | HANDLER | A CICS condition, AID or abend handler fired while a handler procedure was already running, or named a procedure that is not a handler of this program |
+| `AICA` | RUNAWAY | The interpreter's statement limit was exceeded (a loop that never ends) |
+| `AEY9` | CICS NOT AVAILABLE | `EXEC CICS` ran with no CICS handler attached (offline test harness) |
+| `ABST` | STORAGE | The task's live activations would hold more than 8 MiB: each active call holds its `AUTOMATIC` storage until it returns (recursion included), and an external procedure call also counts its `STATIC` |
+| `APLI` | INTERNAL | The interpreter caught an internal failure; the operator sees the code, the detail goes to the bricks log line only |
+| any | program-raised | `CALL ABEND('CU01')` or `EXEC CICS ABEND ABCODE('CU01')`: the given code, for deliberate business-rule aborts |
+
+```pli
+   POST: PROC(B);
+      DCL B FIXED DEC(9,2);
+      IF B < 0 THEN CALL ABEND('CU01');
+   END POST;
+```
+
+This ends the task with `CU01 T.POST L7`. The code must be 1-4
+printable ASCII characters that also exist in EBCDIC code page 037
+(no brackets, braces, tilde, backslash, backtick, vertical bar or
+caret): a constant that breaks the rule is the compile error
+`BAD ABEND CODE`, a variable holding one abends `ABEN`.
+
+### Compile-time limits and errors
+
+Some mistakes that Enterprise PL/I reports late, or not at all, are
+compile errors in bricks, so they show up in `brickscompile`, the
+CEDA / CEMT SYNTAX column and the ISPF save check:
+
+| Message | Cause |
+|---|---|
+| `STORAGE LIMIT EXCEEDED` | The program declares more than 1 MiB of `AUTOMATIC` (all procedures together) plus `STATIC` storage |
+| `NESTING TOO DEEP` | More than 256 nested parentheses, prefix operators, statements (`IF`, `DO`, `SELECT`) or procedures, or an expression tree deeper than 4096 (long `+` / `\|\|` / `&` chains count) |
+| `UNKNOWN CICS COMMAND x` | `EXEC CICS` with a verb bricks does not dispatch, for example the typo `SENDD`; caught at compile time instead of `INVREQ` at run time |
+| `BAD ABEND CODE` | A `CALL ABEND` constant that is empty, longer than 4 characters, or not EBCDIC 037 printable |
+| `INIT VALUE TOO LONG FOR x` | A string repetition longer than the target (`DCL R CHAR(4) INIT((3)'AB')`) |
+| `TOO MANY INIT VALUES` | `INIT` values (iteration factors included) for more elements than the array has |
+
+**Not an error:** a `CHAR` value assigned to a shorter target is
+truncated silently, as in Enterprise PL/I with STRINGSIZE disabled.
+
+### The unit of work
+
+| Task end | Unit of work |
+|---|---|
+| `RETURN` from MAIN, or falling off its `END` | committed |
+| `EXEC CICS RETURN` (with or without `TRANSID`) | committed |
+| `EXEC CICS XCTL` | carried into the target program, committed when it ends normally |
+| a handler procedure that returns ([HANDLE CONDITION, AID and ABEND](#handle-condition-handle-aid-and-handle-abend)) | committed |
+| any abend: the table above, `CALL ABEND`, `EXEC CICS ABEND`, an interpreter failure | rolled back |
+
+`EXEC CICS SYNCPOINT` and `SYNCPOINT ROLLBACK` work as in the other
+languages ([Chapter 10](#chapter-10-recovery-and-condition-handling)).
+`EIBABCODE` (`CHAR(4)`) holds the abend code for `ASSIGN ABCODE` and
+a `HANDLE ABEND PROGRAM`.
+
+### HANDLE ABEND in PL/I
+
+`EXEC CICS HANDLE ABEND LABEL(proc)` catches `EXEC CICS ABEND` only.
+The runtime conditions in the table above always abend and roll
+back; a PL/I program cannot intercept them.
+
+### Why there are no ON-units, and what to use instead
+
+ON-units turn every statement into a possible jump target, which is
+hard to read, hard to cache and easy to get wrong in money code
+(`ON SIZE` disabled by default loses digits silently). Bricks
+programs **prevent** conditions instead of catching them:
+
+| Instead of | Write |
+|---|---|
+| `ON CONVERSION` | `VERIFY(s, '0123456789')`, `VALID(picvar)`, `VALIDDATE(d)` before converting |
+| `ON SIZE` | a target wide enough, or `ROUND` / `TRUNC` / `DIVIDE(x, y, p, q)` to the precision you mean |
+| `ON ZERODIVIDE` | `IF Y ¬= 0 THEN ...` |
+| `ON SUBSCRIPTRANGE` | `HBOUND` / `LBOUND` / `LENGTH` checks |
+| `ON ERROR` around `EXEC CICS` | `RESP(RC)` on the command and a test of `RC` ([Chapter 36](#resp-resp2-and-dfhresp)) |
+
+CICS conditions (`NOTFND`, `DUPREC`, `MAPFAIL`, ...) are **not**
+runtime errors: they never abend a PL/I task
+([Chapter 36](#resp-resp2-and-dfhresp)).
+
+---
+
+## Chapter 36. EXEC CICS in PL/I
+
+### Statement form
+
+PL/I uses the IBM-canonical Enterprise PL/I form: `EXEC CICS`,
+the command, and a `;`. There is no `END-EXEC`.
+
+```pli
+EXEC CICS RECEIVE MAP('ORDMAP') MAPSET('ORDSET') INTO(ORDER_IN) RESP(RC);
+EXEC CICS SEND MAP('ORDMAP') FROM(ORDER_OUT) ERASE;
+EXEC CICS READ FILE('customers') INTO(REC) RIDFLD(KEY) RESP(RC);
+EXEC CICS LINK PROGRAM('CALC') COMMAREA(CALC_AREA);
+EXEC CICS RETURN TRANSID('ORDR') COMMAREA(STATE);
+```
+
+* Every command, option and clause IBM documents is accepted with
+  the same spelling and meaning as in COBOL and REXX. The command
+  set is the one in **Parts&nbsp;4**, **5** and **7**; options bricks
+  cannot act on are accepted and ignored.
+* The statement runs to the first `;` at parenthesis depth 0
+  outside quotes, so a command may span lines freely (unlike the
+  REXX one-line rule).
+* Host variables are plain PL/I references with **no** `:` prefix:
+  `INTO(ORDER_IN)`, `RIDFLD(CUST.KEY)`, `FROM(LST.ROW(3))`.
+* A verb bricks does not dispatch is a compile error:
+  `EXEC CICS SENDD MAP('X');` fails with `UNKNOWN CICS COMMAND SENDD`
+  instead of answering `INVREQ` at run time.
+
+### Options are PL/I expressions
+
+Option arguments are PL/I expressions: `RIDFLD(KEY)`,
+`LENGTH(STG(REC))`, `ITEM(I + 1)`, `MAP('CUST' || SUFFIX)`. The
+compiler rewrites each command once:
+
+* An argument that folds to a constant is inlined:
+  `MAP('CU' || 'ST1')` reaches CICS as `MAP('CUST1')`,
+  `LENGTH(STG(REC))` as `LENGTH(25)`. `DFHRESP`, `DFHVALUE` and
+  `VALUE` names fold too.
+* Every other reference becomes a compiler-generated alias bound to
+  its storage at each execution:
+  `READ FILE('F') INTO(_1_REC) RIDFLD(_2_KEY) RESP(_3_RC)`. A
+  computed argument is bound as `_<n>_`. These names show up in
+  error messages; they are why `_<digits>_` names
+  are reserved.
+* Qualified names (with the usual partial qualification) and
+  subscripted elements are allowed wherever an area is expected.
+* The CICS handler reads a fixed `CHAR` value without its trailing
+  blanks, as for COBOL; data areas (`COMMAREA`, `FROM` of `LINK`)
+  travel with all their bytes, packed and binary fields included.
+* Data moved into a structure or array (`INTO`, `COMMAREA`) overlays
+  its first bytes. When the data is shorter (a `READ ... INTO` of a
+  short record), the bytes past its end **keep their previous
+  value**, as in IBM CICS. Clear the area first (`REC = '';`) when
+  stale bytes matter.
+
+### RESP, RESP2 and DFHRESP
+
+```pli
+T: PROC OPTIONS(MAIN);
+   %INCLUDE DFHRESP;
+   DCL REC  CHAR(200) VAR;
+   DCL KEY  CHAR(8) INIT('C0042');
+   DCL MSG  CHAR(60) VAR;
+   DCL (RC, RC2) FIXED BIN(31);
+
+   EXEC CICS READ FILE('customers') INTO(REC) RIDFLD(KEY)
+             RESP(RC) RESP2(RC2);
+   SELECT (RC);
+      WHEN (DFHRESP(NORMAL)) MSG = 'Found.';
+      WHEN (DFHRESP(NOTFND)) MSG = 'Customer ' || KEY || ' not found.';
+      OTHERWISE MSG = 'READ failed RESP=' || CHAR(RC)
+                      || ' RESP2=' || CHAR(RC2);
+   END;
+   IF RC = RESP_NOTFND | RC = DFHRESP_NOTFND THEN PUT SKIP LIST(MSG);
+
+   EXEC CICS DELETEQ TS QUEUE('SCRATCH') NOHANDLE;
+   IF EIBRESP ¬= DFHRESP(NORMAL) THEN PUT SKIP LIST('EIBRESP', EIBRESP);
+END T;
+```
+
+* `RESP(var)` and `RESP2(var)` are accepted on every command. After
+  the command `var` holds the response; `FIXED BIN(31)` is the
+  natural type. PL/I has no predeclared `RC`: declare the variable
+  you name.
+* `DFHRESP(cond)` is a compile-time constant; no include is needed.
+  The `DFHRESP` member adds the same values as named constants
+  (`RESP_NOTFND` and `DFHRESP_NOTFND`, see
+  [Chapter 37](#chapter-37-include)).
+* Coding `RESP` or `NOHANDLE` makes the command's conditions
+  non-fatal and suppresses `HANDLE CONDITION` and `HANDLE AID` for
+  that one command, as in IBM CICS.
+* Writes the runtime makes to `EIBRESP`, `EIBRESP2` or a `RESP`
+  target never touch any other program variable.
+
+**Conditions never abend a PL/I task.** A non-`NORMAL` response
+(`NOTFND`, `DUPREC`, `MAPFAIL`, `PGMIDERR`, ...) never ends a PL/I
+program, even with no `RESP`, no `NOHANDLE` and no handler: the
+program continues and reads the outcome from `EIBRESP`. This is a
+deliberate deviation from IBM's default action (which abends). Code
+`RESP(RC)` on every command anyway, as `cusp.pli` does: it documents
+that the result is tested, and it suppresses any `HANDLE CONDITION`
+left armed.
+
+Some outcomes are **not** CICS conditions, and end the task whatever
+the program codes:
+
+* the terminal connection is lost during `SEND` / `RECEIVE`;
+* `EXEC CICS RETURN`, `XCTL` and `ABEND`;
+* a `HANDLE CONDITION` / `HANDLE AID` branch that fires (when the
+  command codes neither `RESP` nor `NOHANDLE`);
+* a `LINK`ed program that fails while it runs (abend or runtime
+  error). A missing `LINK` target is `PGMIDERR`, an ordinary
+  condition;
+* a blocking `SEND` / `RECEIVE` in a scheduler-fired background
+  task.
+
+> **Programming Note.** The same `RESP` / `NOHANDLE` rule now holds
+> for REXX and COBOL: with either option coded, a CICS condition
+> never ends the task ([Response-code handling](#response-code-handling-resp-resp2-dfhresp)).
+> What differs is the case with neither option: an error-class
+> condition (such as `MAPFAIL` for a map that is not installed)
+> ends a REXX or COBOL task, while a PL/I task continues.
+
+### The EIB and other predeclared names
+
+Every PL/I program sees these names without declaring them.
+
+**`DFHEIBLK`, the EIB.** Its fields are referenced unqualified:
+
+| Field | PL/I type | Meaning |
+|---|---|---|
+| `EIBAID` | `CHAR(1)` | AID byte of the last terminal input; compare with `DFHAID` names |
+| `EIBRESP` | `FIXED BIN(31)` | Response of the last `EXEC CICS` command |
+| `EIBRESP2` | `FIXED BIN(31)` | Response detail (RESP2) |
+| `EIBCALEN` | `FIXED BIN(15)` | Length of the COMMAREA passed in |
+| `EIBTRMID` | `CHAR(4)` | Terminal id, 4 characters as in IBM `DFHEIBLK` and the COBOL EIB. bricks ids have 5 (`T0001`), so `EIBTRMID` reads `T000`; use `EXEC CICS ASSIGN TERMID(x)` into a `CHAR(8)` for the full id |
+| `EIBTRNID` | `CHAR(4)` | Transaction id |
+| `EIBTASKN` | `FIXED DEC(7)` | Task number |
+| `EIBDATE` | `FIXED DEC(7)` | Task start date, `0CYYDDD` |
+| `EIBTIME` | `FIXED DEC(7)` | Task start time, `0HHMMSS` |
+| `EIBCPOSN` | `FIXED BIN(15)` | Cursor offset at the last input |
+| `EIBFN` | `CHAR(2)` | Function code of the last command |
+| `EIBABCODE` | `CHAR(4)` | Abend code (`HANDLE ABEND`, `ASSIGN ABCODE`) |
+
+The EIB is a real data structure in PL/I: `EIBTRNID`, `EIBTASKN`,
+`EIBDATE` and `EIBTIME` are filled in when the program starts, not
+only on `ASSIGN`. Field meanings are in
+[Chapter 11](#chapter-11-the-execute-interface-block-eib).
+
+**`SQLCA`**, the SQL communication area: `SQLCODE FIXED BIN(31)`,
+`SQLSTATE CHAR(5)`, `SQLERRMC CHAR(70) VAR`, `SQLERRP CHAR(8)`,
+`SQLERRD(6) FIXED BIN(31)` (`SQLERRD(3)` = rows affected) and the
+flags `SQLWARN0` .. `SQLWARN9`, `SQLWARNA` (`CHAR(1)`), as in the
+COBOL SQLCA ([Chapter 26](#chapter-26-embedded-sql-cobol-rexx-and-pli)).
+
+**`DFHCOMMAREA`** ([COMMAREA](#commarea-and-dfhcommarea)).
+
+### Maps as structures
+
+`SEND MAP ... FROM(struct)` and `RECEIVE MAP ... INTO(struct)` move
+map fields to and from the members of a structure **by name**,
+exactly as the COBOL group and the REXX stem do
+([Chapter 3](#chapter-3-the-map-dsl)). Declare one member per map
+field, with the field's length:
+
+```pli
+CUSPDEMO: PROC OPTIONS(MAIN);
+   %INCLUDE DFHAID;
+   DCL 1 MENU,                       /* map CUST1                 */
+         2 INFOLINE CHAR(78),
+         2 ACTION   CHAR(1),
+         2 CUSTNO   CHAR(8),
+         2 SEARCH   CHAR(30),        /* a builtin name: legal here */
+         2 MSG      CHAR(60),
+         2 MSG_C    CHAR(9);         /* runtime colour override    */
+   DCL 1 MENU_IN LIKE MENU;
+   DCL 1 LST,                        /* map CUSTL: ROW1 .. ROW15   */
+         2 INFOLINE CHAR(78),
+         2 ROW(15)  CHAR(71);
+   DCL RC FIXED BIN(31);
+   DCL P  FIXED BIN(31);
+
+   MENU = '';
+   MENU.MSG   = 'Type an action and press ENTER.';
+   MENU.MSG_C = 'YELLOW';
+   EXEC CICS SEND MAP('CUST1') FROM(MENU) ERASE RESP(RC);
+   MENU_IN = '';
+   EXEC CICS RECEIVE MAP('CUST1') INTO(MENU_IN) RESP(RC);
+   IF EIBAID = PF03 | RC = DFHRESP(MAPFAIL) THEN EXEC CICS RETURN;
+
+   P = SEARCH(MENU_IN.CUSTNO, ' ');  /* with arguments: builtin    */
+   LST = '';
+   LST.INFOLINE = 'Search: ' || TRIM(MENU_IN.SEARCH);
+   LST.ROW(1)   = 'first row';
+   EXEC CICS SEND MAP('CUSTL') FROM(LST) ERASE RESP(RC);
+   EXEC CICS RETURN;
+END CUSPDEMO;
+```
+
+**Frame naming.** A map field name is looked up inside the
+structure in this order:
+
+1. an exact member path (`INFOLINE`, or a deeper qualified path);
+2. a unique member of that name anywhere below the structure (not
+   through an array);
+3. a field named `ROWn` (as in `CUSTL`'s `ROW1` .. `ROW15`) maps to
+   element `n` of a unique one-dimensional array member `ROW`. The
+   PL/I side declares `2 ROW(15) CHAR(71)` instead of fifteen
+   scalars; `CUSTLL`'s 35 rows fit `2 ROW(35)`, and a map with fewer
+   rows simply ignores the extra elements.
+
+* **Colour overrides** use the REXX spelling: a member `FIELD_C`
+  set to a colour mnemonic (`MSG_C = 'YELLOW'`) recolours `FIELD`
+  for that `SEND` ([Runtime field attribute overrides](#runtime-field-attribute-overrides)).
+* **Built-in names as members.** A member may be called `SEARCH`,
+  `INDEX`, `LENGTH`, ... because map fields often are.
+  `MENU_IN.SEARCH` (or an unambiguous bare `SEARCH`) means the
+  member; `SEARCH(s, set)` with arguments is still the built-in.
+* **Separate IN and OUT copies.** `cusp.pli` receives into
+  `MENU_IN LIKE MENU` so the next `SEND` of `MENU` never repaints
+  what the operator typed.
+* **Numeric input.** `RECEIVE MAP` into a numeric `PIC` member
+  stores the characters as typed (zoned input), so `VALID` can
+  reject bad data. Into a `FIXED DEC` or `FIXED BIN` member the
+  text is converted, and non-numeric input abends `ABCV`. Receive
+  numbers into `PIC` or `CHAR` members and validate them.
+* **Sized maps.** Choose the map name at run time
+  (`MAP(M_MENU)`, `M_MENU = 'CUST1' || SUFFIX`) and fall back when
+  `SEND` answers `MAPFAIL`
+  ([Appendix A](#appendix-a-adapting-to-terminal-size-mod-2-vs-mod-4)).
+
+### COMMAREA and DFHCOMMAREA
+
+`DFHCOMMAREA` holds the COMMAREA passed to the program by
+`RETURN TRANSID ... COMMAREA`, `XCTL` or `LINK`; `EIBCALEN` is its
+length.
+
+* **Declared in MAIN.** If the MAIN procedure declares a variable
+  named `DFHCOMMAREA` (usually a structure), the passed bytes are
+  mapped onto it with the
+  [storage layout](#storage-layout-and-commarea-interop-with-cobol),
+  packed and binary members included. A shorter structure leaves
+  the rest of a `LINK` caller's area untouched.
+* **Default.** Otherwise `DFHCOMMAREA` is predeclared as
+  `CHAR(32767) VAR` whose current length is `EIBCALEN`. Assigning
+  to it in a `LINK`ed program replaces the reply: a shorter value is
+  blank padded, a longer one cut.
+
+The reply to a `LINK` is always exactly the caller's COMMAREA
+length. A pseudo-conversational state block:
+
+```pli
+ORDC: PROC OPTIONS(MAIN);
+   DCL 1 DFHCOMMAREA,
+         2 STEP     CHAR(1),
+         2 CUST_ID  CHAR(8),
+         2 TOTAL    FIXED DEC(11,2);
+   DCL RC FIXED BIN(31);
+
+   IF EIBCALEN = 0 THEN DO;          /* first entry               */
+      DFHCOMMAREA = '';
+      DFHCOMMAREA.STEP = '1';
+   END;
+   ELSE DO;
+      DFHCOMMAREA.TOTAL = DFHCOMMAREA.TOTAL + 10;
+      DFHCOMMAREA.STEP  = '2';
+   END;
+   EXEC CICS RETURN TRANSID('ORDC') COMMAREA(DFHCOMMAREA)
+             LENGTH(STG(DFHCOMMAREA)) RESP(RC);
+END ORDC;
+```
+
+A `LINK` target that works on the default area:
+
+```pli
+CUSVP: PROC OPTIONS(MAIN);
+   DCL KEY CHAR(8) VAR;
+   IF EIBCALEN = 0 THEN RETURN;
+   KEY = UPPERCASE(TRIM(SUBSTR(DFHCOMMAREA, 1, MIN(EIBCALEN, 8))));
+   DFHCOMMAREA = KEY;                /* blank-padded to EIBCALEN  */
+END CUSVP;
+```
+
+### LINK, XCTL and RETURN across languages
+
+PL/I, REXX and COBOL programs `LINK` and `XCTL` to each other
+freely; the COMMAREA is opaque bytes. With a PL/I structure on one
+side and a COBOL group on the other, give both the same byte layout
+([the layout table](#storage-layout-and-commarea-interop-with-cobol)):
+
+```pli
+   DCL 1 CALC_AREA,
+         2 CA_KEY      CHAR(8),
+         2 CA_BALANCE  FIXED DEC(11,2),
+         2 CA_COUNT    FIXED BIN(31),
+         2 CA_RC       CHAR(2);
+   DCL RC FIXED BIN(31);
+   CALC_AREA = '';
+   CALC_AREA.CA_KEY = 'C0042';
+   EXEC CICS LINK PROGRAM('GUSV') COMMAREA(CALC_AREA)
+             LENGTH(STG(CALC_AREA)) RESP(RC);
+   IF RC = DFHRESP(PGMIDERR) THEN PUT SKIP LIST('GUSV not available');
+```
+
+* A `LINK`ed PL/I program runs in the caller's task and unit of
+  work and shares the task's STATIC storage with every other PL/I
+  program of the task.
+* A REXX target sees the COMMAREA as a string, a COBOL target maps
+  it onto its `DFHCOMMAREA`; changes flow back to the caller.
+* Use `EXEC CICS LINK` to reach REXX, COBOL and other
+  `OPTIONS(MAIN)` PL/I programs; use an `ENTRY ... EXTERNAL` `CALL`
+  for PL/I subprograms ([External entries](#external-entries)).
+* PL/I transactions also run on an MRO peer region exactly as REXX
+  and COBOL ones do (see `MRO.md`).
+
+### START and RETRIEVE
+
+`EXEC CICS START` schedules a PL/I transaction like any other.
+When the timer fires while the terminal's current task is waiting
+for input, bricks runs the started task inline as a **background
+task** (REXX or PL/I programs only). A background PL/I task has no
+COMMAREA (`EIBCALEN` 0), reads the `START` payload with `RETRIEVE`,
+may use only write-only verbs (`SEND MAP ... DATAONLY`, file, TS,
+`ASSIGN`, `START`), and has no SQL connection (`SQLCODE` -1). It
+commits its unit of work at normal end and backs it out on an
+abend, like a terminal task (the same holds for REXX background
+tasks):
+
+```pli
+TICK: PROC OPTIONS(MAIN);
+   DCL BUF CHAR(4);
+   DCL LEN FIXED BIN(15) INIT(4);
+   DCL RC  FIXED BIN(31);
+   DCL 1 CLK, 2 CLOCK CHAR(8);
+
+   EXEC CICS RETRIEVE INTO(BUF) LENGTH(LEN) RESP(RC);
+   IF RC = DFHRESP(NORMAL) & BUF = 'TICK' THEN DO;
+      /* scheduler-fired: write-only verbs only */
+      CLK.CLOCK = DATETIME('HH:MI:SS');
+      EXEC CICS SEND MAP('CLOCK1') FROM(CLK) DATAONLY RESP(RC);
+   END;
+   EXEC CICS START TRANSID('TICK') AFTER SECONDS(5) FROM('TICK')
+             LENGTH(4) RESP(RC);
+END TICK;
+```
+
+See [`DATAONLY` - background partial paint](#dataonly--background-partial-paint)
+and [Chapter 5](#chapter-5-program-control-commands).
+
+### HANDLE CONDITION, HANDLE AID and HANDLE ABEND
+
+```pli
+   EXEC CICS HANDLE AID PF3(EXIT_PROC) CLEAR(EXIT_PROC);
+   EXEC CICS HANDLE CONDITION MAPFAIL(NO_INPUT);
+   EXEC CICS HANDLE ABEND LABEL(CLEANUP);
+   ...
+   EXIT_PROC: PROC;
+      EXEC CICS SEND TEXT FROM('Goodbye.') ERASE;
+      EXEC CICS RETURN;
+   END EXIT_PROC;
+```
+
+The subset has no statement labels and no `GO TO`, so a handler
+target is a procedure:
+
+* It must be a **parameterless internal procedure directly nested
+  in MAIN**; anything else is a compile error
+  (`HANDLER INNER MUST BE A PARAMETERLESS PROC IN T`).
+* **Terminal-handler semantics.** When the handler fires, the
+  current call stack is unwound and the handler procedure runs.
+  When it returns, the task ends as if MAIN had executed `RETURN`,
+  and the unit of work commits. The handler may itself issue
+  `EXEC CICS RETURN TRANSID(...)`, `XCTL` or `ABEND`, which then
+  ends the task that way.
+* A handler triggered again while a handler procedure is running
+  abends `ABHB`.
+* `IGNORE CONDITION`, `HANDLE CONDITION cond` with no target (to
+  disarm), `PUSH HANDLE` and `POP HANDLE` behave as in IBM CICS.
+* `RESP` or `NOHANDLE` on a command suppresses `HANDLE CONDITION`
+  and `HANDLE AID` for that command.
+* `HANDLE ABEND LABEL(proc)` catches `EXEC CICS ABEND` only
+  ([Chapter 35](#handle-abend-in-pli)).
+
+> **Programming Note.** Prefer `RESP(RC)` tests to `HANDLE
+> CONDITION`. Because a handler ends the task, it fits "show a
+> message and exit" paths (PF3, CLEAR, a fatal `MAPFAIL`), not
+> retry loops.
+
+### Pointer commands are unavailable
+
+There are no pointers in the subset, so the CICS commands that hand
+out addresses are compile errors: `ADDRESS` (`ADDRESS NOT SUPPORTED
+(NO POINTERS)`), `GETMAIN`, `FREEMAIN` and every `SET(ptr)` option.
+Use the `INTO(area)` form of each command instead
+(`READ ... INTO`, `RECEIVE ... INTO`, `READQ TS ... INTO`).
+
+### EXEC SQL in PL/I
+
+`EXEC SQL ... ;` works like `EXEC CICS`, with IBM PL/I's `:` prefix
+on host variables:
+
+```pli
+   EXEC SQL INCLUDE SQLCA;
+   EXEC SQL WHENEVER SQLERROR DO CALL DB_FAILED;
+
+   EXEC SQL SELECT name INTO :CUSTNM :NM_IND
+            FROM customers_sql WHERE id = :CUSTID;
+   IF SQLCODE = 100 THEN PUT SKIP LIST('not found');
+   ELSE IF NM_IND < 0 THEN PUT SKIP LIST('name is NULL');
+   ELSE PUT SKIP LIST('customer', CUSTNM);
+```
+
+* The SQLCA is predeclared; `EXEC SQL INCLUDE SQLCA;` and
+  `BEGIN` / `END DECLARE SECTION` are accepted and do nothing.
+* A structure host variable expands to its members:
+  `FETCH C1 INTO :ROW` binds `:NAME, :CITY`. A host **array** is a
+  compile error (`ARRAY HOST VARIABLE`).
+* The host-variable scan skips quoted strings, `--` comments and
+  Postgres `::` casts, so `'a:b'` or `x::text` are not host
+  variables.
+* `WHENEVER SQLERROR | SQLWARNING | NOT FOUND` accepts `CONTINUE`,
+  `DO CALL proc` and `GO TO proc` (treated as `DO CALL`). The
+  procedure follows the handler rules above: parameterless, nested
+  in MAIN, and the task ends when it returns.
+* The verbs, cursors, null indicators, `CONNECT TO` and the
+  `SQLCODE` catalogue are those of
+  [Chapter 26](#chapter-26-embedded-sql-cobol-rexx-and-pli).
+
+---
+
+## Chapter 37. %INCLUDE
+
+`%INCLUDE` is the only preprocessor statement:
+
+```pli
+CUSTX: PROC OPTIONS(MAIN);
+   %INCLUDE DFHAID;
+   %INCLUDE DFHRESP;
+   %INCLUDE CUSTREC;
+```
+
+* `%INCLUDE NAME;` inserts the member `NAME.inc` from
+  `pli_include_dir` (default `runtime/pliinc`; the file name is
+  matched case-insensitively) at token level, before parsing.
+* Member names are plain identifiers: no paths, no extension, no
+  directory escape (`%INCLUDE ../DFHAID;` is
+  `INCLUDE NAME EXPECTED`). A missing member is
+  `INCLUDE NOSUCH NOT FOUND`.
+* Members may include other members up to **8 levels** deep; a 9th
+  level or an include cycle is a compile error.
+* A compile error inside a member names the member and its own
+  line: `DFHAID line 3 col 1: ...`.
+* **Cache invalidation.** Every member a program includes is a
+  dependency of its cache entry. Editing or deleting a member
+  recompiles every program that includes it on its next dispatch.
+  (COBOL copybooks, by contrast, need the program to be touched;
+  see [Chapter 25](#chapter-25-copybooks).)
+
+A user member is ordinary PL/I text, typically declarations shared
+by the programs of one application:
+
+```pli
+/* CUSTREC - customer COMMAREA, shared by every CU* program. */
+DCL 1 CUST_AREA,
+      2 CA_KEY      CHAR(8),
+      2 CA_BALANCE  FIXED DEC(11,2),
+      2 CA_STATUS   CHAR(1);
+```
+
+### Shipped members: DFHAID and DFHRESP
+
+Two members ship in `runtime/pliinc`. Like the COBOL copybooks, each
+declares every name **twice** with the same `VALUE`: a bricks
+mnemonic and the IBM-traditional alias. Use either style, or mix
+them.
+
+```pli
+DCL PF03     CHAR(1) VALUE('F3'X);       /* in DFHAID.inc */
+DCL DFHPF3   CHAR(1) VALUE('F3'X);
+DCL RESP_NOTFND    FIXED BIN(31) VALUE(13);   /* in DFHRESP.inc */
+DCL DFHRESP_NOTFND FIXED BIN(31) VALUE(13);
+```
+
+| Member | bricks mnemonic | IBM alias | Contents |
+|---|---|---|---|
+| `DFHAID` | `ENTER`, `CLEAR`, `PA1`..`PA3`, `PF01`..`PF24` | `DFHENTER`, `DFHCLEAR`, `DFHPA1`..`DFHPA3`, `DFHPF1`..`DFHPF24` | `CHAR(1)` AID bytes, compared with `EIBAID` |
+| `DFHRESP` | `RESP_NORMAL`, `RESP_NOTFND`, ... | `DFHRESP_NORMAL`, `DFHRESP_NOTFND`, ... | `FIXED BIN(31)` response codes, compared with `EIBRESP` or a `RESP` variable |
+
+The byte values are those of the COBOL `DFHAID` table in
+[Chapter 25](#delivered-copybook-dfhaid); the response codes are
+those of `DFHRESP.cpy` (the PL/I names use `_` where COBOL uses
+`-`). The `DFHRESP(cond)` built-in gives the same numbers with no
+include at all.
+
+> **Programming Note.** `ENTER`, `CLEAR` and `PF03` become program
+> names once `DFHAID` is included. Do not declare variables with
+> those names in the same program.
+
+---
+
+## Chapter 38. Restrictions and deviations
+
+### Deviations from Enterprise PL/I
+
+Each of these is a deliberate choice for safer business code.
+
+| Area | Bricks behaviour | Enterprise PL/I |
+|---|---|---|
+| Declarations | Every variable must be declared (`UNDECLARED name`) | Implicit declaration, usually FLOAT |
+| `DEC` / `BIN` | `FIXED` is required | Bare `DEC` / `BIN` means FLOAT |
+| Reserved words | Statement keywords are reserved | No reserved words |
+| Initial values | Every variable starts blank / 0 / `'0'B` / empty | Undefined unless `INIT` |
+| `STATIC` | Per task, shared by the task's activations | Per program load |
+| Storage | Always `UNALIGNED`, fixed byte layout | `ALIGNED` default for some types |
+| Decimal precision | Scale digits dropped to fit 31 digits; overflow only on the integer part | FIXEDOVERFLOW on intermediate results (`25 + 1/3`) |
+| `/` | Always decimal; BIN operands convert to DEC | Binary division for BIN operands |
+| BIN op DEC | The BIN operand converts to DEC | The DEC operand converts to BIN |
+| Comparisons | Non-chaining | Chaining allowed |
+| `&` / `\|` | Short-circuit for `BIT(1)` operands | Evaluation order not guaranteed |
+| `CHAR(x)` of a number | Minimal form (`'42'`, `'-3.00'`) | Right-justified with leading blanks |
+| SIZE | Always enabled: `ABSZ` | Disabled by default |
+| Runtime conditions | Deterministic abend + rollback, no ON-units | ON-units, `SIGNAL`, `REVERT` |
+| CICS conditions | Never abend; test `RESP` / `EIBRESP` | Default action abends the task |
+| CICS handlers | Parameterless procedures nested in MAIN; the task ends when the handler returns | Labels, `GO TO` semantics |
+| `FIXED BIN(64)` | Accepted as `FIXED BIN(63)` | An error without `UNSIGNED` |
+
+### Not supported
+
+| Feature | Why / instead |
+|---|---|
+| `ON`, `SIGNAL`, `REVERT`, `ONCODE`, `ONSOURCE` | Validate first; abends are deterministic ([Chapter 35](#chapter-35-runtime-abends-and-the-unit-of-work)) |
+| `GO TO`, statement labels, label variables | `LEAVE`, `ITERATE`, `RETURN`; handler targets are procedures |
+| `BEGIN` blocks | `DO` groups and internal procedures |
+| `FLOAT`, `COMPLEX` | Not for money; use `FIXED DEC` |
+| `POINTER`, `BASED`, `ALLOCATE`, `FREE`, `AREA`, `OFFSET`, `ADDR`, `UNSPEC` | No raw storage; tasks stay isolated. CICS `ADDRESS`, `GETMAIN`, `FREEMAIN`, `SET()` are compile errors. |
+| `ALIGNED` | One byte layout for every type |
+| `CONTROLLED`, `DEFINED`, `EXTERNAL` variables | Overlays and shared mutable state; use files, TS queues or SQL |
+| Stream and record I/O (`GET`, `PUT EDIT`, `FORMAT`, `READ`, `WRITE`, `OPEN`) | `EXEC CICS` and `EXEC SQL`; `PUT LIST` is accepted and discarded, like REXX `SAY` |
+| Macro preprocessor (`%IF`, `%DO`, `%DCL`, `%REPLACE`) | Only `%INCLUDE` |
+| Multitasking, `ENTRY` variables, generic entries | Not needed in the transaction model |
+| SQL host arrays | One row per `FETCH` |
+| CICS pointer verbs | `INTO(area)` forms |
+
+### Errors bricks reports at compile time
+
+`STORAGE LIMIT EXCEEDED`, `NESTING TOO DEEP`,
+`UNKNOWN CICS COMMAND x`, `BAD ABEND CODE`, `INIT VALUE TOO LONG`
+and `TOO MANY INIT VALUES` catch at compile time what Enterprise
+PL/I reports late or not at all; see
+[Compile-time limits and errors](#compile-time-limits-and-errors).
+
+### Limits
+
+| Limit | Value |
+|---|---|
+| Identifier length | 31 |
+| `FIXED DEC` precision | 31 digits |
+| `CHAR` / `CHAR VAR` length | 32767 |
+| `BIT` length | 64 |
+| Structure levels | 15 |
+| Array dimensions per reference | 3 |
+| `%INCLUDE` nesting | 8 |
+| Call nesting | 1000 (then `ABEN`) |
+| Storage per program (`AUTOMATIC` of all procedures + `STATIC`) | 1 MiB (`STORAGE LIMIT EXCEEDED`) |
+| Live activation storage per task | 8 MiB (then `ABST`) |
+| Nesting of parentheses, prefix operators, statements, procedures | 256 (`NESTING TOO DEEP`) |
+| Expression tree depth | 4096 (`NESTING TOO DEEP`) |
+
+---
+
 
 # Part 6. EXEC SQL command reference
 
 > **Part&nbsp;6 begins here.** The chapter that follows is the
-> complete `EXEC SQL` surface — identical for COBOL and REXX. It
+> complete `EXEC SQL` surface — identical for COBOL, REXX and PL/I. It
 > covers every embedded-SQL verb Bricks supports, the SQLCA layout
 > and SQLCODE catalogue, the `WHENEVER` declarative error handler,
 > cursor lifecycle, per-task `CONNECT TO`, null indicators, and
 > SYNCPOINT integration with the bricks unit of work.
 
-## Chapter 26. Embedded SQL (COBOL and REXX)
+<a id="chapter-26-embedded-sql-cobol"></a>
+<a id="chapter-26-embedded-sql-cobol-and-rexx"></a>
+
+## Chapter 26. Embedded SQL (COBOL, REXX and PL/I)
 
 > **Programming Note.** Although this chapter was originally written
 > against COBOL, every `EXEC SQL` shape and behaviour described
-> here applies identically to REXX. The REXX-specific notes appear
-> later in the chapter under *REXX equivalent*. Programs in either
-> language read and write the SQLCA fields (`SQLCODE`, `SQLSTATE`,
-> `SQLERRMC`) the same way the COBOL samples do.
+> here applies identically to REXX and PL/I. The language-specific
+> notes appear later in the chapter under *REXX equivalent* and
+> *PL/I equivalent*. Programs in every language read and write the
+> SQLCA fields (`SQLCODE`, `SQLSTATE`, `SQLERRMC`) the same way the
+> COBOL samples do.
 
 bricks accepts the classic IBM-style `EXEC SQL … END-EXEC`
 embedded-SQL surface and runs it against the Postgres connection
@@ -7392,7 +10025,7 @@ Scope: single-row CRUD (`SELECT INTO`, `INSERT`, `UPDATE`,
 `CONNECT TO 'name'` database switching, null indicators
 (`:hostvar :indicator`), and the `WHENEVER` declarative
 error-handling directive. The same surface works identically in
-COBOL and REXX.
+COBOL, REXX and PL/I.
 
 ### Format
 
@@ -7553,6 +10186,69 @@ tail. If a program does `EXEC SQL ... INTO :NM` then writes
 pick a host-var name that is NOT also a stem tail. The bundled
 SQLR uses `CUSTNM` instead of `NM` for exactly this reason.
 
+### PL/I equivalent
+
+PL/I programs write `EXEC SQL ... ;` (no `END-EXEC`) with IBM PL/I's
+`:` prefix on host variables. The SQLCA is predeclared, with
+`SQLCODE FIXED BIN(31)`, `SQLSTATE CHAR(5)`, `SQLERRMC CHAR(70) VAR`
+and `SQLERRD(6) FIXED BIN(31)`:
+
+```pli
+SQLP: PROC OPTIONS(MAIN);
+   DCL CUSTID CHAR(8) INIT('K001');
+   DCL CUSTNM CHAR(40) VAR;
+   DCL 1 ROW,
+         2 NAME CHAR(40) VAR,
+         2 CITY CHAR(20) VAR;
+   DCL NM_IND FIXED BIN(15);
+
+   EXEC SQL INCLUDE SQLCA;
+   EXEC SQL WHENEVER SQLERROR DO CALL DB_FAILED;
+
+   EXEC SQL SELECT name INTO :CUSTNM :NM_IND
+            FROM customers_sql WHERE id = :CUSTID;
+   IF SQLCODE = 100 THEN PUT SKIP LIST('not found');
+   ELSE IF NM_IND < 0 THEN PUT SKIP LIST('name is NULL');
+   ELSE PUT SKIP LIST('customer', CUSTNM);
+
+   EXEC SQL DECLARE C1 CURSOR FOR
+            SELECT name, city FROM customers_sql WHERE id >= :CUSTID;
+   EXEC SQL OPEN C1;
+   DO WHILE ('1'B);
+      EXEC SQL FETCH C1 INTO :ROW;    /* expands to :NAME, :CITY */
+      IF SQLCODE ¬= 0 THEN LEAVE;
+      PUT SKIP LIST(ROW.NAME, ROW.CITY);
+   END;
+   EXEC SQL CLOSE C1;
+
+   DB_FAILED: PROC;
+      PUT SKIP LIST('SQL failed', SQLCODE, SQLSTATE, SQLERRMC);
+      EXEC CICS SYNCPOINT ROLLBACK;
+      EXEC CICS ABEND ABCODE('SQLF');
+   END DB_FAILED;
+END SQLP;
+```
+
+* **Host structures** expand to their members, so `INTO :ROW` binds
+  `:NAME, :CITY` in declaration order. A host array is a compile
+  error.
+* **`EXEC SQL INCLUDE SQLCA;`** and `BEGIN` / `END DECLARE SECTION`
+  are accepted and do nothing.
+* **`WHENEVER`** takes `CONTINUE`, `DO CALL proc` or `GO TO proc`
+  (treated as `DO CALL`). The target is a parameterless procedure
+  nested directly in MAIN. It runs as a terminal handler: when it
+  returns the task ends and commits, so issue `SYNCPOINT ROLLBACK`
+  or `ABEND` in it when the work must not be kept. See
+  [HANDLE CONDITION, HANDLE AID and HANDLE ABEND](#handle-condition-handle-aid-and-handle-abend).
+* Host variables of a `DECLARE ... CURSOR` are bound again when
+  `OPEN` runs, so the cursor sees their values at `OPEN` time. This
+  holds wherever the `DECLARE` sits in the source, even after the
+  `OPEN` or in a branch that never runs.
+* The host-variable scan skips quoted strings, `--` comments and
+  Postgres `::` casts.
+* A scheduler-fired background PL/I task has no database connection;
+  every statement answers `SQLCODE = -1`.
+
 ### WHENEVER (declarative error handling)
 
 Instead of testing `SQLCODE` after every statement, a program can
@@ -7573,7 +10269,7 @@ Three conditions, checked after every subsequent `EXEC SQL`:
 |---|---|
 | `SQLERROR` | `SQLCODE` is negative |
 | `NOT FOUND` | `SQLCODE` = +100 |
-| `SQLWARNING` | `SQLWARN0` = `'W'` (bricks rarely sets this — PG errors rather than warns) |
+| `SQLWARNING` | `SQLWARN0` = `'W'` (bricks sets it when a result lost characters to the SBCS conversion, see `SQLWARN8`; PG itself errors rather than warns) |
 
 Each condition takes one of two actions:
 
@@ -7600,6 +10296,11 @@ SQLERR:
 SAY 'SQL failed, SQLCODE' SQLCODE
 EXIT
 ```
+
+PL/I has no statement labels: its `WHENEVER` names a procedure
+(`EXEC SQL WHENEVER SQLERROR DO CALL DB_FAILED;`, with `GO TO`
+accepted as a synonym), and the task ends when the procedure
+returns. See [PL/I equivalent](#pli-equivalent).
 
 **Scoping caveat.** bricks's `WHENEVER` is *execution-order*
 scoped: the directive set by the most recently **executed**
@@ -7823,7 +10524,8 @@ form works for both display and arithmetic.
 This chapter is the canonical list of language features bricks
 does **not** accept. Anything not listed here can be assumed
 implemented; refer back to the relevant Chapter 14–26 section
-for the supported syntax.
+for the supported syntax. The PL/I subset has its own list in
+[Chapter 38](#chapter-38-restrictions-and-deviations).
 
 ### COBOL — disallowed at parse time
 
@@ -7834,9 +10536,16 @@ for the supported syntax.
   deliberately doesn't build.
 * **Nested `OCCURS`.** An array of arrays is rejected at parse
   time. One level of `OCCURS` is fine.
-* **`EVALUATE TRUE` / `EVALUATE FALSE`.** The conditional /
-  computed form is rejected with a hint to rewrite as
-  `IF/ELSE`. The simple-value form is supported.
+* **`EXIT SECTION`.** bricks has no PROCEDURE DIVISION sections.
+* **Forms IBM itself forbids.** These are rejected with a short
+  message rather than run with a guessed meaning: a literal,
+  figurative constant or function as the `UNSTRING` source; a
+  reference-modified `STRING INTO` receiver; `DELIMITER IN` /
+  `COUNT IN` without `DELIMITED BY`; `WHEN 'A' OR 'B'` (stack two
+  `WHEN`s); an `EVALUATE WHEN` whose `ALSO` count differs from the
+  subjects; `NOT NOT ...`; and an abbreviated relation that opens a
+  parenthesised group (`A = B AND (< C OR D)`). See
+  [Chapter 22](#chapter-22-procedure-division) for each.
 
 ### COBOL — deferred (would be implementable, not yet wired)
 
@@ -7844,12 +10553,13 @@ for the supported syntax.
 |---|---|
 | DATA DIVISION | `USAGE COMP-1` (single float), `USAGE COMP-2` (double float), `SYNC`, `INDEXED BY`, `OCCURS DEPENDING ON`, `66` / `78` levels, `BLANK WHEN ZERO`, and IBM's extension allowing a level-01 redefiner *larger* than its target (bricks requires the redefining item to fit at every level). `USAGE COMP` / `COMP-4` / `COMPUTATIONAL` / `BINARY`, `USAGE COMP-3` / `COMPUTATIONAL-3` / `PACKED-DECIMAL`, and `REDEFINES` ARE supported — see Chapter 21. |
 | Edited PIC | Edit characters `+`, `-`, `CR`, `DB`, `B`, `0`, `/`. (`Z`, `.`, `,`, `$`, `*` are supported.) |
-| PROCEDURE DIVISION | `CALL` (external program), `SEARCH` / `SEARCH ALL`, `ALTER`, `INITIALIZE`, `ACCEPT`, `EXIT PARAGRAPH` / `EXIT SECTION`, `GO TO ... DEPENDING ON`, `DIVIDE … REMAINDER`. In-line `PERFORM ... END-PERFORM`, `PERFORM ... THRU`, `WITH TEST BEFORE/AFTER`, `VARYING ... AFTER` and `EXIT PERFORM [CYCLE]` ARE supported — see [Chapter 22](#chapter-22-procedure-division). |
+| PROCEDURE DIVISION | `CALL` (external program), `SEARCH` / `SEARCH ALL`, `ALTER`, `INITIALIZE`, `ACCEPT`, `GO TO ... DEPENDING ON`, `DIVIDE … REMAINDER`. In-line `PERFORM ... END-PERFORM`, `PERFORM ... THRU`, `WITH TEST BEFORE/AFTER`, `VARYING ... AFTER`, `EXIT PERFORM [CYCLE]`, `EXIT PARAGRAPH`, full `EVALUATE`, parenthesised and abbreviated combined conditions, the full IBM `STRING` / `UNSTRING` (`POINTER`, `OVERFLOW`, `DELIMITER IN`, `COUNT IN`, `TALLYING IN`) and `JSON GENERATE` / `JSON PARSE` ARE supported — see [Chapter 22](#chapter-22-procedure-division). |
 | Reference modification | Two forms are rejected at parse time: a slice on an `OF` / `IN` qualifier (`K(1:2) OF ROW`), and a subscript combined with a slice in one reference (`TBL(idx)(start:length)`). Slice the whole reference, or `MOVE` the OCCURS slot to a work field first. Plain `identifier(start:length)` on either side of a statement IS supported — see [Chapter 22](#chapter-22-procedure-division). |
-| Intrinsic functions | Only `UPPER-CASE`, `LOWER-CASE`, `LENGTH`, `NUMVAL`, `TRIM`, `REVERSE`, `POS` are implemented. The statistical / date / time families are not. `FUNCTION TRIM` does NOT accept the `LEADING` / `TRAILING` modifier. |
+| Intrinsic functions | Only `UPPER-CASE`, `LOWER-CASE`, `LENGTH`, `BYTE-LENGTH`, `ORD`, `CHAR`, `NUMVAL`, `TRIM`, `REVERSE`, `POS` are implemented. `PIC N` / `NATIONAL` and `NATIONAL-OF` / `DISPLAY-OF` are not supported. The statistical / date / time families are not. `FUNCTION TRIM` does NOT accept the `LEADING` / `TRAILING` modifier. |
+| JSON | `JSON GENERATE` / `JSON PARSE` phrases `ENCODING`, `IGNORING`, `INDICATING` and `CONVERTING ... FROM JSON NULL`; the single condition-name form of `JSON PARSE ... CONVERTING` cannot set "false" (no `88 ... WHEN SET TO FALSE`). The statements themselves ARE supported — see [JSON GENERATE and JSON PARSE](#json-generate-and-json-parse). |
 | Copybooks | `COPY ... REPLACING ==X== BY ==Y==.`, library qualifiers (`COPY name OF lib`), `SUPPRESS`. |
 | EXEC SQL | Multi-row `INSERT VALUES (...), (...)`. Stored-procedure calls (`EXEC SQL CALL`). DDL inside the executor — use `psql` or CEDA DATABASE. |
-| EXEC CICS | `SCREENHT`-based map family suffix (e.g. `CUST1L` on a mod-4 screen) is REXX-only; COBOL twins always render the unsuffixed mod-2 map. |
+| EXEC CICS | `SCREENHT`-based map family suffix (e.g. `CUST1L` on a mod-4 screen) is used by the REXX `CUST` family and the PL/I `CUSP`; the COBOL twins always render the unsuffixed mod-2 map. |
 
 ### REXX — deferred / accepted but inert
 
@@ -7870,8 +10580,8 @@ for the supported syntax.
 
 # Part 8. Sample programs
 
-> **Part&nbsp;8 begins here.** Bricks ships a curated set of REXX
-> and COBOL programs that exercise every command family in the
+> **Part&nbsp;8 begins here.** Bricks ships a curated set of REXX,
+> COBOL and PL/I programs that exercise every command family in the
 > earlier parts. Each transaction has been built to be operator-
 > reachable from the blank prompt and self-explaining when run —
 > reading the source is the fastest way to internalise the bricks
@@ -7891,9 +10601,10 @@ for the supported syntax.
 | `EXAM` | `runtime/cobol/exam.cob` | Worked example of reading the operator's command-line arguments. Type `EXAM 1 2 3` at the blank prompt. |
 | `ORDR` | `runtime/cobol/ordr.cob` | Conversational import: reads `runtime/tmp/orders.sample.txt` via `READQ TD`, parses pipe-delimited rows, and `WRITE FILE('ORDERS')` keyed on customer-id. Tolerates duplicates (`EIBRESP = RESP-DUPREC`). Summary screen shows counts. See [worked example E](#e-sequential-import-via-readq-td--write-file). |
 | `TIMC` | `runtime/cobol/timc.cob` | Timed-reminder demo: exercises `CONVERSE`, `START` (with `INTERVAL` + `FROM`), and `RETRIEVE` end-to-end. Shares `tim1.map` + `tim2.map` with `TIMR`. |
-| `SQLD` | `runtime/cobol/sqld.cob` | Embedded-SQL demo: `EXEC SQL SELECT name INTO :NM FROM customers_sql WHERE id = :CUSTID`. Renders the row + SQLCODE / SQLSTATE / SQLERRMC. Requires Postgres seeded with the schema shown in [Chapter 26](#chapter-26-embedded-sql-cobol). |
+| `SQLD` | `runtime/cobol/sqld.cob` | Embedded-SQL demo: `EXEC SQL SELECT name INTO :NM FROM customers_sql WHERE id = :CUSTID`. Renders the row + SQLCODE / SQLSTATE / SQLERRMC. Requires Postgres seeded with the schema shown in [Chapter 26](#chapter-26-embedded-sql-cobol-rexx-and-pli). |
 | `SQLR` | `runtime/rexx/sqlr.rexx` | REXX twin of `SQLD`. Shares the `customers_sql` table; demonstrates how REXX accesses the same EXEC SQL surface (SQLCODE / SQLSTATE / SQLERRMC arrive as plain REXX variables). |
 | `GMPT` | `runtime/cobol/gmpt.cob` | COBOL pointer / storage demo: `EXEC CICS GETMAIN SET(WS-PTR) FLENGTH(16)`, `SET ADDRESS OF` a based LINKAGE 01 onto the buffer, write-and-read through it, then `EXEC CICS ADDRESS COMMAREA` / `ADDRESS EIB`. Result painted with `SEND TEXT` (no map). See [`GETMAIN`/`FREEMAIN`](#getmain--freemain--exec-cics-getmain-exec-cics-freemain) and the [COBOL pointer model](#cobol-pointer-model-usage-pointer--set-address-of). |
+| `TODO` | `runtime/cobol/todo.cob` | First server-side COBOL WAPI sample: a multi-user to-do REST API under `/api/todo/` over the VSAM files `TODOUSR` / `TODOLST` / `TODOITM`. Uses `JSON GENERATE` / `JSON PARSE`, `EVALUATE ... ALSO`, `EXIT PARAGRAPH` and `SYNCPOINT ROLLBACK` units of work. Browser front end in `runtime/web/todo/`, test script `scripts/todo_api_test.bash`. See [COBOL server-side sample](#cobol-server-side-sample--todocob-transaction-todo). |
 
 All five non-trivial COBOL samples (`QAGC`, `GUST`, `GUSL`,
 `ORDR`, `EXAM`) `COPY DFHAID` and/or `COPY DFHRESP` instead of
@@ -7917,6 +10628,16 @@ of them as living examples of the named-constant idiom from
 | `TIMR` | `runtime/rexx/timr.rexx` | REXX twin of `TIMC`: `START` schedules a reminder; `RETRIEVE` discriminates cold vs scheduled entry. Shares `tim1.map` + `tim2.map` with `TIMC`. |
 | `SCHD` | `runtime/rexx/schd.rexx` | Demonstrates three features in one transaction: `START ... AFTER SECONDS(n)`, `ADDRESS()` and `SYMBOL()`. Paints one PASS/FAIL row per check, then schedules itself with `AFTER SECONDS(10)`; the timer-fire path reports the payload and issues no further `START`, so the chain ends on its own. Contrast the plain `AFTER SECONDS(...)` here with the manual `HH`/`MM`/`SS` packing `TIMR` needs for `INTERVAL(hhmmss)`. |
 | `CHAT` | `runtime/rexx/chat.rexx` | Real-time multi-user chat. Self-refreshes every 2 seconds via `EXEC CICS START TRANSID('CHAT') INTERVAL(000002)`; the tick handler does `SEND MAP ... DATAONLY` so the operator's in-progress typing at the bottom of the screen is **not** clobbered by the refresh. Messages persist in the auto-created KSDS file `CHATLOG` (one record per message, key shape `YYYYMMDDHHMMSS-NNNN-TTTT` for lexicographic / chronological sort). Adapts between Model 2 (16 history rows, `chatm2.map`) and Model 4 (35 history rows, `chatm4.map`) via `EXEC CICS ASSIGN SCREENHT`. F3 exits cleanly — no further tick is scheduled, the self-refresh chain dies on its own. Colours mirror the original `tsu/chat.go` palette: BLUE/BRIGHT title, TURQUOISE clock + footer, YELLOW topic, RED status line, GREEN history rows + prompt, WHITE underscored input. |
+
+### PL/I
+
+| Transid | File | Notes |
+|---|---|---|
+| `CUSP` | `runtime/pli/cusp.pli` | PL/I port of `CUST` in a single program: A=Add, Q=Query, U=Update, D=Delete, L=List, S=Search on the same `CUST1` / `CUST2` / `CUSTL` maps (`CUST1L` / `CUST2L` / `CUSTLL` on a mod-4 screen, 35 list rows per page). Key validation (`CUSV`) and the paged list / search (`CUSL`) are internal procedures (`VALIDATE_KEY`, `LIST_CUSTOMERS`) instead of `LINK` targets. Every command codes `RESP(RC)` and tests it with `DFHRESP`; `%INCLUDE DFHAID` and `DFHRESP`. Shares the `customers` file with `CUST` and `GUST`. Alias `custpli` in `aliases.conf`. See [Porting CUST to PL/I](#g-porting-cust-to-pli). |
+
+PL/I sources live under `pli_dir` (`runtime/pli`) and are edited in
+ISPF **area 4**; the include members `DFHAID.inc` and `DFHRESP.inc`
+ship under `pli_include_dir` (`runtime/pliinc`).
 
 Run any TRANSID by typing it at the blank prompt after CSSN sign-on.
 Refer to `runtime/transactions.conf` for the full list and ACL
@@ -7944,7 +10665,7 @@ entry in the table.
 | `CEMT` | Master-operator | INQUIRE / MONITOR / PERFORM trees; CONTROLBLOCKS sub-tree and PERFORM gated on the `admin` group. |
 | `CEDA` | Resource definitions | TRANSACTION / PROGRAM / USER screens; admin-only. |
 | `CECI` | Command-level interpreter | Type one `EXEC CICS` / `EXEC SQL` / `EXEC WEB` command (up to 5 input rows), press `PF5`, see RESPONSE / RESP2 / LEN / ELAPSED plus any variables the handler set or `INTO` buffers it filled. The `TxCB` and `cics.Handler` are session-scoped — built once on CECI entry, torn down on `PF3` / `CLEAR` / `PA1` / disconnect. Each `PF5` press is a per-PF5 commit boundary via `h.CommitImplicit()` on success / `h.RollbackImplicit()` on failure; SYNCPOINT in bricks does not touch cursors, so the per-task TS read cursor, all open browses, TD handles, WEB sessions, and DOCUMENT tokens survive across PF5 presses (a `STARTBR` on PF5 #1 drives `READNEXT` on PF5 #2). Variable frame is also session-scoped. `READ UPDATE` + `REWRITE` still cannot span PF5 — the per-PF5 implicit SYNCPOINT releases non-`HOLD` record locks; see the [`REWRITE` deviation note](#rewrite) for the recommended workaround. Verbs that would unwind the CECI task itself (`RETURN`, `XCTL`, `LINK`, `ABEND`), repaint the screen (`SEND MAP`, `SEND TEXT`, `RECEIVE MAP`, `CONVERSE`), schedule deferred work (`START`, `RETRIEVE`, `CANCEL`, `DELAY`), or set per-task trap tables (`HANDLE`, `IGNORE`, `WHENEVER`) are refused with a short red-status message. Every command is wrapped in a 7-second wall-clock cap; a cap-hit *poisons* the session (every subsequent PF5 short-circuits with `TIMEOUT`, and the session-end defer skips the handler-owned closers to avoid racing the abandoned goroutine — `PF3` is the only exit). Gated on the `dev` group — and the same gate applies to `EXEC CICS LINK PROGRAM('CECI')` / `XCTL PROGRAM('CECI')`, so a non-DEV caller sees `PGMIDERR` (LINK) or a 403 task-error screen (XCTL) without the built-in's own Run ever being reached. **Operator manual:** the [CECI section in `README.md`](README.md#ceci--command-level-interpreter) covers layout, key bindings, verb policy, the response-line state mapping, and the EBCDIC-037 input rules. |
-| `ISPF` | Source editor | Browse and edit the REXX, COBOL, and BMS-map source trees. Gated on the `dev` group. **Operator manual:** [`ISPF_editor.md`](ISPF_editor.md) — covers every PF key, every command-line word, every line-prefix command (D / I / C / M / R / U / L / ) / ( / X / O / A / B plus the doubled block forms), the file browser, the warn-then-save flow, multi-file editing, and edit locks. |
+| `ISPF` | Source editor | Browse and edit the REXX, COBOL, BMS-map and PL/I source trees (menu areas 1-4; area 4 is PL/I). Gated on the `dev` group. **Operator manual:** [`ISPF_editor.md`](ISPF_editor.md) — covers every PF key, every command-line word, every line-prefix command (D / I / C / M / R / U / L / ) / ( / X / O / A / B plus the doubled block forms), the file browser, the warn-then-save flow, multi-file editing, and edit locks. |
 
 Every built-in TRANSID above can be reached via `EXEC CICS LINK
 PROGRAM(name)` and `EXEC CICS XCTL PROGRAM(name)` as well as by
@@ -8174,6 +10895,141 @@ constant set, and the security-inquiry sub-chapter of
 [Chapter 6](#chapter-6-system-services) for the bricks-flavoured
 access mapping that decides the `WS-CACR-UP` value.
 
+### G. Porting CUST to PL/I
+
+The REXX `CUST` application is three programs: `cust.rexx` (the
+menu and the single-record actions), `cusv.rexx` (key validation,
+reached by `EXEC CICS LINK`) and `cusl.rexx` (list and search,
+reached by `LINK`). `CUSP` (`runtime/pli/cusp.pli`) ports all three
+into **one** PL/I program. The operator sees the same `CUST1`,
+`CUST2` and `CUSTL` screens and messages, and both transactions
+share the `customers` file, so a record added under one is found
+under the other.
+
+```
+CUSP:pli:cusp.pli:PUBLIC        (runtime/transactions.conf)
+custpli:CUSP                    (runtime/aliases.conf)
+```
+
+**Program shape.** Declarations come first (map structures, then
+the request and list state), then a conversational main line, then
+the internal procedures:
+
+```pli
+   DO FOREVER;
+      CALL SEND_MENU;
+      MENU_IN = '';
+      EXEC CICS RECEIVE MAP(M_MENU) INTO(MENU_IN) RESP(RC);
+
+      /* PF12 from the menu ends the transaction.                      */
+      IF EIBAID = PF12 THEN EXEC CICS RETURN;
+
+      AKT  = UPPERCASE(TRIM(MENU_IN.ACTION));
+      CKEY = UPPERCASE(TRIM(MENU_IN.CUSTNO));
+      SRCH = TRIM(MENU_IN.SEARCH);
+      CALL DISPATCH;
+   END;
+```
+
+**LINK becomes an internal CALL.** `CUSV` did nothing but normalise
+the key in `DFHCOMMAREA`. In PL/I that is a procedure with a
+by-reference `CHAR(*) VAR` parameter:
+
+```pli
+   VALIDATE_KEY: PROC(K);
+      DCL K CHAR(*) VAR;
+      K = UPPERCASE(TRIM(K));
+      PUT SKIP LIST('CUSV: validated customer number =', K);
+   END VALIDATE_KEY;
+```
+
+`CUSL` becomes `LIST_CUSTOMERS(TERM, COUNT)`, which returns the
+match count through its second parameter instead of the COMMAREA.
+
+**RESP on every command.** Where `cust.rexx` tested `EIBRESP`
+against bare numbers (`IF EIBRESP = 13`), `CUSP` codes `RESP(RC)`
+and compares with `DFHRESP`:
+
+```pli
+   QUERY_CUSTOMER: PROC;
+      EXEC CICS READ FILE('customers') INTO(REC) RIDFLD(CKEY) RESP(RC);
+      IF RC = DFHRESP(NOTFND) THEN
+         MENU.MSG = 'Customer ' || CKEY || ' not found.';
+      ELSE IF RC <> DFHRESP(NORMAL) THEN
+         MENU.MSG = 'READ failed RESP=' || CHAR(RC);
+```
+
+**Stems become structures and arrays.** The REXX list built map
+field names at run time (`CALL VALUE 'SCR.ROW' || J, LINE`). The
+PL/I list structure declares `2 ROW(35) CHAR(71)` once, and the
+map's `ROW1` .. `ROW15` (or `CUSTLL`'s 35 rows) land in its elements
+([Maps as structures](#maps-as-structures)). `cusl.rexx` also read
+every record into the stems `KEYS.` / `RECS.` before paging; `CUSP`
+keeps storage fixed by counting matches in one browse and building
+each page with a fresh `STARTBR` / `READNEXT` / `ENDBR` that skips
+the earlier pages' matches.
+
+**PARSE VAR becomes INDEX and SUBSTR.** The record body is
+`name|address|city|phone`. `PARSE VAR R NM '|' AD '|' CY '|' PH`
+becomes a small field cutter called four times:
+
+```pli
+   CUT_FIELD: PROC(S, F);
+      DCL (S, F) CHAR(*) VAR;
+      DCL P FIXED BIN(31);
+      P = INDEX(S, '|');
+      IF P = 0 THEN DO;
+         F = S;
+         S = '';
+      END;
+      ELSE DO;
+         F = SUBSTR(S, 1, P - 1);
+         S = SUBSTR(S, P + 1);
+      END;
+   END CUT_FIELD;
+```
+
+**Idiom table.**
+
+| REXX (`CUST`) | PL/I (`CUSP`) |
+|---|---|
+| `PARSE VAR R NM '\|' AD '\|' CY '\|' PH` | `P = INDEX(S, '\|'); F = SUBSTR(S, 1, P - 1); S = SUBSTR(S, P + 1);` |
+| `POS(FILTER, HAY) > 0` | `INDEX(UPPERCASE(K \|\| ' ' \|\| R), FILTER) > 0` |
+| `UPPER(STRIP(X))` | `UPPERCASE(TRIM(X))` |
+| `LEFT(K, 8) LEFT(NM, 28)` (blank join) | `LEFT(K, 8) \|\| ' ' \|\| LEFT(FNM, 28)` |
+| `SCR. = ''` then `SCR.MSG = ...` | `DCL 1 MENU, 2 MSG CHAR(60), ...;` then `MENU = '';` |
+| `CALL VALUE 'SCR.ROW' \|\| J, LINE` | `LST.ROW(J) = LINE;` |
+| `KEYS.IDX`, `RECS.IDX` buffers | re-browse per page, fixed storage |
+| `SAY 'n =' N` (discarded) | `PUT SKIP LIST('n =', N);` (discarded too; use `SEND TEXT` or a TS queue to debug) |
+| `EXEC CICS LINK PROGRAM('CUSV') COMMAREA(CKEY)` | `CALL VALIDATE_KEY(CKEY);` |
+| `EXEC CICS LINK PROGRAM('CUSL') COMMAREA(CMSG)` | `CALL LIST_CUSTOMERS(SRCH, N);` |
+| `... NOHANDLE` + `IF EIBRESP = 36` | `... RESP(RC);` + `IF RC = DFHRESP(MAPFAIL)` |
+| `IF EIBRESP = 13` | `IF RC = DFHRESP(NOTFND)` |
+| `IF C2X(EIBAID) = '7C'` | `%INCLUDE DFHAID;` then `IF EIBAID = PF12` |
+| `IF SCRH >= 43 THEN SUFFIX = 'L'` | the same, with `DCL SUFFIX CHAR(1) VAR` |
+| `'Customer' CKEY 'added.'` (blank join) | `'Customer ' \|\| CKEY \|\| ' added.'` |
+| `NPAGES = (TOTAL + ROWS_PER_PAGE - 1) % ROWS_PER_PAGE` | `NPAGES = (TOTAL + ROWS - 1) / ROWS;` into a `FIXED BIN` target (the fraction is dropped on assignment) |
+
+**Map fallback and the CUSM abend.** Each `SEND` tries the sized
+map first and falls back to the 24x80 map on `MAPFAIL`. If even
+that fails, the map catalogue is broken and `CUSP` abends `CUSM`
+rather than loop on a screen it cannot show:
+
+```pli
+   SEND_MENU: PROC;
+      EXEC CICS SEND MAP(M_MENU) FROM(MENU) ERASE RESP(RC);
+      IF RC = DFHRESP(MAPFAIL) & M_MENU <> 'CUST1' THEN DO;
+         M_MENU = 'CUST1';
+         EXEC CICS SEND MAP(M_MENU) FROM(MENU) ERASE RESP(RC);
+      END;
+      IF RC <> DFHRESP(NORMAL) THEN EXEC CICS ABEND ABCODE('CUSM');
+   END SEND_MENU;
+```
+
+Run it by typing `CUSP` (or the alias `custpli`) at the blank
+prompt. Edit it under ISPF area 4 and check it with
+`go run ./cmd/brickscompile runtime/pli/cusp.pli`.
+
 ---
 
 # Appendix A. Adapting to terminal size (mod 2 vs mod 4)
@@ -8221,6 +11077,25 @@ IF EIBRESP = 36 THEN DO            /* MAPFAIL — sized variant missing */
 END
 ```
 
+The PL/I sample `cusp.pli` uses the same convention with a `VAR`
+suffix variable and a structure for the map:
+
+```pli
+   EXEC CICS ASSIGN USERID(UID) TERMID(TID) SCREENHT(SCRH) RESP(RC);
+
+   /* A model 4 screen (43 rows) gets the L variants of every map.     */
+   IF SCRH >= 43 THEN SUFFIX = 'L';
+   M_MENU   = 'CUST1' || SUFFIX;
+   M_DETAIL = 'CUST2' || SUFFIX;
+```
+
+and falls back with `IF RC = DFHRESP(MAPFAIL) & M_MENU <> 'CUST1'`
+(see [Porting CUST to PL/I](#g-porting-cust-to-pli)). Declare the
+list structure's `ROW` array with the largest row count of the
+family (`2 ROW(35)` for `CUSTLL`); the 15-row `CUSTL` ignores the
+extra elements.
+
+
 Three properties make this work without any DSL changes:
 
 1. **Same field names across the family.** `helo1.map` and
@@ -8235,7 +11110,8 @@ Three properties make this work without any DSL changes:
    break mod-4 connections; they just see the 24-80 layout.
 3. **Paging arithmetic adapts at runtime.** `cusl.rexx` reads
    `SCREENHT` and uses `ROWS_PER_PAGE = 35` on mod 4 vs `15` on
-   mod 2, then picks `CUSTLL` vs `CUSTL` accordingly.
+   mod 2, then picks `CUSTLL` vs `CUSTL` accordingly (`cusp.pli`
+   does the same with `ROWS` and `L_MAP`).
 
 Bricks ships sized variants for every map the demo transactions
 use:
@@ -8248,8 +11124,8 @@ use:
 | `runtime/map/custl.map` (15-row list) | `runtime/map/custll.map` (35-row list) |
 
 To see the difference: connect with `c3270 -model 2 localhost 2300`
-vs. `c3270 -model 4 localhost 2300`, sign on, and run `HELO` or
-`CUST`. The mod-4 view fills the bottom three-quarters of the
+vs. `c3270 -model 4 localhost 2300`, sign on, and run `HELO`,
+`CUST` or `CUSP`. The mod-4 view fills the bottom three-quarters of the
 screen with extra panels.
 
 ---
@@ -8277,13 +11153,32 @@ the program continue to work without qualification. Sibling
 duplicates within a single group are still rejected at parse time
 because no qualifier can disambiguate them.
 
+### COBOL conditions follow IBM, not intuition
+
+Three IBM rules that surprise people, all honoured by bricks (see
+[Combined conditions and parentheses](#combined-conditions-and-parentheses)):
+
+* `IF A / 2 > 2` with integer operands truncates the quotient:
+  for `A = 5` it compares `2 > 2` and is false. When the fraction
+  matters, give the relation a decimal place outside the divisor: a
+  `V` field as dividend, or `IF A / 2 > 2.0` (true). A decimal
+  divisor does not help — `IF A / 2.0 > 2` is still false, because
+  divisors don't count towards `dmax`.
+* `IF A NOT = 1 AND 2` means `A NOT = 1 AND A NOT = 2` — the `NOT`
+  carries to the omitted operator.
+* `STRING ... DELIMITED BY SIZE` moves an identifier at its full PIC
+  width, trailing spaces included. Use `DELIMITED BY SPACE` to stop
+  at the first blank.
+
 ### 3270 has no LF...obviously.
 
-`SEND TEXT` lays its body out as a flat row-major buffer, every
-`cols` bytes wrapping to the next row. Programs that expect newline
-semantics must pad each logical line to the column width
-(`LEFT(s,80)` in REXX, `PIC X(80)` group children in COBOL) and
-concatenate.
+`SEND TEXT` lays its body out as a flat row-major buffer: every
+`cols` characters (cells) start a new row, and only the first
+`cols-1` of them are painted because column 0 holds the attribute
+byte. Programs that expect newline semantics must pad each logical
+line to the column width (`LEFT(s,80)` in REXX, `PIC X(80)` group
+children in COBOL) and concatenate. `LENGTH(n)` is a byte count,
+which under bricks SBCS is exactly `n` characters.
 
 Kinda obvious, but just making sure it's clear to folks who are new to 3270.
 
@@ -8298,7 +11193,77 @@ the trailing dot) at the top of each pagination loop.
 
 In REXX, compare `C2X(EIBAID)` to a hex string: `IF C2X(EIBAID) = 'F3'
 THEN ...` (PF3). In COBOL, compare `EIBAID` directly to a hex
-literal: `IF EIBAID = X'F3' ...`.
+literal: `IF EIBAID = X'F3' ...`. In PL/I, `%INCLUDE DFHAID;` and
+compare with the name (`IF EIBAID = PF03 THEN ...`), or with a hex
+constant (`IF EIBAID = 'F3'X THEN ...`).
+
+### PL/I: declare everything, mind the builtin names
+
+Every PL/I variable must be declared (`UNDECLARED QTYY`), and
+`DEC` / `BIN` need `FIXED`. A built-in name cannot be a level-1
+variable: `DCL DAYS(12) FIXED BIN(15);` fails with
+`BUILTIN NAME DAYS`, and so do `INDEX`, `LENGTH`, `DATE`, `TIME`,
+`SUM`, ... Pick another name (`MDAYS`). Structure members may use
+built-in names, which is why a map structure can have a `SEARCH`
+field. Once `%INCLUDE DFHAID;` is in, `ENTER`, `CLEAR` and
+`PF01` .. `PF24` are taken too.
+
+### PL/I: assignment truncates, ROUND rounds
+
+Assigning `4.947525` to a `FIXED DEC(9,2)` gives `4.94`. Write
+`TAX = ROUND(TOTAL * RATE, 2);` wherever money is rounded. A value
+too large for its target abends `ABSZ` instead of losing high-order
+digits.
+
+### PL/I: `/` is always decimal
+
+`7 / 2` is `3.5`, also for `FIXED BIN` operands. Assign to an
+integer target, or use `TRUNC` or `DIVIDE(x, y, p, q)`, when you
+want the integer quotient. `CHAR(N / 2)` keeps the full scale
+(`3.500000000000000000000`).
+
+### PL/I: CHAR() of a number is minimal
+
+`CHAR(42)` is `'42'` and `CHAR(-3)` is `'-3'`, so
+`'Total: ' || CHAR(N)` needs no `TRIM`. For aligned columns use
+`EDIT(x, 'ZZZ9V.99')` or a `PIC` variable.
+
+### PL/I: CICS conditions do not stop the program
+
+A `NOTFND` or `MAPFAIL` never abends a PL/I task, even without
+`RESP`. A program that does not test the response simply carries
+on with stale data. Code `RESP(RC)` on every command and test `RC`
+against `DFHRESP(...)`.
+
+### PL/I: handlers end the task
+
+A `HANDLE CONDITION`, `HANDLE AID` or `WHENEVER` target procedure
+does not return to the failing statement: when it returns, the
+task ends and commits. Use handlers for exit paths only, and
+`SYNCPOINT ROLLBACK` in a handler whose work must not be kept.
+
+### PL/I: receive numbers into PIC or CHAR members
+
+`RECEIVE MAP` into a `FIXED DEC` / `FIXED BIN` member converts the
+typed text, and an operator who types `12A` abends the task `ABCV`.
+Receive into a numeric `PIC` (then `VALID`) or a `CHAR` member
+(then `VERIFY`), and convert after the check.
+
+### COBOL and PL/I: EIBTRMID holds 4 characters
+
+bricks terminal ids are 5 characters (`T0001`), but `EIBTRMID` is a
+4-character field in the COBOL and PL/I EIB, as in IBM's
+`DFHEIBLK`, so it reads `T000` and two terminals can look alike.
+For the full id use `EXEC CICS ASSIGN TERMID(TID)` with an
+8-character target (`DCL TID CHAR(8);` in PL/I, `PIC X(8)` in
+COBOL), as `cusp.pli` does. REXX variables have no fixed length, so
+REXX `EIBTRMID` holds the full id.
+
+### PL/I: unlabelled LEAVE skips DO groups
+
+`IF X THEN DO; ...; LEAVE; END;` inside a loop leaves the **loop**:
+an unlabelled `LEAVE` / `ITERATE` targets the innermost iterative
+`DO`, never a plain `DO;` group.
 
 ---
 
@@ -8459,6 +11424,52 @@ literal: `IF EIBAID = X'F3' ...`.
 | `DFHWBCC` | TLS / mTLS cert-extract pack. |
 | `DFHDCDOC` | DOCUMENT token + delimiter constants. |
 
+## PL/I quick card (Part 9)
+
+| Construct | Form |
+|---|---|
+| Program | `NAME: PROC OPTIONS(MAIN); ... END NAME;` |
+| Internal procedure | `P: PROC(A, B) [RETURNS(attrs)] [RECURSIVE]; ... END P;` |
+| Declarations | `DCL X FIXED DEC(p,q) [INIT(v)] [STATIC];` / `FIXED BIN(15\|31\|63)` / `CHAR(n) [VAR]` / `BIT(n)` / `PIC '...'` |
+| Structure | `DCL 1 S, 2 A CHAR(8), 2 R(15) CHAR(71);` / `DCL 1 T LIKE S;` |
+| Named constant | `DCL MAX FIXED BIN(31) VALUE(50);` |
+| External entry | `DCL F ENTRY(attrs, ...) RETURNS(attrs) EXTERNAL;` |
+| Assignment | `A, B = 0;` / `S = '';` / `T = S, BY NAME;` / `SUBSTR(L, 5, 3) = 'ABC';` |
+| Conditional | `IF c THEN s; ELSE s;` / `SELECT (x); WHEN (v1, v2) s; OTHERWISE s; END;` |
+| Loops | `DO I = 1 TO N [BY k] [WHILE(c)];` / `DO WHILE(c);` / `DO UNTIL(c);` / `DO FOREVER;` |
+| Loop control | `LEAVE [label];` / `ITERATE [label];` |
+| Calls | `CALL P(args);` / `RETURN;` / `RETURN (v);` |
+| Debug line (discarded) | `PUT SKIP LIST(a, b, ...);` |
+| Abend | `CALL ABEND('CU01');` |
+| CICS | `EXEC CICS READ FILE('f') INTO(REC) RIDFLD(KEY) RESP(RC);` |
+| SQL | `EXEC SQL SELECT c INTO :V FROM t WHERE k = :K;` |
+| Include | `%INCLUDE DFHAID;` |
+
+| Abend | Cause |
+|---|---|
+| `ABCV` | bad character-to-number / bit conversion, bad date |
+| `ABSZ` | value does not fit the target |
+| `ABFO` | intermediate over 31 integer digits, 64-bit overflow |
+| `ABZD` | division by zero |
+| `ABSR` | subscript or `SUBSTR` out of range |
+| `ABSL` | `SELECT` with no match and no `OTHERWISE` |
+| `ABEN` | external entry mismatch, recursion, call depth |
+| `ABHB` | handler loop |
+| `AICA` | runaway task |
+| `ABST` | task storage over 8 MiB |
+| `APLI` | internal interpreter error (detail in the log) |
+
+## Standard PL/I include members
+
+| Member | Brings in |
+|---|---|
+| `DFHAID` | AID byte constants (`ENTER`, `PF03`, `PA1`, ...) and their `DFH...` aliases, `CHAR(1)` `VALUE`s. |
+| `DFHRESP` | `EIBRESP` codes (`RESP_NOTFND` / `DFHRESP_NOTFND`, ...), `FIXED BIN(31)` `VALUE`s. |
+
+`DFHRESP(cond)` and `DFHVALUE(cvda)` are compile-time built-ins and
+need no include. The SQLCA and the EIB are predeclared.
+
+
 ## EIB fields (Chapter 11)
 
 | Field | Set by | Meaning |
@@ -8466,11 +11477,11 @@ literal: `IF EIBAID = X'F3' ...`.
 | `EIBAID` | `SEND MAP` / `RECEIVE MAP` | AID byte. |
 | `EIBCPOSN` | `SEND MAP` / `RECEIVE MAP` | 1-based cursor position. |
 | `EIBCALEN` | dispatcher entry | DFHCOMMAREA length. |
-| `EIBTRMID` | dispatcher | Terminal ID. |
+| `EIBTRMID` | dispatcher | Terminal ID (4 characters in COBOL / PL/I: `T000`; full id via `ASSIGN TERMID`). |
 | `EIBRESP` / `EIBRESP2` | every `EXEC CICS` | Response code + secondary. |
 | `EIBDATE` / `EIBTIME` | `ASKTIME` | 0CYYDDD / HHMMSS. |
 | `EIBABCODE` | abend trap | 4-char abend code. |
-| `RC` | every `EXEC CICS` | Mirror of `EIBRESP`. |
+| `RC` | every `EXEC CICS` | Mirror of `EIBRESP` (REXX and COBOL; a PL/I program declares its own `RESP` variable). |
 
 ## SQLCA fields (Chapter 26)
 
@@ -8480,7 +11491,8 @@ literal: `IF EIBAID = X'F3' ...`.
 | `SQLSTATE` | `PIC X(5)` | 5-character ISO state code. |
 | `SQLERRMC` | `PIC X(70)` | Human-readable PG error text. |
 | `SQLERRD3` | `PIC S9(9)` | Rows-affected count after `INSERT` / `UPDATE` / `DELETE`. |
-| `SQLWARN0` | `PIC X(1)` | `'W'` if any warning fired (Bricks rarely sets). |
+| `SQLWARN0` | `PIC X(1)` | `'W'` if any warning fired (bricks sets it together with `SQLWARN8`). |
+| `SQLWARN8` | `PIC X(1)` | `'W'` when a result character had no bricks SBCS byte and was replaced by `?` (`SQLCODE` stays 0). |
 
 ---
 

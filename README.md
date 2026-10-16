@@ -2,9 +2,10 @@
 **Chat with BRICKS developers and master operators [here](https://discord.gg/6NWE4Gp7kR)**
 
 BRICKS is a drop-in transaction server compatible with CICS. It includes
-interpreters for COBOL and REXX languages and all the usual EXEC CICS, EXEC SQL,
-EXEC WEB calls. A good sized collection of transactions in COBOL and REXX is
-included to show-case all the capabilities of BRICKS TS. 
+interpreters for the COBOL, REXX and PL/I languages and all the usual EXEC CICS,
+EXEC SQL, EXEC WEB calls. A good sized collection of transactions in COBOL and
+REXX, plus a PL/I sample (CUSP), is included to show-case all the capabilities
+of BRICKS TS. 
 
 Multiple BRICKS regions can be linked so a transaction tagged for another
 region runs there transparently — one region can own the database, another the
@@ -18,11 +19,18 @@ Multiples more is possible with larger servers and even more so in MRO mode.
 The `EXEC CICS` surface is compatible with CICS, and the supported verb set is able to run
 complex pseudo-conversational and conversational programs as usual.
 
+As in IBM CICS, coding `RESP(var)` or `NOHANDLE` on a command makes its CICS
+conditions non-fatal in every language: the program reads the outcome from the
+RESP variable or `EIBRESP` and carries on. A lost terminal, `RETURN` / `XCTL` /
+`ABEND`, a fired `HANDLE` branch and a LINKed program that fails while running
+still end the task. PL/I programs never end on a CICS condition, with or without
+`RESP` (see [PROGRAMMING.md, Chapter 36](PROGRAMMING.md#resp-resp2-and-dfhresp)).
+
 Bricks also features a built-in VSAM-style KSDS access method compatible with CICS, along with the 
 usual IDCAMS cluster definition and REPRO capabilities . Also, SQL support thru EXEC SQL statements is available to the programmers.  
 ** The extensive SQL support is document [here](SQL_guide.md)**
 
-COBOL and REXX programs are parsed once and then cached, so repeat dispatches
+COBOL, REXX and PL/I programs are parsed once and then cached, so repeat dispatches
 skip the lex+parse cost. Each instantiated program has its own heap and stack,
 so there are no re-entrancy issues. Bricks expressly disallows calculated
 GOTOs in COBOL programs for the same reason.
@@ -31,8 +39,8 @@ GOTOs in COBOL programs for the same reason.
 > **Application programmers:** see **[PROGRAMMING.md](PROGRAMMING.md)** —
 > the *Bricks Application Programming Reference*. It documents the
 > BMS-flavoured map DSL, every supported `EXEC CICS` command (format,
-> options, conditions, examples), the REXX dialect, the COBOL dialect, and
-> sample programs.
+> options, conditions, examples), the REXX dialect, the COBOL dialect, the
+> PL/I subset, and sample programs.
 >
 > This README covers **running and operating** bricks: configuration,
 > authentication, control blocks, on-disk file storage, the operator
@@ -178,7 +186,9 @@ and for the one rule it deliberately breaks (duplicate keys here are
 | `rexx_dir`                   | `runtime/rexx`                | Directory of REXX programs. Sub-directories are supported: `transactions.conf` may reference programs as `subdir/file.rexx`. `CEDA PROGRAM` walks the tree recursively (depth cap 8, hidden-prefixed entries skipped). |
 | `cobol_dir`                  | `runtime/cobol`               | Directory of COBOL programs. Same sub-directory support as `rexx_dir`. |
 | `copybook_dir`               | `runtime/cobolcopy`           | Directory of COBOL copybooks (`SQLCA.cpy`, etc.). |
-| `runtime_dir`                | `runtime`                     | Root for `maps_dir` / `rexx_dir` / `cobol_dir` / `tmp_dir` / `copybook_dir` when those aren't set explicitly. Set this to relocate the whole runtime tree in one knob. |
+| `pli_dir`                    | `runtime/pli`                 | Directory of PL/I programs (`*.pli`), the programs `transactions.conf` rows with language `pli` name (`CUSP:pli:cusp.pli:PUBLIC`). PL/I external entries (`DCL name ENTRY ... EXTERNAL`) resolve to `<name>.pli` here. Listed by `CEDA PROGRAM` / `CEMT P R P`, edited in ISPF area 4. See [PROGRAMMING.md, Part 9](PROGRAMMING.md#part-9-the-pli-language). |
+| `pli_include_dir`            | `runtime/pliinc`              | Directory searched by the PL/I `%INCLUDE name;` statement (`name.inc`, flat names, no paths). The standard `DFHAID.inc` and `DFHRESP.inc` members ship here with the same dual names as the COBOL copybooks (`PF03` and `DFHPF3`). Editing a member recompiles every program that includes it on its next dispatch. |
+| `runtime_dir`                | `runtime`                     | Root for `maps_dir` / `rexx_dir` / `cobol_dir` / `pli_dir` / `tmp_dir` / `copybook_dir` / `pli_include_dir` / `webserver_dir` when those aren't set explicitly. Set this to relocate the whole runtime tree in one knob. |
 | `data_dir`                   | `data`                        | Holds `files.boltdb` (FILE store + TS queues). |
 | `tmp_dir`                    | `runtime/tmp`                 | Sandbox directory for sequential text I/O (REXX `LINEIN`/`LINEOUT`, COBOL `READQ TD`/`WRITEQ TD`). Strict: ASCII only, LF-terminated, flat namespace, no traversal. See [Sequential file I/O — `tmp_dir`](#sequential-file-io--tmp_dir). |
 | `ntp_server`                 | `time.google.com`             | NTP server polled every 12 hours to correct bricks's in-memory wall clock. EIBTIME / EIBDATE / FORMATTIME consult this corrected clock. Set to `off` — or `no` / `false` / `0`, or a bare `ntp_server=` with an empty value — to disable; `on` / `yes` / `true` / `1` select the default server rather than a host literally named `on`. Omitting the key keeps the default. Exactly **one** synchronous query runs at startup; the background goroutine then waits a full 12 hours before its first poll. Failures are non-fatal — bricks logs and continues with the previous offset (or the raw host clock if no sync has ever succeeded). See [Time synchronisation](#time-synchronisation). |
@@ -186,7 +196,7 @@ and for the one rule it deliberately breaks (duplicate keys here are
 | `log_location`               | `log`                         | Directory where bricks writes per-run log files. On startup a new file `YYYY-MM-DD_HH-MM-SS.log` is created; every console line is appended (with ANSI color stripped) and prefixed with a 4-character subsystem tag. Set to `off` to disable file logging. See [Logging](#logging). |
 | `idle_timeout_secs`          | `900`                         | Read deadline applied **only before sign-on** — to the LogonPrompt and to the BlankPrompt of an unauthenticated session, plus the CSSN sign-on input reads. A peer that completes telnet negotiation but never signs on is dropped after this many seconds so a half-open handshake doesn't tie up a `max_conns_per_ip` slot forever. **Once the operator has signed on, the deadline is not set** — a signed-on terminal sits at the blank prompt indefinitely and only disconnects on TCP close or an explicit `CSSF DISC` / `DISCONNECT` / `GOODNIGHT`. `CSSF LOGOFF` clears the authentication flag, so the deadline resumes for the now-unauthenticated session. Valid range is `1..86400` seconds (one day); `0` would arm an already-expired deadline and drop every terminal at connect, so it is rejected at startup along with anything above the cap. |
 | `max_conns_per_ip`           | `8`                           | Per-client cap. |
-| `program_cache`              | `4`                           | L2 LRU pool size in MB for parsed REXX/COBOL programs (a 128-entry L1 of decoded ASTs sits in front of it). Allocated once at startup as eight contiguous byte slabs — one per shard — and reused for the life of the process; Go's GC never scans the program bytes. Valid range is `1..16384` (1 MB floor, 16 GB cap); out-of-range values are rejected at startup. Live counters for both tiers are visible in `CEMT MONITOR`. |
+| `program_cache`              | `4`                           | L2 LRU pool size in MB for parsed REXX/COBOL/PL/I programs (a 128-entry L1 of decoded ASTs sits in front of it). Allocated once at startup as eight contiguous byte slabs — one per shard — and reused for the life of the process; Go's GC never scans the program bytes. Valid range is `1..16384` (1 MB floor, 16 GB cap); out-of-range values are rejected at startup. Live counters for both tiers are visible in `CEMT MONITOR`. |
 | `map_cache`                  | `128`                         | LRU bound on the number of **parsed** 3270 maps held resident. The directory index — `(map name → file path, mtime, size, SHA-256)` — always covers every `*.map` in `maps_dir`, so any map remains resolvable by name; only the parsed body is bounded. A `SEND/RECEIVE MAP` for a cached map is zero-parse; an evicted map is re-parsed on next lookup (microseconds) and re-inserted. Evicted entries drop their `*Map` pointer and the Go GC reclaims them on the next cycle, capping both steady-state memory and per-GC pointer-graph walk regardless of how many maps a deployment ships. Valid range is `1..1028`; rejected at startup if out of range. Live counters and runtime resize are visible in `CEMT P M`. |
 | `record_cache`               | `16`                          | Byte budget in **MB** for the VSAM record read cache that sits in front of the bbolt file store. A keyed `READ FILE` for a cached record skips the B-tree traversal and is served from memory; every `WRITE`/`REWRITE`/`DELETE` (and SYNCPOINT rollback) invalidates the affected record, so the cache stays coherent within the process. The budget bounds the total cached record bytes; the least-recently-read records are evicted when it fills. Valid range is `4..4096` (4 MB floor, 4 GB cap); out-of-range values are rejected at startup. Live read/write rates, latency, and the hit ratio are on the `CEMT MONITOR` **VSAM File Monitor** (PF11); the since-boot hit ratio also shows on the `CEMT MONITOR` Caches panel. |
 | `wrkarea`                    | `0`                           | Byte length of the region **Common Work Area** (CWA) — the single region-wide scratch area `EXEC CICS ADDRESS CWA(ptr)` hands a COBOL program a pointer to, and whose length `EXEC CICS ASSIGN CWALENG(n)` reports. Integer bytes; valid range `0..3584` (the IBM CWA cap), rejected at startup if negative or above `3584`. The default `0` means **no CWA is allocated** — `ADDRESS CWA` then yields a NULL pointer (handle 0) and `CWALENG` returns `0`, matching real CICS on a region with no CWA. The CWA is one slice shared by every task for the life of the process; writes through the pointer are visible to other tasks (unsynchronised — the program serialises its own access). See [PROGRAMMING.md / EXEC CICS ADDRESS](PROGRAMMING.md#address--exec-cics-address). |
@@ -928,7 +938,7 @@ disconnect. Field summary:
 | `Conn`           | Underlying `net.Conn` (plain or `*tls.Conn`). |
 | `Dev`            | `go3270.DevInfo` — terminal capabilities. |
 | `IsTLS`          | True when the connection is on the TLS listener. |
-| `TermID`         | Unique 4-digit terminal id (T0001 …). Mirrors `EIBTRMID`. |
+| `TermID`         | Unique terminal id, `T` plus 4 digits (T0001 …). Mirrors `EIBTRMID` (the COBOL and PL/I `EIBTRMID` fields are 4 characters as in IBM's EIB and read `T000`; `ASSIGN TERMID` into 8 characters gives the full id). |
 | `UserID`         | Empty until the user signs on. |
 | `Groups`         | Group membership snapshot from `users.conf`. |
 | `RemoteIP`       | Remote host for per-IP accounting. |
@@ -1330,13 +1340,13 @@ rotating by restarting cuts a clean boundary.
 
 ## SQL support
 
-Bricks programs (COBOL and REXX) can run `EXEC SQL` against a
-catalogue of Postgres databases. Same surface for both
+Bricks programs (COBOL, REXX and PL/I) can run `EXEC SQL` against a
+catalogue of Postgres databases. Same surface for all three
 languages: single-row CRUD (`SELECT INTO`, `INSERT`, `UPDATE`,
 `DELETE`, `COMMIT`, `ROLLBACK`), the four-verb cursor lifecycle
 (`DECLARE` / `OPEN` / `FETCH` / `CLOSE`), and per-task
 `CONNECT TO 'name'` to switch between databases. See
-[PROGRAMMING.md, Chapter 26](PROGRAMMING.md#chapter-26-embedded-sql-cobol)
+[PROGRAMMING.md, Chapter 26](PROGRAMMING.md#chapter-26-embedded-sql-cobol-rexx-and-pli)
 for the full surface; this section covers operator-side setup.
 
 ### Configuration
@@ -1567,7 +1577,7 @@ Pass `--no-console` to disable the frame and emit raw log output
 
 `ISPF` is a built-in TRANSID (no entry in `transactions.conf`,
 implemented in package `ispf/`) that lets operators browse and edit
-the REXX, COBOL, and BMS-map source trees from a 3270 session. It is
+the REXX, COBOL, BMS-map and PL/I source trees from a 3270 session. It is
 restricted to users who belong to the **`dev`** group in
 `runtime/users.conf`; everyone else gets `ISPF requires DEV group
 membership.` and a return to the blank prompt.
@@ -1584,11 +1594,13 @@ look: white dashed banner, blue prompts, turquoise body, red intense
 values in the writable fields. Three layers:
 
 1. **Menu.** Pick the area: `1` REXX (`cfg.RexxDir`), `2` COBOL
-   (`cfg.CobolDir`), or `3` MAPS (`cfg.MapsDir`). `F3` exits ISPF and
-   returns to the blank prompt.
+   (`cfg.CobolDir`), `3` MAPS (`cfg.MapsDir`), or `4` PL/I
+   (`cfg.PliDir`, `pli_dir`). `F3` exits ISPF and returns to the
+   blank prompt.
 
 2. **File browser.** Two-column paged listing of files under the
-   chosen area (filtered by extension: `.rexx` / `.cob` / `.map`).
+   chosen area (filtered by extension: `.rexx` / `.cob` / `.map` /
+   `.pli`).
    Type any character in the selector field next to a file and press
    ENTER to open it; type `D` and press ENTER to delete (with a `F9`
    confirmation overlay). `F6` creates a new file (prompts for a
@@ -1598,7 +1610,10 @@ values in the writable fields. Three layers:
 
 3. **Editor.** ISPF-style line editor with column ruler, command
    line, scroll-mode field, and per-token syntax highlighting driven
-   by the bricks REXX / COBOL / MAP lexers. AID map:
+   by the bricks REXX / COBOL / PL/I / MAP lexers. Saving a REXX,
+   COBOL or PL/I buffer parses it first (PL/I `%INCLUDE` members
+   resolved from `pli_include_dir`); PF12 a second time saves despite
+   errors. AID map:
 
    | Key | Action |
    |---|---|
@@ -1633,11 +1648,11 @@ and risks) is in [`ispf_plan.md`](ispf_plan.md). The source layout:
 
 | File | What |
 |---|---|
-| `ispf/menu.go` | The 1=REXX / 2=COBOL / 3=MAPS picker. |
+| `ispf/menu.go` | The 1=REXX / 2=COBOL / 3=MAPS / 4=PL/I picker. |
 | `ispf/ispf_filebrowser.go` | Two-column paged browser (port of the tsu source). |
 | `ispf/ispfeditor.go` | Editor screen + AID dispatch (port of the tsu source). |
 | `ispf/newfile.go` | PF6 "create new file" prompt + validator. |
-| `ispf/highlight.go` | Per-line REXX / COBOL / MAP tokenizers. |
+| `ispf/highlight.go` | Per-line REXX / COBOL / PL/I / MAP tokenizers. |
 | `ispf/style.go` | Color palette constants (banner / prompt / body / value). |
 | `ispf/host.go` + `ispf/area.go` | `EditorHost` interface and area enum. |
 | `ispf/dispatch.go` | `ispf.Run` top-level menu → browser → editor loop. |
@@ -1926,7 +1941,7 @@ M  MAPCACHE        (N/M entries)                  -- resize / inspect the map LR
 R  RESCAN    trans / maps / programs              -- on-disk diagnostic scans
    ├── T  TRANS     (N transactions, M missing)   -- rescan transactions.conf
    ├── M  MAP       (N maps, M syntax errors)     -- parse every *.map in MapsDir
-   └── P  PROGRAMS  (N programs, M orphans)       -- walk rexx_dir + cobol_dir
+   └── P  PROGRAMS  (N programs, M orphans)       -- walk rexx/cobol/pli dirs
 C  PROGRAMCACHE   (L1 N/M, L2 N MB)               -- resize / inspect the program cache
 E  METRICS        (enabled|disabled, N scrapes)   -- toggle /metrics endpoint
 ```
@@ -1949,8 +1964,10 @@ other CEDA mutations.)
   isn't readable. The catalog reload path silently keeps the prior
   catalog when a parse fails — this screen is how an operator finds
   out which file is broken.
-* **RESCAN PROGRAMS** (`CEMT P R P`) walks `rexx_dir` and `cobol_dir`,
-  lists every regular file, and shows the TRANSIDs in
+* **RESCAN PROGRAMS** (`CEMT P R P`) walks `rexx_dir`, `cobol_dir`
+  and `pli_dir` (`.pli` files; PL/I include members are not
+  programs and are not listed), lists every regular file, and shows
+  the TRANSIDs in
   `transactions.conf` that reference it. Files with no matching
   TRANSID render with TRANSID=`-` so stale leftovers stand out.
 * **MAPCACHE** (`CEMT P M`) shows the live counters for the parsed-
@@ -2043,8 +2060,10 @@ a verbatim CICS port.
 
 * **CEDA TRANSACTION** (`CEDA T`) lists every transaction with the
   same `SEL` selector pattern. The form takes TRANSID (4 chars,
-  uppercased), LANGUAGE (REXX or COBOL), PROGRAM (file relative to
-  `rexx_dir` or `cobol_dir`), and GROUPS (CSV). Validation runs
+  uppercased), LANGUAGE (REXX, COBOL or PLI -- the hint on the form
+  reads `(REXX, COBOL or PLI)`; `PL/I` and `PL1` are refused),
+  PROGRAM (file relative to `rexx_dir`, `cobol_dir` or `pli_dir`),
+  and GROUPS (CSV). Validation runs
   before the write: bad TRANSID format, a TRANSID that names a
   **built-in** (`CEMT`, `CEDA`, `CECI`, `IDCA`, `ISPF`, … — a
   built-in always beats a table row, so such a definition could
@@ -2057,7 +2076,8 @@ a verbatim CICS port.
   in CEMT INQUIRE TRANSACTION.
 
 * **CEDA PROGRAM** (`CEDA P`) is the read-only counterpart — a
-  combined view of `rexx_dir` and `cobol_dir` showing LANG, FILE,
+  combined view of `rexx_dir`, `cobol_dir` and `pli_dir` (the CEDA
+  menu shows `(n REXX, n COBOL, n PL/I on disk)`) showing LANG, FILE,
   SIZE, MODIFIED, the TRANSIDs that reference the file, and a SYNTAX
   cell that says `OK` when the parser accepts the file or `ERR …`
   with the first parse error otherwise. Only the page currently
@@ -2614,10 +2634,12 @@ On a miss, the dispatcher parses from disk, encodes into L2, and
 populates L1 with the freshly-parsed AST. On an L1 miss but L2 hit, the
 gob-decoded AST is promoted to L1 so subsequent dispatches skip the
 decode. Both tiers store `interface{}` values and dispatch on the
-concrete type at read time, so REXX and COBOL programs share the same
-LRU budget — a busy COBOL workload can fill the cache just as a busy
+concrete type at read time, so REXX, COBOL and PL/I programs share the
+same LRU budget — a busy COBOL workload can fill the cache just as a busy
 REXX workload can. Edits to a program file are picked up on the next
-dispatch automatically via `mtime` mismatch eviction.
+dispatch automatically via `mtime` mismatch eviction. A PL/I entry also
+records every `%INCLUDE` member it used, so editing or deleting a member
+evicts every program that includes it.
 
 `CEMT MONITOR` (`CEMT M`) renders live cache counters: cumulative
 hits/misses per tier, the per-refresh-interval hit ratio, L1 entry
