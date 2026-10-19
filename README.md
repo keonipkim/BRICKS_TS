@@ -1,11 +1,16 @@
 # Bricks Transaction Server
 **Chat with BRICKS developers and master operators [here](https://discord.gg/6NWE4Gp7kR)**
 
-BRICKS is a drop-in transaction server compatible with CICS. It includes
+BRICKS is a transaction server drop-in compatible with CICS. It includes
 interpreters for the COBOL, REXX and PL/I languages and all the usual EXEC CICS,
 EXEC SQL, EXEC WEB calls. A good sized collection of transactions in COBOL and
 REXX, plus a PL/I sample (CUSP), is included to show-case all the capabilities
 of BRICKS TS. 
+
+<p>
+<a href="https://www.rexxla.org"><img src="rexxla.png" alt="The Rexx Language Association" width="100"/></a><br/>
+<b>BRICKS TS is a member of the <a href="https://www.rexxla.org">REXX Language Association</a>.</b>
+</p>
 
 Multiple BRICKS regions can be linked so a transaction tagged for another
 region runs there transparently — one region can own the database, another the
