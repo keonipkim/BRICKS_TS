@@ -2184,7 +2184,7 @@ any signed-on operator.
 | `go run ./cmd/brickspw <pw>`      | Print a bcrypt hash for a password. |
 | `./add_brick_user.bash <u> <p> [groups]` | Add a user (refuses duplicates without `--update`). |
 | `./add_brick_user.bash --update <u> <p> [groups]` | Replace an existing user's hash/groups. |
-| `./build.bash`                    | Cross-compile `bricks`, `bricksload`, `brickspw` for linux/amd64, linux/386, linux/armv7, freebsd/amd64 into `bin/` (CGO_ENABLED=0). |
+| `./build.bash`                    | Cross-compile `bricks`, `bricksload`, `brickspw` for linux/amd64, linux/386, linux/arm64, darwin, windows into `bin/` (CGO_ENABLED=0). |
 
 ---
 

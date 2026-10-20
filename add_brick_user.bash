@@ -43,12 +43,11 @@ detect_goos() {
 }
 
 detect_goarch() {
-  # NB: build.bash names the 32-bit ARM target "armv7" (GOARCH=arm +
-  # GOARM=7), so emit armv7 here, not the raw GOARCH "arm".
+  # ARM is published as 64-bit only (linux-arm64); 32-bit ARM kernels
+  # (armv7l/armv6l) fall through to "" and are reported as unsupported.
   case "$(uname -m 2>/dev/null)" in
     arm64 | aarch64) echo arm64 ;;
     x86_64 | amd64) echo amd64 ;;
-    armv7l | armv6l | armv7 | armhf) echo armv7 ;;
     *) echo "" ;;
   esac
 }
@@ -283,7 +282,7 @@ sync_binaries() {
   if [[ -z "$GOOS" || -z "$GOARCH" ]]; then
     local plat; plat="$(uname -s 2>/dev/null)/$(uname -m 2>/dev/null)"
     err_msg "unsupported platform: ${plat}"
-    printf '%s\n' "bricks publishes binaries for: darwin/arm64, linux/amd64, linux/armv7, windows/amd64." >&2
+    printf '%s\n' "bricks publishes binaries for: darwin/arm64, linux/amd64, linux/arm64, windows/amd64." >&2
     arch_issue_notice "${plat}"
     return 1
   fi
