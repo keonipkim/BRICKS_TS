@@ -1,6 +1,7 @@
       *> DODC -- COBOL twin of DODF (dodfr.rexx). PAT / DoD FMR Vol 7A
       *> Ch 1 PEBD: 30/360, inclusive +1, DEP 2.1.4.12, lost 2.4.1.3.1,
-      *> officer 2.2.2, PEBD retard 2.4.1.4. Same DODF1/DODF2 maps.
+      *> officer 2.2.2, while-enlisted WE=Y, PEBD retard 2.4.1.4.
+      *> Blank TO is open: merged through as-of, lost count uses LOST.
        IDENTIFICATION DIVISION.
        PROGRAM-ID. DODFR.
 
@@ -26,48 +27,56 @@
           05 CP1      PIC X(5).
           05 RS1      PIC X(6).
           05 LT1      PIC X(10).
+          05 WE1      PIC X(1).
           05 FROM2    PIC X(10).
           05 TO2      PIC X(10).
           05 BR2      PIC X(4).
           05 CP2      PIC X(5).
           05 RS2      PIC X(6).
           05 LT2      PIC X(10).
+          05 WE2      PIC X(1).
           05 FROM3    PIC X(10).
           05 TO3      PIC X(10).
           05 BR3      PIC X(4).
           05 CP3      PIC X(5).
           05 RS3      PIC X(6).
           05 LT3      PIC X(10).
+          05 WE3      PIC X(1).
           05 FROM4    PIC X(10).
           05 TO4      PIC X(10).
           05 BR4      PIC X(4).
           05 CP4      PIC X(5).
           05 RS4      PIC X(6).
           05 LT4      PIC X(10).
+          05 WE4      PIC X(1).
           05 FROM5    PIC X(10).
           05 TO5      PIC X(10).
           05 BR5      PIC X(4).
           05 CP5      PIC X(5).
           05 RS5      PIC X(6).
           05 LT5      PIC X(10).
+          05 WE5      PIC X(1).
           05 FROM6    PIC X(10).
           05 TO6      PIC X(10).
           05 BR6      PIC X(4).
           05 CP6      PIC X(5).
           05 RS6      PIC X(6).
           05 LT6      PIC X(10).
+          05 WE6      PIC X(1).
           05 FROM7    PIC X(10).
           05 TO7      PIC X(10).
           05 BR7      PIC X(4).
           05 CP7      PIC X(5).
           05 RS7      PIC X(6).
           05 LT7      PIC X(10).
+          05 WE7      PIC X(1).
           05 FROM8    PIC X(10).
           05 TO8      PIC X(10).
           05 BR8      PIC X(4).
           05 CP8      PIC X(5).
           05 RS8      PIC X(6).
           05 LT8      PIC X(10).
+          05 WE8      PIC X(1).
           05 ERRMSG   PIC X(70).
 
        01 REV.
@@ -92,9 +101,15 @@
           05 P-CP      OCCURS 8 TIMES PIC X(5).
           05 P-RS      OCCURS 8 TIMES PIC X(6).
           05 P-LT      OCCURS 8 TIMES PIC 9(5).
+          05 P-WE      OCCURS 8 TIMES PIC X(1).
+          05 P-OPEN    OCCURS 8 TIMES PIC X(1).
           05 P-CR      OCCURS 8 TIMES PIC X(1).
           05 P-ISLOST  OCCURS 8 TIMES PIC X(1).
-          05 P-DEPNOTE OCCURS 8 TIMES PIC X(60).
+          05 P-COUNTED OCCURS 8 TIMES PIC 9(7).
+          05 P-APFLG   OCCURS 8 TIMES PIC X(1).
+          05 P-DEPNOTE OCCURS 8 TIMES PIC X(80).
+          05 P-DEPRULE OCCURS 8 TIMES PIC X(24).
+          05 P-DEPACT  OCCURS 8 TIMES PIC X(160).
 
        01 MERGED.
           05 M-FROM    OCCURS 8 TIMES PIC 9(8).
@@ -105,8 +120,18 @@
           05 L-FROM    OCCURS 8 TIMES PIC 9(8).
           05 L-TO      OCCURS 8 TIMES PIC 9(8).
           05 L-RS      OCCURS 8 TIMES PIC X(6).
+          05 L-OPEN    OCCURS 8 TIMES PIC X(1).
+          05 L-WE      OCCURS 8 TIMES PIC X(1).
+          05 L-DATED   OCCURS 8 TIMES PIC X(1).
+          05 L-APFLG   OCCURS 8 TIMES PIC X(1).
           05 L-DAYS    OCCURS 8 TIMES PIC 9(7).
-          05 L-METH    OCCURS 8 TIMES PIC X(24).
+          05 L-MTFS    OCCURS 8 TIMES PIC 9(7).
+          05 L-COUNTED OCCURS 8 TIMES PIC 9(7).
+          05 L-CH1     OCCURS 8 TIMES PIC 9(7).
+          05 L-CAL     OCCURS 8 TIMES PIC 9(7).
+          05 L-D30     OCCURS 8 TIMES PIC 9(7).
+          05 L-METH    OCCURS 8 TIMES PIC X(60).
+          05 L-NOTE    OCCURS 8 TIMES PIC X(360).
 
        01 NPER       PIC 9(2) VALUE 0.
        01 NIN        PIC 9(2) VALUE 0.
@@ -121,6 +146,24 @@
        01 ASOF-N     PIC 9(8).
        01 REC-N      PIC 9(8).
        01 LOSTTOTAL  PIC S9(7) VALUE 0.
+       01 LOSTCOUNTED PIC S9(7) VALUE 0.
+       01 MADEN      PIC 9(2) VALUE 0.
+       01 HASPRIOR   PIC 9(1) VALUE 0.
+       01 HASOFFEX   PIC 9(1) VALUE 0.
+       01 EXACT-HIT  PIC X(1) VALUE 'N'.
+       01 DATED-FLG  PIC X(1).
+       01 MADEGOOD   PIC 9(1).
+       01 SUBDAYS    PIC S9(7).
+       01 LOSTDAYS   PIC S9(7).
+       01 HAS-SUB    PIC 9(1).
+       01 HAS-OPEN   PIC 9(1).
+       01 PAGE       PIC 9(2) VALUE 1.
+       01 PAGES      PIC 9(2) VALUE 1.
+       01 SCRNHT     PIC 9(2) VALUE 24.
+       01 BODY       PIC 9(2) VALUE 22.
+       01 SENDLEN    PIC 9(4) VALUE 1920.
+       01 PAGE-DONE  PIC X(1) VALUE 'N'.
+       01 EDIT-FLAG  PIC X(1) VALUE 'N'.
        01 GROSSDAYS  PIC S9(7) VALUE 0.
        01 NETDAYS    PIC S9(7) VALUE 0.
        01 YRS        PIC 9(4).
@@ -197,9 +240,12 @@
        01 LR         PIC S9(7).
 
        01 WS-LINE    PIC X(80).
-       01 RCOUNT     PIC 9(2).
-       01 STATUS-TXT PIC X(40).
+       01 RCOUNT     PIC 9(3).
+       01 STATUS-TXT PIC X(120).
        01 DIFF-TXT   PIC X(16).
+       01 COUNT-YMD  PIC X(16).
+       01 NOTE-TXT   PIC X(360).
+       01 METH-TXT   PIC X(60).
        01 CLASS-TXT  PIC X(16).
        01 BREAK-TXT  PIC X(40).
        01 NET-YMD    PIC X(16).
@@ -212,7 +258,11 @@
        01 LT-X       PIC Z(4)9.
 
        01 REPORT.
-          05 R-LINE OCCURS 40 TIMES PIC X(80).
+          05 R-LINE OCCURS 160 TIMES PIC X(80).
+       01 SCREEN-BUF.
+          05 S-LINE OCCURS 43 TIMES PIC X(80).
+       01 S-IDX      PIC 9(3).
+       01 S-FROM     PIC 9(3).
 
        PROCEDURE DIVISION.
        MAIN.
@@ -231,15 +281,29 @@
            PERFORM ENTRY-LOOP UNTIL DONE-FLAG = 'Y'.
            PERFORM CALCULATE-ALL.
            PERFORM PAINT-REPORT.
-           EXEC CICS RECEIVE INTO(WS-LINE) END-EXEC.
-           EVALUATE EIBAID
-               WHEN ENTER
-               WHEN PF12
-                   PERFORM PREFILL-ENTRY
-               WHEN OTHER
-                   EXEC CICS RETURN TRANSID('MYMU') END-EXEC
-                   STOP RUN
-           END-EVALUATE.
+           EXEC CICS ASSIGN SCREENHT(SCRNHT) END-EXEC.
+           IF SCRNHT < 24 THEN
+               MOVE 24 TO SCRNHT
+           END-IF.
+           IF SCRNHT > 43 THEN
+               MOVE 43 TO SCRNHT
+           END-IF.
+           COMPUTE BODY = SCRNHT - 2.
+           MOVE 1 TO PAGE.
+           COMPUTE PAGES = RCOUNT + BODY - 1.
+           COMPUTE PAGES = PAGES / BODY.
+           IF PAGES < 1 THEN
+               MOVE 1 TO PAGES
+           END-IF.
+           MOVE 'N' TO PAGE-DONE.
+           MOVE 'N' TO EDIT-FLAG.
+           PERFORM PAGE-LOOP UNTIL PAGE-DONE = 'Y'.
+           IF EDIT-FLAG = 'Y' THEN
+               PERFORM PREFILL-ENTRY
+           ELSE
+               EXEC CICS RETURN TRANSID('MYMU') END-EXEC
+               STOP RUN
+           END-IF.
 
        ENTRY-LOOP.
            EXEC CICS SEND MAP('DODF1') FROM(SCR) ERASE END-EXEC.
@@ -329,12 +393,20 @@
            MOVE NPER TO I.
            MOVE WS-D1 TO P-FROM(I).
            IF WS-D2 = 0 THEN
+               MOVE 'Y' TO P-OPEN(I)
                MOVE ASOF-N TO WS-D2
+           ELSE
+               MOVE 'N' TO P-OPEN(I)
            END-IF.
            IF WS-D2 = 0 THEN
                MOVE TODAY-N TO WS-D2
            END-IF.
            MOVE WS-D2 TO P-TO(I).
+           IF P-WE(I) = 'Y' OR P-WE(I) = '1' THEN
+               MOVE 'Y' TO P-WE(I)
+           ELSE
+               MOVE 'N' TO P-WE(I)
+           END-IF.
            MOVE FUNCTION UPPER-CASE(P-BR(I)) TO P-BR(I).
            MOVE FUNCTION UPPER-CASE(P-CP(I)) TO P-CP(I).
            MOVE FUNCTION UPPER-CASE(P-RS(I)) TO P-RS(I).
@@ -353,6 +425,7 @@
                MOVE CP1 TO P-CP(NPER + 1)
                MOVE RS1 TO P-RS(NPER + 1)
                MOVE FUNCTION NUMVAL(LT1) TO P-LT(NPER + 1)
+               MOVE FUNCTION UPPER-CASE(WE1) TO P-WE(NPER + 1)
                PERFORM TAKE-ROW
            END-IF.
        LOAD-ROW-2.
@@ -363,6 +436,7 @@
                MOVE CP2 TO P-CP(NPER + 1)
                MOVE RS2 TO P-RS(NPER + 1)
                MOVE FUNCTION NUMVAL(LT2) TO P-LT(NPER + 1)
+               MOVE FUNCTION UPPER-CASE(WE2) TO P-WE(NPER + 1)
                PERFORM TAKE-ROW
            END-IF.
        LOAD-ROW-3.
@@ -373,6 +447,7 @@
                MOVE CP3 TO P-CP(NPER + 1)
                MOVE RS3 TO P-RS(NPER + 1)
                MOVE FUNCTION NUMVAL(LT3) TO P-LT(NPER + 1)
+               MOVE FUNCTION UPPER-CASE(WE3) TO P-WE(NPER + 1)
                PERFORM TAKE-ROW
            END-IF.
        LOAD-ROW-4.
@@ -383,6 +458,7 @@
                MOVE CP4 TO P-CP(NPER + 1)
                MOVE RS4 TO P-RS(NPER + 1)
                MOVE FUNCTION NUMVAL(LT4) TO P-LT(NPER + 1)
+               MOVE FUNCTION UPPER-CASE(WE4) TO P-WE(NPER + 1)
                PERFORM TAKE-ROW
            END-IF.
        LOAD-ROW-5.
@@ -393,6 +469,7 @@
                MOVE CP5 TO P-CP(NPER + 1)
                MOVE RS5 TO P-RS(NPER + 1)
                MOVE FUNCTION NUMVAL(LT5) TO P-LT(NPER + 1)
+               MOVE FUNCTION UPPER-CASE(WE5) TO P-WE(NPER + 1)
                PERFORM TAKE-ROW
            END-IF.
        LOAD-ROW-6.
@@ -403,6 +480,7 @@
                MOVE CP6 TO P-CP(NPER + 1)
                MOVE RS6 TO P-RS(NPER + 1)
                MOVE FUNCTION NUMVAL(LT6) TO P-LT(NPER + 1)
+               MOVE FUNCTION UPPER-CASE(WE6) TO P-WE(NPER + 1)
                PERFORM TAKE-ROW
            END-IF.
        LOAD-ROW-7.
@@ -413,6 +491,7 @@
                MOVE CP7 TO P-CP(NPER + 1)
                MOVE RS7 TO P-RS(NPER + 1)
                MOVE FUNCTION NUMVAL(LT7) TO P-LT(NPER + 1)
+               MOVE FUNCTION UPPER-CASE(WE7) TO P-WE(NPER + 1)
                PERFORM TAKE-ROW
            END-IF.
        LOAD-ROW-8.
@@ -423,6 +502,7 @@
                MOVE CP8 TO P-CP(NPER + 1)
                MOVE RS8 TO P-RS(NPER + 1)
                MOVE FUNCTION NUMVAL(LT8) TO P-LT(NPER + 1)
+               MOVE FUNCTION UPPER-CASE(WE8) TO P-WE(NPER + 1)
                PERFORM TAKE-ROW
            END-IF.
 
@@ -443,11 +523,14 @@
            IF ISLOST = 1 THEN
                MOVE 'Y' TO P-ISLOST(I)
                MOVE 'N' TO P-CR(I)
-               IF P-FROM(I) NOT = 0 AND P-TO(I) NOT = 0 THEN
+               IF P-OPEN(I) = 'N'
+                  AND P-FROM(I) NOT = 0 AND P-TO(I) NOT = 0 THEN
                    MOVE P-FROM(I) TO WS-D1
                    MOVE P-TO(I) TO WS-D2
                    PERFORM LOST-DAYS-CH1
-                   MOVE WS-DAYS TO P-LT(I)
+                   IF P-LT(I) = 0 THEN
+                       MOVE WS-DAYS TO P-LT(I)
+                   END-IF
                END-IF
            END-IF.
            IF ISLOST = 0 THEN
@@ -464,21 +547,28 @@
        EVAL-DEP.
            MOVE 0 TO DEPOK.
            MOVE SPACES TO P-DEPNOTE(I).
+           MOVE SPACES TO P-DEPRULE(I).
+           MOVE SPACES TO P-DEPACT(I).
+           MOVE '2.1.4.12' TO P-DEPRULE(I).
            IF P-FROM(I) = 0 THEN
-               MOVE 'DEP not creditable (no from date) 2.1.4.12'
+               MOVE 'DEP - Not Creditable (missing enlistment/from date)'
                    TO P-DEPNOTE(I)
            ELSE
                IF P-FROM(I) < 19850101 THEN
                    MOVE 1 TO DEPOK
-                   MOVE 'DEP creditable (before 1 Jan 1985) 2.1.4.12'
+                   MOVE 'DEP - Creditable (enlistment before 1 Jan 1985)'
                        TO P-DEPNOTE(I)
                ELSE
                    IF P-FROM(I) <= 19891128 THEN
-                       MOVE 'DEP not creditable (1985-28 Nov 1989)'
+                       MOVE 'DEP - Not Creditable (enlistment 1 Jan 1985-28 Nov 1989)'
                            TO P-DEPNOTE(I)
+                       MOVE '2.1.4.12.1 / 2.2.1.7' TO P-DEPRULE(I)
                    ELSE
-                       MOVE 'DEP not creditable; set COMP=RES if RT07 IDT'
+                       MOVE 'DEP - Not Creditable (on/after 29 Nov 1989; typed entry defaults exclude)'
                            TO P-DEPNOTE(I)
+                       MOVE '2.2.1.8.1' TO P-DEPRULE(I)
+                       MOVE 'If RT07 shows IDT for this begin date before AD/ADT, change component to RES and recalculate. [FMR 2.1.4.12.2.1]'
+                           TO P-DEPACT(I)
                    END-IF
                END-IF
            END-IF.
@@ -709,7 +799,7 @@
            IF NPER = 0 THEN
                MOVE 'No periods. PF3 back and add FROM dates.' TO MSG
            ELSE
-               MOVE 'CR=Y counts for PEBD. Number+PF5 deletes. ENTER=calc.'
+               MOVE 'CR=Y counts. WE=Y lost while enlisted. Number+PF5 deletes.'
                    TO STATUS
            END-IF.
            MOVE 1 TO I.
@@ -726,8 +816,12 @@
                   '  ' DELIMITED BY SIZE
                INTO WS-LINE
            END-STRING.
-           MOVE P-TO(I) TO TMP8.
-           MOVE TMP8 TO TMPX.
+           IF P-OPEN(I) = 'Y' THEN
+               MOVE 'PRESENT' TO TMPX
+           ELSE
+               MOVE P-TO(I) TO TMP8
+               MOVE TMP8 TO TMPX
+           END-IF.
            MOVE P-LT(I) TO LT-X.
            STRING FUNCTION TRIM(WS-LINE) DELIMITED BY SIZE
                   '  ' DELIMITED BY SIZE
@@ -740,6 +834,8 @@
                   P-RS(I) DELIMITED BY SIZE
                   ' LT=' DELIMITED BY SIZE
                   FUNCTION TRIM(LT-X) DELIMITED BY SIZE
+                  ' WE=' DELIMITED BY SIZE
+                  P-WE(I) DELIMITED BY SIZE
                   ' CR=' DELIMITED BY SIZE
                   P-CR(I) DELIMITED BY SIZE
                INTO WS-LINE
@@ -778,7 +874,13 @@
                MOVE P-LT(K) TO P-LT(J)
                MOVE P-CR(K) TO P-CR(J)
                MOVE P-ISLOST(K) TO P-ISLOST(J)
+               MOVE P-WE(K) TO P-WE(J)
+               MOVE P-OPEN(K) TO P-OPEN(J)
+               MOVE P-COUNTED(K) TO P-COUNTED(J)
+               MOVE P-APFLG(K) TO P-APFLG(J)
                MOVE P-DEPNOTE(K) TO P-DEPNOTE(J)
+               MOVE P-DEPRULE(K) TO P-DEPRULE(J)
+               MOVE P-DEPACT(K) TO P-DEPACT(J)
            END-IF.
            ADD 1 TO J.
 
@@ -790,48 +892,56 @@
            MOVE SPACES TO CP1.
            MOVE SPACES TO RS1.
            MOVE SPACES TO LT1.
+           MOVE SPACES TO WE1.
            MOVE SPACES TO FROM2.
            MOVE SPACES TO TO2.
            MOVE SPACES TO BR2.
            MOVE SPACES TO CP2.
            MOVE SPACES TO RS2.
            MOVE SPACES TO LT2.
+           MOVE SPACES TO WE2.
            MOVE SPACES TO FROM3.
            MOVE SPACES TO TO3.
            MOVE SPACES TO BR3.
            MOVE SPACES TO CP3.
            MOVE SPACES TO RS3.
            MOVE SPACES TO LT3.
+           MOVE SPACES TO WE3.
            MOVE SPACES TO FROM4.
            MOVE SPACES TO TO4.
            MOVE SPACES TO BR4.
            MOVE SPACES TO CP4.
            MOVE SPACES TO RS4.
            MOVE SPACES TO LT4.
+           MOVE SPACES TO WE4.
            MOVE SPACES TO FROM5.
            MOVE SPACES TO TO5.
            MOVE SPACES TO BR5.
            MOVE SPACES TO CP5.
            MOVE SPACES TO RS5.
            MOVE SPACES TO LT5.
+           MOVE SPACES TO WE5.
            MOVE SPACES TO FROM6.
            MOVE SPACES TO TO6.
            MOVE SPACES TO BR6.
            MOVE SPACES TO CP6.
            MOVE SPACES TO RS6.
            MOVE SPACES TO LT6.
+           MOVE SPACES TO WE6.
            MOVE SPACES TO FROM7.
            MOVE SPACES TO TO7.
            MOVE SPACES TO BR7.
            MOVE SPACES TO CP7.
            MOVE SPACES TO RS7.
            MOVE SPACES TO LT7.
+           MOVE SPACES TO WE7.
            MOVE SPACES TO FROM8.
            MOVE SPACES TO TO8.
            MOVE SPACES TO BR8.
            MOVE SPACES TO CP8.
            MOVE SPACES TO RS8.
            MOVE SPACES TO LT8.
+           MOVE SPACES TO WE8.
            MOVE GRADE-U TO GRADE.
            MOVE ASOF-N TO TMP8.
            MOVE TMP8 TO ASOF.
@@ -849,6 +959,10 @@
                MOVE P-RS(1) TO RS1
                MOVE P-LT(1) TO LT-X
                MOVE LT-X TO LT1
+               MOVE P-WE(1) TO WE1
+               IF P-OPEN(1) = 'Y' THEN
+                   MOVE SPACES TO TO1
+               END-IF
            END-IF.
            IF NPER >= 2 THEN
                MOVE P-FROM(2) TO TMP8
@@ -860,6 +974,10 @@
                MOVE P-RS(2) TO RS2
                MOVE P-LT(2) TO LT-X
                MOVE LT-X TO LT2
+               MOVE P-WE(2) TO WE2
+               IF P-OPEN(2) = 'Y' THEN
+                   MOVE SPACES TO TO2
+               END-IF
            END-IF.
            IF NPER >= 3 THEN
                MOVE P-FROM(3) TO TMP8
@@ -871,6 +989,10 @@
                MOVE P-RS(3) TO RS3
                MOVE P-LT(3) TO LT-X
                MOVE LT-X TO LT3
+               MOVE P-WE(3) TO WE3
+               IF P-OPEN(3) = 'Y' THEN
+                   MOVE SPACES TO TO3
+               END-IF
            END-IF.
            IF NPER >= 4 THEN
                MOVE P-FROM(4) TO TMP8
@@ -882,6 +1004,10 @@
                MOVE P-RS(4) TO RS4
                MOVE P-LT(4) TO LT-X
                MOVE LT-X TO LT4
+               MOVE P-WE(4) TO WE4
+               IF P-OPEN(4) = 'Y' THEN
+                   MOVE SPACES TO TO4
+               END-IF
            END-IF.
            IF NPER >= 5 THEN
                MOVE P-FROM(5) TO TMP8
@@ -893,6 +1019,10 @@
                MOVE P-RS(5) TO RS5
                MOVE P-LT(5) TO LT-X
                MOVE LT-X TO LT5
+               MOVE P-WE(5) TO WE5
+               IF P-OPEN(5) = 'Y' THEN
+                   MOVE SPACES TO TO5
+               END-IF
            END-IF.
            IF NPER >= 6 THEN
                MOVE P-FROM(6) TO TMP8
@@ -904,6 +1034,10 @@
                MOVE P-RS(6) TO RS6
                MOVE P-LT(6) TO LT-X
                MOVE LT-X TO LT6
+               MOVE P-WE(6) TO WE6
+               IF P-OPEN(6) = 'Y' THEN
+                   MOVE SPACES TO TO6
+               END-IF
            END-IF.
            IF NPER >= 7 THEN
                MOVE P-FROM(7) TO TMP8
@@ -915,6 +1049,10 @@
                MOVE P-RS(7) TO RS7
                MOVE P-LT(7) TO LT-X
                MOVE LT-X TO LT7
+               MOVE P-WE(7) TO WE7
+               IF P-OPEN(7) = 'Y' THEN
+                   MOVE SPACES TO TO7
+               END-IF
            END-IF.
            IF NPER >= 8 THEN
                MOVE P-FROM(8) TO TMP8
@@ -926,11 +1064,19 @@
                MOVE P-RS(8) TO RS8
                MOVE P-LT(8) TO LT-X
                MOVE LT-X TO LT8
+               MOVE P-WE(8) TO WE8
+               IF P-OPEN(8) = 'Y' THEN
+                   MOVE SPACES TO TO8
+               END-IF
            END-IF.
            EXEC CICS SEND MAP('DODF1') FROM(SCR) ERASE END-EXEC.
 
        CALCULATE-ALL.
            MOVE 0 TO LOSTTOTAL.
+           MOVE 0 TO LOSTCOUNTED.
+           MOVE 0 TO MADEN.
+           MOVE 0 TO HASPRIOR.
+           MOVE 0 TO HASOFFEX.
            MOVE 0 TO GROSSDAYS.
            MOVE 0 TO NIN.
            MOVE 0 TO NMERGE.
@@ -980,6 +1126,22 @@
                   'd' DELIMITED BY SIZE
                INTO LOST-YMD
            END-STRING.
+           COMPUTE LY = LOSTCOUNTED / 360.
+           COMPUTE LR = LOSTCOUNTED - LY * 360.
+           COMPUTE LM = LR / 30.
+           COMPUTE LD = LR - LM * 30.
+           MOVE LY TO YMD-Y.
+           MOVE LM TO YMD-M.
+           MOVE LD TO YMD-D.
+           MOVE SPACES TO COUNT-YMD.
+           STRING FUNCTION TRIM(YMD-Y) DELIMITED BY SIZE
+                  'y ' DELIMITED BY SIZE
+                  FUNCTION TRIM(YMD-M) DELIMITED BY SIZE
+                  'm ' DELIMITED BY SIZE
+                  FUNCTION TRIM(YMD-D) DELIMITED BY SIZE
+                  'd' DELIMITED BY SIZE
+               INTO COUNT-YMD
+           END-STRING.
            PERFORM DERIVE-PEBD.
            PERFORM COMPARE-PEBD.
 
@@ -992,26 +1154,7 @@
                END-IF
            END-IF.
            IF P-ISLOST(I) = 'Y' THEN
-               ADD 1 TO NLOST
-               MOVE P-FROM(I) TO L-FROM(NLOST)
-               MOVE P-TO(I) TO L-TO(NLOST)
-               MOVE P-RS(I) TO L-RS(NLOST)
-               IF OFFICER = 1 THEN
-                   MOVE 0 TO L-DAYS(NLOST)
-                   MOVE 'Officer Exception' TO L-METH(NLOST)
-               ELSE
-                   IF P-FROM(I) NOT = 0 AND P-TO(I) NOT = 0 THEN
-                       MOVE P-FROM(I) TO WS-D1
-                       MOVE P-TO(I) TO WS-D2
-                       PERFORM LOST-DAYS-CH1
-                       MOVE WS-DAYS TO L-DAYS(NLOST)
-                       MOVE 'Ch1 2.4.1.3.1 deducted' TO L-METH(NLOST)
-                   ELSE
-                       MOVE P-LT(I) TO L-DAYS(NLOST)
-                       MOVE 'MCTFS LOST field' TO L-METH(NLOST)
-                   END-IF
-               END-IF
-               ADD L-DAYS(NLOST) TO LOSTTOTAL
+               PERFORM APPLY-LOST
            END-IF.
            ADD 1 TO I.
 
@@ -1079,7 +1222,7 @@
                END-IF
            END-IF.
            MOVE PEBDBASE TO CALCPEBD.
-           IF LOSTTOTAL > 0 AND OFFICER = 0 THEN
+           IF LOSTTOTAL > 0 THEN
                COMPUTE LY = LOSTTOTAL / 360
                COMPUTE LR = LOSTTOTAL - LY * 360
                COMPUTE LM = LR / 30
@@ -1111,7 +1254,8 @@
                MOVE ERR TO BESTERR
            END-IF.
            MOVE -20 TO DELTA.
-           PERFORM SEARCH-DELTA UNTIL DELTA > 20.
+           MOVE 'N' TO EXACT-HIT.
+           PERFORM SEARCH-DELTA UNTIL DELTA > 20 OR EXACT-HIT = 'Y'.
            MOVE BEST TO WS-D1.
            MOVE ASOF-N TO WS-D2.
            PERFORM SEG-DAYS-30.
@@ -1149,12 +1293,15 @@
                ELSE
                    MOVE ERR TO AD
                END-IF
-               IF AD < BESTERR THEN
+               IF WS-DAYS = TARGET THEN
                    MOVE CAND TO BEST
-                   MOVE AD TO BESTERR
-               END-IF
-               IF AD = BESTERR AND WS-DAYS = TARGET THEN
-                   MOVE CAND TO BEST
+                   MOVE 0 TO BESTERR
+                   MOVE 'Y' TO EXACT-HIT
+               ELSE
+                   IF AD < BESTERR THEN
+                       MOVE CAND TO BEST
+                       MOVE AD TO BESTERR
+                   END-IF
                END-IF
            END-IF.
            ADD 1 TO DELTA.
@@ -1188,7 +1335,12 @@
                MOVE JA TO J2
                COMPUTE DIFFDAYS = J1 - J2
                IF DIFFDAYS = 0 THEN
-                   MOVE 'MATCH' TO STATUS-TXT
+                   IF LOSTTOTAL > 0 THEN
+                       MOVE 'MATCH - recorded PEBD matches calculated (lost time already applied to PEBD per 2.4.1.4)'
+                           TO STATUS-TXT
+                   ELSE
+                       MOVE 'MATCH' TO STATUS-TXT
+                   END-IF
                    MOVE '0 days' TO DIFF-TXT
                ELSE
                    IF DIFFDAYS < 0 THEN
@@ -1196,16 +1348,37 @@
                    ELSE
                        MOVE DIFFDAYS TO AD
                    END-IF
+                   MOVE DIFFDAYS TO DAYS-X
+                   MOVE SPACES TO STATUS-TXT
                    IF AD = 1 THEN
-                       MOVE 'CLOSE MATCH' TO STATUS-TXT
+                       STRING 'CLOSE MATCH (' DELIMITED BY SIZE
+                              FUNCTION TRIM(DAYS-X) DELIMITED BY SIZE
+                              ' day) - likely MCTFS data entry variance'
+                              DELIMITED BY SIZE
+                           INTO STATUS-TXT
                    ELSE
-                       IF AD <= 7 THEN
-                           MOVE 'MODERATE DIFF' TO STATUS-TXT
+                       IF AD <= 3 THEN
+                           STRING 'MINOR DIFF: ' DELIMITED BY SIZE
+                                  FUNCTION TRIM(DAYS-X) DELIMITED BY SIZE
+                                  ' days - verify with finance'
+                                  DELIMITED BY SIZE
+                               INTO STATUS-TXT
                        ELSE
-                           MOVE 'SIGNIFICANT DIFF' TO STATUS-TXT
+                           IF AD <= 7 THEN
+                               STRING 'MODERATE DIFF: ' DELIMITED BY SIZE
+                                      FUNCTION TRIM(DAYS-X) DELIMITED BY SIZE
+                                      ' days - investigate calculation'
+                                      DELIMITED BY SIZE
+                                   INTO STATUS-TXT
+                           ELSE
+                               STRING 'SIGNIFICANT DIFF: ' DELIMITED BY SIZE
+                                      FUNCTION TRIM(DAYS-X) DELIMITED BY SIZE
+                                      ' days - requires investigation'
+                                      DELIMITED BY SIZE
+                                   INTO STATUS-TXT
+                           END-IF
                        END-IF
                    END-IF
-                   MOVE DIFFDAYS TO DAYS-X
                    MOVE DAYS-X TO DIFF-TXT
                END-IF
            END-IF.
@@ -1273,6 +1446,205 @@
                PERFORM ADJUST-DAY
                MOVE WS-D TO DE
                COMPUTE TDAYS = DE - DS
+               COMPUTE TMONTHS = ME - MS
+               COMPUTE TYEARS = YE - YS
+               IF TDAYS < 0 THEN
+                   ADD 30 TO TDAYS
+                   SUBTRACT 1 FROM TMONTHS
+               END-IF
+               IF TMONTHS < 0 THEN
+                   ADD 12 TO TMONTHS
+                   SUBTRACT 1 FROM TYEARS
+               END-IF
+               COMPUTE WS-DAYS = TYEARS * 360 + TMONTHS * 30 + TDAYS
+               IF WS-DAYS < 0 THEN
+                   MOVE 0 TO WS-DAYS
+               END-IF
+           END-IF.
+
+       APPLY-LOST.
+           ADD 1 TO NLOST.
+           MOVE P-FROM(I) TO L-FROM(NLOST).
+           MOVE P-TO(I) TO L-TO(NLOST).
+           MOVE P-RS(I) TO L-RS(NLOST).
+           MOVE P-OPEN(I) TO L-OPEN(NLOST).
+           MOVE P-WE(I) TO L-WE(NLOST).
+           MOVE P-LT(I) TO L-MTFS(NLOST).
+           MOVE 'N' TO DATED-FLG.
+           IF P-OPEN(I) = 'N' AND P-FROM(I) NOT = 0
+              AND P-TO(I) NOT = 0 THEN
+               MOVE 'Y' TO DATED-FLG
+               MOVE P-FROM(I) TO WS-D1
+               MOVE P-TO(I) TO WS-D2
+               PERFORM LOST-DAYS-CH1
+               MOVE WS-DAYS TO L-CH1(NLOST)
+               PERFORM LOST-DAYS-30
+               MOVE WS-DAYS TO L-D30(NLOST)
+               PERFORM CAL-DAYS
+               MOVE WS-DAYS TO L-CAL(NLOST)
+               MOVE L-CH1(NLOST) TO L-COUNTED(NLOST)
+           ELSE
+               MOVE P-LT(I) TO L-COUNTED(NLOST)
+               MOVE 0 TO L-CH1(NLOST)
+               MOVE 0 TO L-CAL(NLOST)
+               MOVE 0 TO L-D30(NLOST)
+           END-IF.
+           MOVE DATED-FLG TO L-DATED(NLOST).
+           MOVE L-COUNTED(NLOST) TO P-COUNTED(I).
+           MOVE 0 TO MADEGOOD.
+           IF DATED-FLG = 'Y' THEN
+               PERFORM MADE-GOOD
+           END-IF.
+           IF OFFICER = 1 AND P-WE(I) NOT = 'Y' THEN
+               MOVE 0 TO L-DAYS(NLOST)
+               MOVE 'N' TO L-APFLG(NLOST)
+               MOVE 'Officer Exception' TO L-METH(NLOST)
+               MOVE 'Per 2.2.2 / 2.4.1.4: lost time while in officer status does not affect length of service. Counted days are shown for audit and are not applied to PEBD.'
+                   TO L-NOTE(NLOST)
+               MOVE 1 TO HASOFFEX
+           ELSE
+               IF DATED-FLG = 'N' THEN
+                   MOVE L-COUNTED(NLOST) TO L-DAYS(NLOST)
+                   MOVE 'Y' TO L-APFLG(NLOST)
+                   IF P-WE(I) = 'Y' THEN
+                       MOVE 'Prior Enlisted Lost Time (MCTFS Value)'
+                           TO L-METH(NLOST)
+                       MOVE L-COUNTED(NLOST) TO DAYS-X
+                       MOVE SPACES TO L-NOTE(NLOST)
+                       STRING 'Lost time occurred while enlisted. Using MCTFS-provided LOST field value ('
+                              DELIMITED BY SIZE
+                              FUNCTION TRIM(DAYS-X) DELIMITED BY SIZE
+                              ' days). Non-creditable for pay/PEBD under 2.4.1.3.1 / 2.4.1.4.'
+                              DELIMITED BY SIZE
+                           INTO L-NOTE(NLOST)
+                       MOVE 1 TO HASPRIOR
+                   ELSE
+                       MOVE 'MCTFS Value' TO L-METH(NLOST)
+                       MOVE L-COUNTED(NLOST) TO DAYS-X
+                       MOVE SPACES TO L-NOTE(NLOST)
+                       STRING 'Using MCTFS-provided LOST field value ('
+                              DELIMITED BY SIZE
+                              FUNCTION TRIM(DAYS-X) DELIMITED BY SIZE
+                              ' days)' DELIMITED BY SIZE
+                           INTO L-NOTE(NLOST)
+                   END-IF
+               ELSE
+                   MOVE L-CH1(NLOST) TO L-DAYS(NLOST)
+                   MOVE 'Y' TO L-APFLG(NLOST)
+                   IF MADEGOOD = 1 THEN
+                       MOVE 'Per 10 U.S.C. 972 and DoD FMR: Lost time is always non-creditable for pay/PEBD, even if made good by serving extra time. ETS/EAOS is extended; PEBD is not restored. Count is 2.4.1.3.1 (30-day).'
+                           TO NOTE-TXT
+                   ELSE
+                       MOVE 'Per DoD FMR 2.4.1.3.1: lost time not made good is counted on a 30-day month (start-on-31st included) and added to PEBD per 2.4.1.4.'
+                           TO NOTE-TXT
+                   END-IF
+                   IF P-WE(I) = 'Y' THEN
+                       IF MADEGOOD = 1 THEN
+                           MOVE 'Prior Enlisted Lost Time (Made Good, Still Deducted)'
+                               TO L-METH(NLOST)
+                       ELSE
+                           MOVE 'Prior Enlisted Lost Time (Deducted)'
+                               TO L-METH(NLOST)
+                       END-IF
+                       MOVE SPACES TO L-NOTE(NLOST)
+                       STRING 'Lost time occurred while enlisted. It is non-creditable and retards PEBD under the enlisted Chapter 1 rules, even though present grade is officer. '
+                              DELIMITED BY SIZE
+                              NOTE-TXT DELIMITED BY SIZE
+                           INTO L-NOTE(NLOST)
+                       MOVE 1 TO HASPRIOR
+                   ELSE
+                       IF MADEGOOD = 1 THEN
+                           MOVE 'Made Good (Still Deducted)' TO L-METH(NLOST)
+                       ELSE
+                           MOVE 'Not Made Good (Deducted)' TO L-METH(NLOST)
+                       END-IF
+                       MOVE NOTE-TXT TO L-NOTE(NLOST)
+                   END-IF
+               END-IF
+           END-IF.
+           MOVE L-APFLG(NLOST) TO P-APFLG(I).
+           ADD L-DAYS(NLOST) TO LOSTTOTAL.
+           ADD L-COUNTED(NLOST) TO LOSTCOUNTED.
+           IF P-FROM(I) NOT = 0 THEN
+               ADD 1 TO MADEN
+           END-IF.
+
+       MADE-GOOD.
+           MOVE 0 TO MADEGOOD.
+           MOVE P-FROM(I) TO WS-D1.
+           MOVE P-TO(I) TO WS-D2.
+           PERFORM CAL-DAYS.
+           MOVE WS-DAYS TO LOSTDAYS.
+           MOVE 0 TO HAS-SUB.
+           MOVE 0 TO HAS-OPEN.
+           MOVE 0 TO SUBDAYS.
+           MOVE 1 TO J.
+           PERFORM MADE-ONE UNTIL J > NPER.
+           IF HAS-SUB = 1 THEN
+               IF HAS-OPEN = 1 THEN
+                   MOVE 1 TO MADEGOOD
+               ELSE
+                   IF SUBDAYS >= LOSTDAYS THEN
+                       MOVE 1 TO MADEGOOD
+                   END-IF
+               END-IF
+           END-IF.
+
+       MADE-ONE.
+           MOVE P-RS(J) TO RS-U.
+           MOVE 0 TO ISLOST.
+           IF RS-U = 'CNFD' OR RS-U = 'EXPECC' OR RS-U = 'IHCA'
+              OR RS-U = 'IHFA' OR RS-U = 'RTFD' OR RS-U = 'UA/DES' THEN
+               MOVE 1 TO ISLOST
+           END-IF.
+           IF ISLOST = 0 AND P-FROM(J) > P-TO(I) THEN
+               MOVE 1 TO HAS-SUB
+               IF P-OPEN(J) = 'Y' THEN
+                   MOVE 1 TO HAS-OPEN
+               ELSE
+                   MOVE P-FROM(J) TO WS-D1
+                   MOVE P-TO(J) TO WS-D2
+                   PERFORM CAL-DAYS
+                   ADD WS-DAYS TO SUBDAYS
+               END-IF
+           END-IF.
+           ADD 1 TO J.
+
+       CAL-DAYS.
+           MOVE 0 TO WS-DAYS.
+           IF WS-D1 NOT = 0 AND WS-D2 NOT = 0 AND WS-D1 <= WS-D2 THEN
+               MOVE WS-D1 TO WS-DATE
+               PERFORM TO-JDN
+               MOVE JA TO J1
+               MOVE WS-D2 TO WS-DATE
+               PERFORM TO-JDN
+               COMPUTE WS-DAYS = JA - J1 + 1
+           END-IF.
+
+       LOST-DAYS-30.
+           MOVE 0 TO WS-DAYS.
+           IF WS-D1 NOT = 0 AND WS-D2 NOT = 0 AND WS-D1 <= WS-D2 THEN
+               MOVE WS-D1 TO WS-DATE
+               PERFORM SPLIT-DATE
+               MOVE WS-Y TO YS
+               MOVE WS-M TO MS
+               MOVE WS-D TO DS
+               MOVE WS-D2 TO WS-DATE
+               PERFORM SPLIT-DATE
+               MOVE WS-Y TO YE
+               MOVE WS-M TO ME
+               MOVE WS-D TO DE
+               IF DS NOT = 31 THEN
+                   MOVE DS TO WS-D
+                   MOVE MS TO WS-M
+                   PERFORM ADJUST-DAY
+                   MOVE WS-D TO DS
+               END-IF
+               MOVE DE TO WS-D
+               MOVE ME TO WS-M
+               PERFORM ADJUST-DAY
+               MOVE WS-D TO DE
+               COMPUTE TDAYS = DE - DS + 1
                COMPUTE TMONTHS = ME - MS
                COMPUTE TYEARS = YE - YS
                IF TDAYS < 0 THEN
@@ -1430,14 +1802,14 @@
 
        PAINT-REPORT.
            MOVE SPACES TO REPORT.
-           MOVE 1 TO RCOUNT.
+           MOVE 0 TO RCOUNT.
            IF OFFICER = 1 THEN
                MOVE 'OFFICER (O/W)' TO CLASS-TXT
            ELSE
                MOVE 'ENLISTED' TO CLASS-TXT
            END-IF.
            MOVE SPACES TO WS-LINE.
-           MOVE '=== DODFMR STATEMENT OF SERVICE (PAT / Ch 1 COBOL) ==='
+           MOVE '=== DODFMR STATEMENT OF SERVICE (PAT / Ch 1) ==='
                TO WS-LINE.
            PERFORM ADD-REP.
            MOVE SPACES TO WS-LINE.
@@ -1482,6 +1854,16 @@
                   DAYS-X DELIMITED BY SIZE
                   ' days  (' DELIMITED BY SIZE
                   LOST-YMD DELIMITED BY SIZE
+                  ')' DELIMITED BY SIZE
+               INTO WS-LINE
+           END-STRING.
+           PERFORM ADD-REP.
+           MOVE LOSTCOUNTED TO DAYS-X.
+           MOVE SPACES TO WS-LINE.
+           STRING 'Lost counted     : ' DELIMITED BY SIZE
+                  FUNCTION TRIM(DAYS-X) DELIMITED BY SIZE
+                  ' days  (' DELIMITED BY SIZE
+                  COUNT-YMD DELIMITED BY SIZE
                   ')' DELIMITED BY SIZE
                INTO WS-LINE
            END-STRING.
@@ -1538,8 +1920,24 @@
                INTO WS-LINE
            END-STRING.
            PERFORM ADD-REP.
+           IF OFFICER = 1 AND HASPRIOR = 1 THEN
+               MOVE 'Note: WE=Y lost time retards PEBD (2.4.1.3.1 / 2.4.1.4) even if grade is O/W.'
+                   TO WS-LINE
+               PERFORM ADD-REP
+           END-IF.
+           IF OFFICER = 1 AND HASOFFEX = 1 THEN
+               MOVE 'Note: unchecked officer lost time is counted, not applied (2.2.2).'
+                   TO WS-LINE
+               PERFORM ADD-REP
+           END-IF.
            MOVE 1 TO I.
            PERFORM REP-PERIOD UNTIL I > NPER.
+           IF NMERGE > 0 THEN
+               MOVE 'Merged timeline (creditable + dated lost holes):' TO WS-LINE
+               PERFORM ADD-REP
+               MOVE 1 TO I
+               PERFORM REP-MERGE UNTIL I > NMERGE
+           END-IF.
            IF NLOST > 0 THEN
                MOVE SPACES TO WS-LINE
                MOVE 'Lost time analysis:' TO WS-LINE
@@ -1548,9 +1946,32 @@
                PERFORM REP-LOST UNTIL I > NLOST
            END-IF.
            MOVE SPACES TO WS-LINE.
-           MOVE 'ENTER/PF12=edit input  PF3=menu' TO WS-LINE.
+           MOVE 'Lost time counted per 2.4.1.3.1; officer exception 2.2.2; WE=Y retards PEBD'
+               TO WS-LINE.
            PERFORM ADD-REP.
-           EXEC CICS SEND TEXT FROM(REPORT) ERASE END-EXEC.
+
+       REP-MERGE.
+           MOVE M-FROM(I) TO TMP8.
+           MOVE TMP8 TO TMPX.
+           MOVE M-DAYS(I) TO DAYS-X.
+           MOVE SPACES TO WS-LINE.
+           STRING I DELIMITED BY SIZE
+                  '. ' DELIMITED BY SIZE
+                  TMPX DELIMITED BY SIZE
+                  ' -> ' DELIMITED BY SIZE
+               INTO WS-LINE
+           END-STRING.
+           MOVE M-TO(I) TO TMP8.
+           MOVE TMP8 TO TMPX.
+           STRING FUNCTION TRIM(WS-LINE) DELIMITED BY SIZE
+                  TMPX DELIMITED BY SIZE
+                  ' days=' DELIMITED BY SIZE
+                  FUNCTION TRIM(DAYS-X) DELIMITED BY SIZE
+                  ' (base+1)' DELIMITED BY SIZE
+               INTO WS-LINE
+           END-STRING.
+           PERFORM ADD-REP.
+           ADD 1 TO I.
 
        REP-PERIOD.
            MOVE SPACES TO WS-LINE.
@@ -1577,38 +1998,105 @@
                INTO WS-LINE
            END-STRING.
            PERFORM ADD-REP.
+           IF P-DEPNOTE(I) NOT = SPACES THEN
+               MOVE P-DEPNOTE(I) TO WS-LINE
+               PERFORM ADD-REP
+           END-IF.
            ADD 1 TO I.
 
        REP-LOST.
            MOVE SPACES TO WS-LINE.
            MOVE L-FROM(I) TO TMP8.
            MOVE TMP8 TO TMPX.
-           MOVE L-DAYS(I) TO DAYS-X.
+           MOVE L-COUNTED(I) TO DAYS-X.
            STRING I DELIMITED BY SIZE
                   '. ' DELIMITED BY SIZE
                   TMPX DELIMITED BY SIZE
                   ' -> ' DELIMITED BY SIZE
                INTO WS-LINE
            END-STRING.
-           MOVE L-TO(I) TO TMP8.
-           MOVE TMP8 TO TMPX.
+           IF L-OPEN(I) = 'Y' THEN
+               MOVE 'PRESENT' TO TMPX
+           ELSE
+               MOVE L-TO(I) TO TMP8
+               MOVE TMP8 TO TMPX
+           END-IF.
            STRING FUNCTION TRIM(WS-LINE) DELIMITED BY SIZE
                   TMPX DELIMITED BY SIZE
                   ' ' DELIMITED BY SIZE
                   L-RS(I) DELIMITED BY SIZE
-                  ' deduct=' DELIMITED BY SIZE
+                  ' counted=' DELIMITED BY SIZE
+                  FUNCTION TRIM(DAYS-X) DELIMITED BY SIZE
+               INTO WS-LINE
+           END-STRING.
+           PERFORM ADD-REP.
+           MOVE L-DAYS(I) TO DAYS-X.
+           MOVE SPACES TO WS-LINE.
+           STRING '   deducted=' DELIMITED BY SIZE
                   FUNCTION TRIM(DAYS-X) DELIMITED BY SIZE
                   ' ' DELIMITED BY SIZE
                   L-METH(I) DELIMITED BY SIZE
                INTO WS-LINE
            END-STRING.
            PERFORM ADD-REP.
+           MOVE L-NOTE(I) TO WS-LINE.
+           PERFORM ADD-REP.
            ADD 1 TO I.
 
        ADD-REP.
-           IF RCOUNT >= 1 AND RCOUNT <= 40 THEN
+           IF RCOUNT < 160 THEN
+               ADD 1 TO RCOUNT
                MOVE WS-LINE TO R-LINE(RCOUNT)
            END-IF.
-           IF RCOUNT < 40 THEN
-               ADD 1 TO RCOUNT
+
+       PAGE-LOOP.
+           PERFORM SHOW-PAGE.
+           EVALUATE EIBAID
+               WHEN PF07
+                   IF PAGE > 1 THEN
+                       SUBTRACT 1 FROM PAGE
+                   END-IF
+               WHEN PF08
+                   IF PAGE < PAGES THEN
+                       ADD 1 TO PAGE
+                   END-IF
+               WHEN ENTER
+               WHEN PF12
+                   MOVE 'Y' TO EDIT-FLAG
+                   MOVE 'Y' TO PAGE-DONE
+               WHEN OTHER
+                   MOVE 'Y' TO PAGE-DONE
+           END-EVALUATE.
+
+       SHOW-PAGE.
+           MOVE SPACES TO SCREEN-BUF.
+           COMPUTE S-FROM = (PAGE - 1) * BODY + 1.
+           MOVE 1 TO S-IDX.
+           PERFORM FILL-SCREEN UNTIL S-IDX > BODY.
+           COMPUTE J = SCRNHT - 1.
+           MOVE 'PF7=prev  PF8=next  ENTER/PF12=edit  PF3=menu'
+               TO S-LINE(J).
+           MOVE CALCPEBD TO TMP8.
+           MOVE TMP8 TO TMPX.
+           MOVE SPACES TO WS-LINE.
+           STRING 'Page ' DELIMITED BY SIZE
+                  PAGE DELIMITED BY SIZE
+                  '/' DELIMITED BY SIZE
+                  PAGES DELIMITED BY SIZE
+                  '  PEBD ' DELIMITED BY SIZE
+                  TMPX DELIMITED BY SIZE
+                  '  ' DELIMITED BY SIZE
+                  STATUS-TXT DELIMITED BY SIZE
+               INTO WS-LINE
+           END-STRING.
+           MOVE WS-LINE TO S-LINE(SCRNHT).
+           COMPUTE SENDLEN = SCRNHT * 80.
+           EXEC CICS SEND TEXT FROM(SCREEN-BUF) LENGTH(SENDLEN)
+                ERASE END-EXEC.
+
+       FILL-SCREEN.
+           COMPUTE J = S-FROM + S-IDX - 1.
+           IF J >= 1 AND J <= RCOUNT THEN
+               MOVE R-LINE(J) TO S-LINE(S-IDX)
            END-IF.
+           ADD 1 TO S-IDX.

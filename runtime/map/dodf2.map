@@ -3,8 +3,8 @@ MAP DODF2 SIZE 24x80
 
   FIELD AT 1,18 LEN 45 PROT BRIGHT COLOR=TURQUOISE "DODFMR - REVIEW ENTERED PERIODS"
 
-  FIELD AT 3,1  LEN 78 PROT COLOR=BLUE " #  FROM        TO          BRCH COMP  REASON LOST  CR"
-  FIELD AT 4,1  LEN 78 PROT COLOR=BLUE "--- ----------  ----------  ---- ----- ------ ----  --"
+  FIELD AT 3,1  LEN 78 PROT COLOR=BLUE " #  FROM        TO          BRCH COMP  REASON LOST   WE CR"
+  FIELD AT 4,1  LEN 78 PROT COLOR=BLUE "--- ----------  ----------  ---- ----- ------ -----  -- --"
 
   INPUT LINE01 AT 5,1  LEN 78 PROT COLOR=GREEN
   STOP      AT 5,79
