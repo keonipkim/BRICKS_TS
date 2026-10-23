@@ -7,7 +7,7 @@ DATABASE screen manages the database catalogue, the full
 handling, the bundled sample transactions, and how to monitor SQL
 activity at runtime.
 
-It is a companion to [`PROGRAMMING.md`](PROGRAMMING.md) Chapter 26
+It is a companion to [`programming_reference.pdf`](programming_reference.pdf) Chapter 21
 (the language-reference view) and [`README.md`](README.md) (the
 operator's `bricks.cnf` reference). Where they overlap, this guide
 is the tutorial; they are the reference.
@@ -134,6 +134,27 @@ Adding a row here only tells BRICKS  the database *exists*; it does
 not create it in Postgres. Use CEDA DATABASE `C` (§3) — or `psql`
 — for that.
 
+**Names are case-folded to lower case.** Postgres folds unquoted
+identifiers, so `bricks` and `BRICKS` are one physical database;
+BRICKS folds the catalogue name, the lookup, the `transactions.conf`
+binding and `CONNECT TO` the same way so they always agree. Before
+this, the two spellings were two catalogue rows opening two pools
+onto the *same* database, and a `:BANK` binding against a `bank` row
+never matched — every statement in the transaction returned
+`SQLCODE -1`. Quoted / case-sensitive Postgres database names are
+not supported.
+
+**Parsing is lenient.** A malformed row is skipped with a
+`databases.conf:N: skip - ...` warning and the rest of the catalogue
+still loads; a duplicate name (after folding) is skipped, first row
+wins. The old reader returned on the first bad row, which meant one
+typo in the last line discarded every database and left the region
+running SQL-less. A `#` at the start of a line, or a ` #` (space then
+hash) anywhere on it, starts a comment — a `#` glued to surrounding
+text stays data, so a description of `slot#3` survives. A UTF-8 BOM
+on line 1 is ignored and lines are capped at 1 MiB. Only an
+unreadable file is an error.
+
 ### 2.3 Binding a transaction to a database
 
 `transactions.conf` rows have an optional 5th colon-separated
@@ -147,8 +168,15 @@ LEDQ:cobol:ledq.cob:admin,users:ledger            # the 'ledger' database
 
 Field layout: `TRANID:type:program[:groups[:database]]`. An empty
 or absent 5th field binds the transaction to the default
-database. A program can also switch databases mid-task with
-`EXEC SQL CONNECT TO` (§6.7).
+database. The name is matched case-insensitively against
+`databases.conf` (both sides are folded to lower case), so `:BANK`
+and `:bank` reach the same database. A program can also switch
+databases mid-task with `EXEC SQL CONNECT TO` (§6.7).
+
+CEDA TRANSACTION refuses a database name containing `:`, a newline
+or a whitespace-preceded ` #`: those characters produce a
+`transactions.conf` line the parser reads back as a *different*
+record, with every later field shifted one slot.
 
 ### 2.4 Creating the database and tables
 
@@ -222,6 +250,13 @@ ledger         general ledger                    OFFLINE
 `STATE` is `ONLINE` (pool connected), `OFFLINE` (configured but
 the last connection attempt failed), or `NEVER` (never pinged).
 
+An `OFFLINE` row also shows **why**: the innermost driver reason
+(`connection refused`, `password authentication failed`, …) is
+painted in red in place of that row's table / index / size count
+columns. That reason used
+to live only in the boot log, so once the console had scrolled there
+was no way left to recover it.
+
 ### 3.1 Row actions
 
 Type a one-letter action in the selector column beside a row,
@@ -258,7 +293,12 @@ ceda=DATABASE op=ADD       target=orders            term=T01 user=admin
 ```
 
 `databases.conf` is rewritten atomically (write-temp-then-rename),
-so a crash mid-mutation cannot corrupt the catalogue. The `X`
+so a crash mid-mutation cannot corrupt the catalogue. Mutations are
+also guarded against a concurrent `vi` save: if the file changed on
+disk since the screen loaded, the mutation is refused with
+`databases.conf changed on disk; press ENTER and retry`, the
+catalogue is re-read first, and the retry works against the new
+state rather than silently overwriting the operator's edit. The `X`
 (drop) action is the only irreversible one — hence the
 re-type-the-name confirmation gate.
 
@@ -483,7 +523,9 @@ EXEC SQL CONNECT TO 'orders' END-EXEC.
 
 Switches the executor to a different database from the catalogue.
 The named database must exist in `databases.conf` — an unknown
-name returns `SQLCODE -1`. Any in-flight transaction on the
+name returns `SQLCODE -1`. The name is matched case-insensitively
+(folded to lower case, like every other database-name path), so
+`CONNECT TO 'ORDERS'` finds the `orders` row. Any in-flight transaction on the
 previous database is committed first (DB2 convention; issue
 `ROLLBACK` beforehand if you want to discard it).
 

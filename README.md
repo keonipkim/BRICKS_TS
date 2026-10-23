@@ -29,7 +29,7 @@ conditions non-fatal in every language: the program reads the outcome from the
 RESP variable or `EIBRESP` and carries on. A lost terminal, `RETURN` / `XCTL` /
 `ABEND`, a fired `HANDLE` branch and a LINKed program that fails while running
 still end the task. PL/I programs never end on a CICS condition, with or without
-`RESP` (see [PROGRAMMING.md, Chapter 36](PROGRAMMING.md#resp-resp2-and-dfhresp)).
+`RESP` (see [programming_reference.pdf, Chapter 33, "RESP, RESP2 and DFHRESP"](programming_reference.pdf)).
 
 Bricks also features a built-in VSAM-style KSDS access method compatible with CICS, along with the 
 usual IDCAMS cluster definition and REPRO capabilities . Also, SQL support thru EXEC SQL statements is available to the programmers.  
@@ -41,8 +41,9 @@ so there are no re-entrancy issues. Bricks expressly disallows calculated
 GOTOs in COBOL programs for the same reason.
 
 
-> **Application programmers:** see **[PROGRAMMING.md](PROGRAMMING.md)** —
-> the *Bricks Application Programming Reference*. It documents the
+> **Application programmers:** see **[programming_reference.pdf](programming_reference.pdf)** —
+> the *BRICKS Transaction Server Application Programming Guide and
+> Reference*. It documents the
 > BMS-flavoured map DSL, every supported `EXEC CICS` command (format,
 > options, conditions, examples), the REXX dialect, the COBOL dialect, the
 > PL/I subset, and sample programs.
@@ -191,7 +192,7 @@ and for the one rule it deliberately breaks (duplicate keys here are
 | `rexx_dir`                   | `runtime/rexx`                | Directory of REXX programs. Sub-directories are supported: `transactions.conf` may reference programs as `subdir/file.rexx`. `CEDA PROGRAM` walks the tree recursively (depth cap 8, hidden-prefixed entries skipped). |
 | `cobol_dir`                  | `runtime/cobol`               | Directory of COBOL programs. Same sub-directory support as `rexx_dir`. |
 | `copybook_dir`               | `runtime/cobolcopy`           | Directory of COBOL copybooks (`SQLCA.cpy`, etc.). |
-| `pli_dir`                    | `runtime/pli`                 | Directory of PL/I programs (`*.pli`), the programs `transactions.conf` rows with language `pli` name (`CUSP:pli:cusp.pli:PUBLIC`). PL/I external entries (`DCL name ENTRY ... EXTERNAL`) resolve to `<name>.pli` here. Listed by `CEDA PROGRAM` / `CEMT P R P`, edited in ISPF area 4. See [PROGRAMMING.md, Part 9](PROGRAMMING.md#part-9-the-pli-language). |
+| `pli_dir`                    | `runtime/pli`                 | Directory of PL/I programs (`*.pli`), the programs `transactions.conf` rows with language `pli` name (`CUSP:pli:cusp.pli:PUBLIC`). PL/I external entries (`DCL name ENTRY ... EXTERNAL`) resolve to `<name>.pli` here. Listed by `CEDA PROGRAM` / `CEMT P R P`, edited in ISPF area 4. See [programming_reference.pdf, Part 7, "PL/I"](programming_reference.pdf). |
 | `pli_include_dir`            | `runtime/pliinc`              | Directory searched by the PL/I `%INCLUDE name;` statement (`name.inc`, flat names, no paths). The standard `DFHAID.inc` and `DFHRESP.inc` members ship here with the same dual names as the COBOL copybooks (`PF03` and `DFHPF3`). Editing a member recompiles every program that includes it on its next dispatch. |
 | `runtime_dir`                | `runtime`                     | Root for `maps_dir` / `rexx_dir` / `cobol_dir` / `pli_dir` / `tmp_dir` / `copybook_dir` / `pli_include_dir` / `webserver_dir` when those aren't set explicitly. Set this to relocate the whole runtime tree in one knob. |
 | `data_dir`                   | `data`                        | Holds `files.boltdb` (FILE store + TS queues). |
@@ -204,10 +205,10 @@ and for the one rule it deliberately breaks (duplicate keys here are
 | `program_cache`              | `4`                           | L2 LRU pool size in MB for parsed REXX/COBOL/PL/I programs (a 128-entry L1 of decoded ASTs sits in front of it). Allocated once at startup as eight contiguous byte slabs — one per shard — and reused for the life of the process; Go's GC never scans the program bytes. Valid range is `1..16384` (1 MB floor, 16 GB cap); out-of-range values are rejected at startup. Live counters for both tiers are visible in `CEMT MONITOR`. |
 | `map_cache`                  | `128`                         | LRU bound on the number of **parsed** 3270 maps held resident. The directory index — `(map name → file path, mtime, size, SHA-256)` — always covers every `*.map` in `maps_dir`, so any map remains resolvable by name; only the parsed body is bounded. A `SEND/RECEIVE MAP` for a cached map is zero-parse; an evicted map is re-parsed on next lookup (microseconds) and re-inserted. Evicted entries drop their `*Map` pointer and the Go GC reclaims them on the next cycle, capping both steady-state memory and per-GC pointer-graph walk regardless of how many maps a deployment ships. Valid range is `1..1028`; rejected at startup if out of range. Live counters and runtime resize are visible in `CEMT P M`. |
 | `record_cache`               | `16`                          | Byte budget in **MB** for the VSAM record read cache that sits in front of the bbolt file store. A keyed `READ FILE` for a cached record skips the B-tree traversal and is served from memory; every `WRITE`/`REWRITE`/`DELETE` (and SYNCPOINT rollback) invalidates the affected record, so the cache stays coherent within the process. The budget bounds the total cached record bytes; the least-recently-read records are evicted when it fills. Valid range is `4..4096` (4 MB floor, 4 GB cap); out-of-range values are rejected at startup. Live read/write rates, latency, and the hit ratio are on the `CEMT MONITOR` **VSAM File Monitor** (PF11); the since-boot hit ratio also shows on the `CEMT MONITOR` Caches panel. |
-| `wrkarea`                    | `0`                           | Byte length of the region **Common Work Area** (CWA) — the single region-wide scratch area `EXEC CICS ADDRESS CWA(ptr)` hands a COBOL program a pointer to, and whose length `EXEC CICS ASSIGN CWALENG(n)` reports. Integer bytes; valid range `0..3584` (the IBM CWA cap), rejected at startup if negative or above `3584`. The default `0` means **no CWA is allocated** — `ADDRESS CWA` then yields a NULL pointer (handle 0) and `CWALENG` returns `0`, matching real CICS on a region with no CWA. The CWA is one slice shared by every task for the life of the process; writes through the pointer are visible to other tasks (unsynchronised — the program serialises its own access). See [PROGRAMMING.md / EXEC CICS ADDRESS](PROGRAMMING.md#address--exec-cics-address). |
+| `wrkarea`                    | `0`                           | Byte length of the region **Common Work Area** (CWA) — the single region-wide scratch area `EXEC CICS ADDRESS CWA(ptr)` hands a COBOL program a pointer to, and whose length `EXEC CICS ASSIGN CWALENG(n)` reports. Integer bytes; valid range `0..3584` (the IBM CWA cap), rejected at startup if negative or above `3584`. The default `0` means **no CWA is allocated** — `ADDRESS CWA` then yields a NULL pointer (handle 0) and `CWALENG` returns `0`, matching real CICS on a region with no CWA. The CWA is one slice shared by every task for the life of the process; writes through the pointer are visible to other tasks (unsynchronised — the program serialises its own access). See [programming_reference.pdf, Chapter 13, "ADDRESS"](programming_reference.pdf). |
 | `banner`                     | `BRICKS Transaction Server`   | Shown at top of system screens. |
 | `show_welcome`               | `yes`                         | `no` drops the operator straight to the logon / blank prompt without the connect-time welcome banner and centred bricks logo splash. |
-| `gmtext`                     | `Welcome to bricks`           | **IBM CICS SIT `GMTEXT` equivalent — operator-configured "Good Morning" banner.** Painted at row 0 of the connect-time splash and row 1 of `LogonPrompt` (when `enforce_secure_login=yes`) (Turquoise intense, centred; replaces the legacy `Welcome to BRICKS HH:MM:SS` banner when set), and retrievable programmatically via `EXEC CICS INQUIRE SYSTEM GMMTEXT(var)`. **Hard caps:** max 256 bytes, and EBCDIC-037 printable bytes only (`0x20..0x7E` minus the `[ ] { } ~ \ ` `` ` `` `\| ^` deny-set per the 3270-printables memory) — any violation is a startup error, **not** a silent substitute. An empty `gmtext=` line **restores the default** (matches the `ntp_server=on` aliasing precedent). The full 256-byte value is preserved through the verb — the LogonPrompt renderer truncates to `cols-1` only at paint time, so programs reading `GMMTEXT` see the full configured value regardless of screen width. See [PROGRAMMING.md / INQUIRE SYSTEM](PROGRAMMING.md#system-inquiry--inquire-system) for the verb and bricks deviations. |
+| `gmtext`                     | `Welcome to bricks`           | **IBM CICS SIT `GMTEXT` equivalent — operator-configured "Good Morning" banner.** Painted at row 0 of the connect-time splash and row 1 of `LogonPrompt` (when `enforce_secure_login=yes`) (Turquoise intense, centred; replaces the legacy `Welcome to BRICKS HH:MM:SS` banner when set), and retrievable programmatically via `EXEC CICS INQUIRE SYSTEM GMMTEXT(var)`. **Hard caps:** max 256 bytes, and EBCDIC-037 printable bytes only (`0x20..0x7E` minus the `[ ] { } ~ \ ` `` ` `` `\| ^` deny-set per the 3270-printables memory) — any violation is a startup error, **not** a silent substitute. An empty `gmtext=` line **restores the default** (matches the `ntp_server=on` aliasing precedent). The full 256-byte value is preserved through the verb — the LogonPrompt renderer truncates to `cols-1` only at paint time, so programs reading `GMMTEXT` see the full configured value regardless of screen width. See [programming_reference.pdf, Chapter 13, "INQUIRE SYSTEM"](programming_reference.pdf) for the verb and bricks deviations. |
 | `dns_name`                   | (none)                        | **Bind address.** Every bricks listener — the plain-TCP and TLS 3270 listeners, and the web3270 / `/metrics` HTTP services — binds **only** to the single IP this name resolves to (a literal IP is used as-is; a hostname resolves to one address, IPv4 preferred). A `dns_name` that is set but unresolvable is a fatal startup error. When `dns_name` is **empty**, listeners fall back to binding *all* interfaces (`0.0.0.0`) and bricks logs a `WARNING` — set `dns_name` to confine the server to one interface. |
 | `start_web3270`              | `no`                          | `yes` enables the in-process browser-based 3270 emulator. |
 | `web3270_port`               | `9000`                        | HTTP port for the web3270 frontend (only used when `start_web3270=yes`). |
@@ -406,7 +407,7 @@ Beyond those, four rules are worth knowing before you edit the file:
 4. **A path capture is percent-DECODED** before the program sees it,
    so `GET /api/customer/Smith%20John` gives
    `WEB READ QUERYPARM('id')` the value `Smith John`. See
-   [PROGRAMMING.md — server-side verb set](PROGRAMMING.md#server-side-verb-set)
+   [programming_reference.pdf, Chapter 20, "Server Command Reference"](programming_reference.pdf)
    for the programmer-facing note.
 
 A bad row still only costs that row: it is logged and skipped, and
@@ -790,7 +791,7 @@ the transaction has no SQL binding). The default (field absent, or
 ORDR:cobol:ordr.cob:public::768     # 768-byte TWA, no SQL database
 ```
 
-See [PROGRAMMING.md / EXEC CICS ADDRESS](PROGRAMMING.md#address--exec-cics-address).
+See [programming_reference.pdf, Chapter 13, "ADDRESS"](programming_reference.pdf).
 
 Three-field entries keep the legacy behaviour: `enforce_secure_login`
 in `bricks.cnf` is the only check (so a signed-on user can run
@@ -1107,7 +1108,7 @@ What this means for `STARTBR / READNEXT / READPREV / RESETBR / ENDBR`:
 
 * STARTBR opens a bbolt read tx + cursor; positions according to RIDFLD /
   GTEQ / EQUAL / GENERIC + KEYLENGTH (see the verb reference in
-  [PROGRAMMING.md](PROGRAMMING.md)).
+  [programming_reference.pdf](programming_reference.pdf), Chapter 14).
 * READNEXT advances the cursor; with GENERIC active, returns `ENDFILE`
   the moment the prefix breaks (no full-file scan).
 * READPREV walks backward from current position with the same prefix
@@ -1171,9 +1172,9 @@ The shipped `ORDR` sample transaction
 keyed on customer-id. Duplicates (`EIBRESP = 14`) are counted but
 not fatal, so the import is idempotent on re-run. The full verb
 reference is in
-[PROGRAMMING.md, Chapter 9](PROGRAMMING.md#chapter-9-temporary-storage-and-transient-data-commands),
+[programming_reference.pdf, Chapter 15, "Temporary Storage and Transient Data Commands"](programming_reference.pdf),
 and the worked walk-through is in
-[Chapter 27, example E](PROGRAMMING.md#e-sequential-import-via-readq-td--write-file).
+[programming_reference.pdf, Chapter 42, "Example 5. Sequential Import with READQ TD and WRITE"](programming_reference.pdf).
 
 **Non-FIFO access via `STARTBR`.** The same `tmp_dir` files are also
 browsable via `STARTBR` / `READNEXT` / `READPREV` / `RESETBR` /
@@ -1189,7 +1190,7 @@ real-CICS ESDS:
   **input bound + output actual**: a record exceeding the buffer
   truncates and returns `LENGERR`, with `LENGTH` rewritten to the
   un-truncated record length. (Distinct from the KSDS path, where
-  `LENGTH` is output-only — see PROGRAMMING.md Chapter 8a for the
+  `LENGTH` is output-only — see Chapter 14 of programming_reference.pdf for the
   rationale.)
 * `WRITE` / `REWRITE` / `DELETE FILE` against a `tmp_dir` name
   return `INVREQ` with the documented "use WRITEQ TD / DELETEQ TD"
@@ -1198,7 +1199,7 @@ real-CICS ESDS:
   (Stat-refresh-on-EOF). Real CICS holds a frozen view at `STARTBR`
   time.
 
-Full reference: [PROGRAMMING.md, Chapter 8a](PROGRAMMING.md#chapter-8a-file-control-on-tmp_dir-sequential-files).
+Full reference: [programming_reference.pdf, Chapter 14, "Sequential Files in tmp_dir"](programming_reference.pdf).
 
 ---
 
@@ -1351,7 +1352,7 @@ languages: single-row CRUD (`SELECT INTO`, `INSERT`, `UPDATE`,
 `DELETE`, `COMMIT`, `ROLLBACK`), the four-verb cursor lifecycle
 (`DECLARE` / `OPEN` / `FETCH` / `CLOSE`), and per-task
 `CONNECT TO 'name'` to switch between databases. See
-[PROGRAMMING.md, Chapter 26](PROGRAMMING.md#chapter-26-embedded-sql-cobol-rexx-and-pli)
+[programming_reference.pdf, Chapter 21, "Embedded SQL"](programming_reference.pdf)
 for the full surface; this section covers operator-side setup.
 
 ### Configuration
@@ -1434,7 +1435,7 @@ the target table doesn't live there, the operator sees
 `SQLCODE=-204 relation "..." does not exist` immediately, then
 `SQLCODE=-100 SQLSTATE=25P02 current transaction is aborted` on
 every subsequent statement of the same task. See
-[PROGRAMMING.md Chapter 26 — *Database binding*](PROGRAMMING.md#database-binding-transactionsconf-5th-field)
+[programming_reference.pdf, Chapter 21, "Connecting a Transaction to a Database"](programming_reference.pdf)
 for the full contract.
 
 Adding a row to `databases.conf` (or CEDA DATABASE `A`) **only**
@@ -1745,8 +1746,8 @@ runs `CloseBrowses` / `CloseAllTD` / `CloseWebSessions` /
 on the way out. Consequence: a file `READ UPDATE` followed by
 `REWRITE` still cannot span two PF5 presses — the per-PF5 implicit
 SYNCPOINT releases non-`HOLD` record locks. See the
-[`READ UPDATE` + `REWRITE` deviation note](PROGRAMMING.md#rewrite)
-in `PROGRAMMING.md` for the recommended workaround (type both verbs
+`READ UPDATE` + `REWRITE` note in
+[programming_reference.pdf, Chapter 7, "CECI"](programming_reference.pdf) for the recommended workaround (type both verbs
 on one PF5 input, or wrap with `ENQ resource HOLD … DEQ resource`).
 On a 7-second cap-hit the session is *poisoned*: every subsequent
 `PF5` short-circuits with `TIMEOUT` and the session-end defer skips
@@ -1801,6 +1802,254 @@ The source layout:
 | `ceci/policy.go` | Verb deny / soft-warn lists; ENQ auto-NOSUSPEND rewrite. |
 | `ceci/result.go` | Scrollable result buffer with wrap, head-trim, hex/ASCII dump. |
 | `txn/ceci.go` | `Dispatcher.runCECI` — DEV-group gate + `Deps` construction. |
+
+---
+
+## CEDF / CEDG — execution diagnostic facility
+
+`CEDF` and `CEDG` are built-in TRANSIDs (no entry in
+`transactions.conf`, implemented in package `edf/`) that let a
+developer step through a running COBOL, REXX or PL/I transaction, the
+way IBM's EDF does. `CEDF` displays **and modifies**; `CEDG` displays
+only. Both require membership of the **`dev`** or **`admin`** group in
+`runtime/users.conf` (the same gate applies to `LINK` / `XCTL` to
+them).
+
+Type `CEDF` (or `CEDG`) at the blank prompt. The terminal switches
+into EDF mode:
+
+```
+ THIS TERMINAL: EDF MODE ON
+ MODE: CEDF - DISPLAY AND MODIFY  TERMINAL: T001 USER: MOSHE
+ CLEAR, THEN TYPE A TRANSID.  CEDF ,OFF ENDS EDF.
+```
+
+Now type the transaction to debug. Every task started on that terminal
+is intercepted at **program initiation**, **before** and **after**
+every `EXEC CICS` command, at **program / task termination** and when
+an **abend** occurs. `LINK`ed programs are intercepted too (`LINK
+LEVEL 1 FROM GUST` on the STATUS row); pseudo-conversational follow-on
+tasks and `XCTL` targets stay under EDF. `CEDF ,OFF` (or `CEDF OFF`),
+`F3` on any display, a `REPLY` other than `YES` at task termination,
+or signing off ends EDF. STARTed background tasks, non-terminal tasks
+and the built-in transactions are never intercepted.
+
+As a bricks extra, every display shows the command **in its source**:
+the program text around the statement, the current statement
+highlighted (all lines of a multi-line `EXEC CICS`), and
+`SOURCE: member LINE: nnnnn` on the ENTER row (the copybook or
+`%INCLUDE` member when the statement lives in one).
+
+Program initiation (screens below are the actual rendered output,
+Model 2):
+
+```
+ TRANSACTION: GUST PROGRAM: GUST     TASK: 0000058 APPLID: BRICKS01 DISPLAY: 00
+ STATUS:  PROGRAM INITIATION                                              CEDF
+ EIBTIME = 143207          EIBDATE = 0126295         EIBTRNID= 'GUST'
+ EIBTASKN= 58              EIBTRMID= 'T001'          EIBCPOSN= 4
+ EIBCALEN= 0               EIBAID  = X'7D' ENTER     EIBFN   = X'0000'
+ EIBRCODE= X'000000000000' EIBRESP = 0               EIBRESP2= 0
+ COMMAREA= (NONE)
+ 00056   01 RESP-STR     PIC X(8).
+ 00057
+ 00058   PROCEDURE DIVISION.
+ 00059   MAIN.
+ 00060>      EXEC CICS ASSIGN USERID(USR) TERMID(TRM) END-EXEC.
+ 00061
+ 00062  *> Initialise the menu group ONCE outside the loop. SCR.MSG is set
+ 00063  *> by each action and carries through to the next iteration's SEND
+ 00064  *> so the operator sees the prior result. Resetting at loop top
+ 00065  *> would erase the message before it could be painted.
+ 00066       MOVE SPACES TO SCR.
+ 00067  *> Match the REXX cust.rexx INFOLINE layout: "User: USR" then a
+ 00068  *> 28-space gutter then "Term: TRM" so the second column lines up
+ 00069  *> in the same screen position the REXX twin produces.
+ ENTER:  CONTINUE         SOURCE: gust.cob     LINE: 00060  EIBFN=X'0000'
+ F1 SOURCE  F2 HEX   F3 END EDF  F4 SUPPRESS  F5 STORAGE  F6 SCREEN     F7 UP
+ F8 DOWN    F9 STOP  F10 PREV    F11 EIB      F12 ABEND   F13 COMMENT-
+```
+
+About to execute a command (`CEDF`: the verb, the argument values and
+later the RESPONSE are overtypable — writable cells are underscored):
+
+```
+ TRANSACTION: GUST PROGRAM: GUST     TASK: 0000058 APPLID: BRICKS01 DISPLAY: 00
+ STATUS:  ABOUT TO EXECUTE COMMAND                                        CEDF
+ EXEC CICS READ____________
+  FILE     ( customers )
+  INTO     ( _______________________________________________ +  AT X'0002FB'
+  RIDFLD   ( 10042___ )                                         AT X'0001EE'
+  UPDATE
+ 00243           END-STRING
+ 00244       END-IF.
+ 00245
+ 00246   ACT-UPDATE.
+ 00247>      EXEC CICS READ FILE('customers') INTO(REC) RIDFLD(KEY-IN)
+ 00248>                    UPDATE END-EXEC.
+ 00249       IF EIBRESP = RESP-NOTFND THEN
+ 00250           STRING 'Customer ' DELIMITED BY SIZE
+ 00251                  KEY-IN DELIMITED BY SIZE
+ 00252                  ' not found.' DELIMITED BY SIZE
+ 00253               INTO MSG
+ 00254           END-STRING
+ 00255       END-IF.
+ 00256       IF EIBRESP NOT = RESP-NORMAL
+ ENTER:  CONTINUE         SOURCE: gust.cob     LINE: 00247  EIBFN=X'0602'
+ F1 SOURCE  F2 HEX   F3 END EDF  F4 SUPPRESS  F5 STORAGE  F6 SCREEN     F7 UP
+ F8 DOWN    F9 STOP  F10 PREV    F11 EIB      F12 ABEND   F13 COMMENT-
+```
+
+Command execution complete. The value the command just set (here
+`INTO`) is white; the forecast of what the HANDLE / IGNORE machinery
+will do is on the RESPONSE row:
+
+```
+ TRANSACTION: GUST PROGRAM: GUST     TASK: 0000058 APPLID: BRICKS01 DISPLAY: 00
+ STATUS:  COMMAND EXECUTION COMPLETE                                      CEDF
+ EXEC CICS READ
+  FILE     ( customers )
+  INTO     ( Ada Lovelace.12 Analytical Way.London.020 7946  +  AT X'0002FB'
+  RIDFLD   ( 10042___ )                                         AT X'0001EE'
+  UPDATE
+ RESPONSE: NORMAL______ EIBRESP=0 EIBRESP2=0   NO HANDLE ACTIVE
+ 00243           END-STRING
+ 00244       END-IF.
+ 00245
+ 00246   ACT-UPDATE.
+ 00247>      EXEC CICS READ FILE('customers') INTO(REC) RIDFLD(KEY-IN)
+ 00248>                    UPDATE END-EXEC.
+ 00249       IF EIBRESP = RESP-NOTFND THEN
+ 00250           STRING 'Customer ' DELIMITED BY SIZE
+ 00251                  KEY-IN DELIMITED BY SIZE
+ 00252                  ' not found.' DELIMITED BY SIZE
+ 00253               INTO MSG
+ 00254           END-STRING
+ 00255       END-IF.
+ ENTER:  CONTINUE         SOURCE: gust.cob     LINE: 00247  EIBFN=X'0602'
+ F1 SOURCE  F2 HEX   F3 END EDF  F4 SUPPRESS  F5 STORAGE  F6 SCREEN     F7 UP
+ F8 DOWN    F9 STOP  F10 PREV    F11 EIB      F12 ABEND   F13 COMMENT-
+```
+
+Working storage (`F5`; `F2` switches to the interpreter's native
+bytes in hex):
+
+```
+ TRANSACTION: GUST PROGRAM: GUST     TASK: 0000058 APPLID: BRICKS01 DISPLAY: 00
+ STATUS:  WORKING STORAGE        PICTURE      VALUE - CHAR                CEDF
+ 0001A0 01 USR                   X(8)         MOSHE___
+ 0001A8 01 TRM                   X(4)         T001
+ 0001AC 01 WS-CACR-UP            S9(8) C      0________
+ 0001B4 01 SCR                   GROUP 177
+ 0001B4    05 INFOLINE           X(78)        User: MOSHE_____________________
+ 0001D4                                              Term: T001_______________
+ 0001F4                                       ______________
+ 000202    05 ACTION             X(1)         U
+ 000203    05 CUSTNO             X(8)         10042___
+ 00020B    05 SEARCH             X(30)        ______________________________
+ 000229    05 MSG                X(60)        ________________________________
+ 000249                                       ____________________________
+ 000265 01 DET                   GROUP 278
+ 000265    05 DINFOLINE          X(78)        User: MOSHE_____________________
+ 000285                                              Term: T001_______________
+ 0002A5                                       ______________
+ 0002B3    05 DCUSTNO            X(8)         10042___
+ 0002BB    05 DNAME              X(32)        Ada Lovelace____________________
+ 0002DB    05 DADDRESS           X(32)        12 Analytical Way_______________
+ ENTER:  CURRENT DISPLAY  LOCATE: ________________  ITEMS 1-14 OF 16
+ F1 SOURCE  F2 HEX   F3 END EDF  F4 SUPPRESS  F5 CURRENT  F6 SCREEN     F7 UP
+ F8 DOWN    F9 STOP  F10 PREV    F11 EIB      F12 ABEND   F13 COMMENT-
+```
+
+Task termination:
+
+```
+ TRANSACTION: GUST PROGRAM: GUST     TASK: 0000058 APPLID: BRICKS01 DISPLAY: 00
+ STATUS:  TASK TERMINATION                                                CEDF
+ TO CONTINUE EDF SESSION REPLY YES       REPLY: YES
+ ENDED BY: EXEC CICS RETURN  NEXT TRANSID: NONE  COMMAREA: 0
+ EIBTIME = 143207          EIBDATE = 0126295         EIBTRNID= 'GUST'
+ EIBTASKN= 58              EIBTRMID= 'T001'          EIBCPOSN= 4
+ EIBCALEN= 0               EIBAID  = X'7D' ENTER     EIBFN   = X'0000'
+ EIBRCODE= X'000000000000' EIBRESP = 0               EIBRESP2= 0
+ 00075       END-STRING.
+ 00076
+ 00077       PERFORM MENU-LOOP UNTIL EXIT-FLAG = 'Y'.
+ 00078
+ 00079>      EXEC CICS RETURN END-EXEC.
+ 00080       GOBACK.
+ 00081
+ 00082   MENU-LOOP.
+ 00083       EXEC CICS SEND MAP('CUST1') FROM(SCR) ERASE END-EXEC.
+ 00084       EXEC CICS RECEIVE MAP('CUST1') INTO(SCR) END-EXEC.
+ 00085
+ 00086  *> F12 from the menu screen exits the transaction immediately --
+ 00087  *> matching cust.rexx's `IF C2X(EIBAID) = '7C'`.
+ ENTER:  CONTINUE         SOURCE: gust.cob     LINE: 00079  EIBFN=X'0E08'
+ F1 SOURCE  F2 HEX   F3 END EDF  F4 SUPPRESS  F5 STORAGE  F6 SCREEN     F7 UP
+ F8 DOWN    F9 STOP  F10 PREV    F11 EIB      F12 ABEND   F13 COMMENT-
+```
+
+### Keys
+
+| Key | Action |
+|---|---|
+| ENTER | Continue the task. With overtyped fields: apply them and show the result (press ENTER again to continue). With the cursor on an argument value: open working storage at that variable. |
+| F1 | Full-screen source view; F7 / F8 page, `FIND:` takes a line number or text. |
+| F2 | Toggle HEX: values shown as the interpreter's native bytes. |
+| F3 | End EDF for this terminal; the user's screen is put back and the task continues. |
+| F4 | Suppress: run without displays until a stop condition (F9) is met. Suppressed displays are still recorded for F10. |
+| F5 | Working storage (COBOL `PICTURE`, REXX `TYPE`, PL/I `ATTRIBUTES`); `LOCATE:` jumps to a name. F5 again returns. |
+| F6 | Show the program's last screen; any key returns. |
+| F7 / F8 | Scroll up / down: the option list, working storage or source. |
+| F9 | Stop conditions: command, resource, program initiation, source line, condition, any condition, abend, normal / abnormal termination, working-storage change. |
+| F10 | Previous displays (up to 9, `DISPLAY: -1` .. `-9`), read-only. |
+| F11 | Full EIB (DFHEIBLK); `EIBCPOSN`, `EIBAID`, `EIBRESP`, `EIBRESP2` are overtypable in CEDF. |
+| F12 | `CEDF` only: abend the task. First press asks for the code, the second abends. |
+| F13 | Toggle comments in the source pane and the F1 source view. The legend shows `COMMENT-` (press to hide comment-only lines, so more code fits) or `COMMENT+` (press to show them again). The current statement is never hidden; line numbers keep their gaps. The setting stays for the EDF session. On a PC keyboard F13 is usually Shift+F1. |
+
+### What CEDF can change (CEDG cannot)
+
+- **Verb**: overtype with `NOP` (or `NOOP`) to skip the command; it
+  completes NORMAL. Any other new verb is refused.
+- **Argument values**: before execution every argument; after
+  execution the receivers (inputs such as `FILE`, `FROM`, `MAP` are
+  protected). A literal is replaced in the command; a host variable is
+  assigned with the language's own rules (COBOL `MOVE`).
+- **RESPONSE**: overtype the condition name (or number). The new code
+  then goes through the program's real `HANDLE CONDITION` / `IGNORE`
+  / `RESP` processing, and the forecast is re-evaluated
+  (`RESPONSE CHANGED TO NOTFND`).
+- **Working storage** and the four EIB fields above. Values with
+  unprintable bytes (shown as `.`) can only be changed in HEX.
+
+In `CEDG` the badge is yellow, nothing that would change the program
+is writable, F12 is refused (`CEDG: DISPLAY ONLY`), and anything a
+terminal sends back is ignored. Stop conditions and the end-of-task
+`REPLY` work in CEDG too: they change EDF, not the program.
+
+Every display keeps within column 78 on Model 2, 3 and 4 (Models 3 and
+4 show more source lines; Model 4 initiation / termination displays
+show the full EIB) and uses only EBCDIC-037-safe characters in its
+chrome. The full description — event model, colour table, overtype
+rules, language differences — is in
+[programming_reference.pdf, Chapter 8, "CEDF and CEDG: The Execution Diagnostic Facility"](programming_reference.pdf).
+
+The source layout:
+
+| File | What |
+|---|---|
+| `edf/edf.go` | `CEDF` / `CEDG` on/off transaction. |
+| `edf/debugger.go` | Per-task EDF session: event loop, history, stop conditions, PF keys. |
+| `edf/model.go` | Display snapshot (command, options, EIB, source location). |
+| `edf/screens.go`, `edf/screens_aux.go` | The displays. |
+| `edf/layout.go` | Paint primitives (79-column rule, stoppers, data rendering). |
+| `edf/apply.go` | Overtype handling. |
+| `edf/source.go` | Source cache and copybook / include resolution. |
+| `cics/debug.go` | The `Debugger` hook in the EXEC CICS path, trap forecast, F6 capture. |
+| `cics/eibfn.go` | EIBFN / EIBDS / EIBRSRCE / EIBREQID synthesis. |
+| `cobol/inspect.go`, `rexx/inspect.go`, `pli/inspect.go` | Source locator and storage inspector per language. |
+| `txn/edf.go` | Built-in dispatch and attaching the debugger to every handler of a task. |
 
 ---
 
