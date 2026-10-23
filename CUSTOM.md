@@ -6,18 +6,19 @@ This branch contains Keoni's custom extensions and modifications on top of the u
 
 The goal of `keoni-custom` is to stay as close as possible to the official upstream while carrying a set of practical enhancements and a hierarchical role-based menu system for day-to-day use.
 
-## Current Status (as of 12 Oct 2026)
+## Current Status (as of 22 Oct 2026)
 
-- **Upstream base**: `300c466` / tag **3.4.1** (`3.4.1 Fix UTF-8 count bug`). The published diff drops the tracked `bin/*-3.3.3-*` release binaries and replaces `programming_reference.pdf`. Parent is `0d994df` / tag **3.4.0** (COBOL TODO web app). Tag **3.3.4** is `5a13474`. There is no 3.3.3 tag; that lock fix is `b9179bc`.
+- **Upstream base**: `4e8119d` / tag **3.5.4** (`3.5.4 CEDF/CEDG tracing transactions, and follow CICS ABEND code conventions as well as CICS LINK/XCTL conventions closely`). Parent is `eff2fcb` / tag **3.5.2** (ICVR/AICA runaway detection). Tag **3.5.1** is `bfb16f2` (PL/I). There is no 3.5.3 tag. Tag **3.1.6** currently points at `fdeb181` (`add badge`), which sits *between* 3.5.1 and 3.5.2 — it is not an older base.
 - Menu system repaired so maps, PF keys, and `transactions.conf` ACLs agree (see below). Sign-on for live checks: userid `ADMIN` / password `ADMIN` (`runtime/users.conf` stores the id as `admin`).
-- Last rebase tip: `9fe0d72` (docs: update CUSTOM.md for 3.4.1 rebase).
+- Last rebase tip: this document's commit (docs: update CUSTOM.md for 3.5.4 rebase). Pre-docs tip after replay: `f84f8a9`.
 - Fork `main` has been reset to exactly match upstream `main`.
-- This branch (`keoni-custom`) has been rebased cleanly on top of the latest upstream. **Zero conflicts** — all 37 custom commits replayed cleanly (simple `git rebase upstream/main`; no `--onto` needed — upstream was a clean 1-commit fast-forward from the prior `0d994df` / 3.4.0 base). Custom additions (DODFMR/PERS + full menu system) preserved. No custom paths overlapped the 3.4.1 diff. `bricks.cnf` still has duplicate `start_transaction` (`HELP` then `MYMU`); last-wins keeps `MYMU` and will warn at boot.
-- All prior custom work now sits on upstream `300c466` / 3.4.1 (including 3.4.0 TODO web app, 3.3.2 cnf parser, SCHD / START AFTER, 3.2.4 README, 3.2.3 COBOL improvements, 3.2.0 COMP-3 / SEND MAP ERASE / 32-bit, 3.19 transaction aliases, 3.1.7/3.1.6/3.1.5 JSON + SABRE + binary/release changes + all previous 3.x/2.x work).
-- `bin/` is empty after this rebase: upstream deleted the tracked 3.3.3 binaries in 3.4.1 (the 05 Oct note that those binaries stayed tracked applied only through 3.4.0). `.gitignore` still keeps new untracked downloads out of future commits.
-- Omarchy checkout `/home/kpkim/Projects/personal/BRICKS_TS` was clean at the pre-rebase tip `9b97a3d` and was hard-reset to `origin/keoni-custom` and `origin/main` after the force-push (no local-only commits).
+- This branch (`keoni-custom`) has been rebased on top of the latest upstream. **One conflict** — all 41 custom commits replayed (simple `git rebase upstream/main`; no `--onto` needed — upstream was a clean 6-commit fast-forward from the prior `300c466` / 3.4.1 base). The only overlap was `runtime/transactions.conf` on `feat(menus): register SCHD`: upstream 3.5.1 already had the same `SCHD` row and had moved `STAR` to the top of the file. Resolution kept upstream's single `SCHD` line and did not reinsert `STAR` in the old slot. The REXMENU rows from that commit applied cleanly. Custom additions (DODFMR/PERS + full menu system) preserved. `bricks.cnf` still has duplicate `start_transaction` (`HELP` then `MYMU`); last-wins keeps `MYMU` and will warn at boot. Upstream now documents that duplicate TRANSID rows are first-wins (opposite of `bricks.cnf`).
+- All prior custom work now sits on upstream `4e8119d` / 3.5.4 (including 3.5.1 PL/I + `CUSP`, 3.5.2 ICVR/AICA, 3.4.1 UTF-8 / binary drop, 3.4.0 TODO web app, and all previous 3.x/2.x work).
+- `CUSP` (`runtime/pli/cusp.pli`) is registered by upstream as `CUSP:pli:cusp.pli:PUBLIC`. It is not yet a row on the custom menus; type `CUSP` at the prompt.
+- Tracked `bin/` remains empty (upstream dropped release binaries in 3.4.1). Local untracked `bin/*-3.3.2-*` downloads were left in place and stay ignored.
+- Omarchy checkout was **not** reset from this Mac. After `git fetch origin`, that clone needs `git reset --hard origin/keoni-custom` (and `origin/main` if it tracks fork main) — a pull will refuse the rewritten history.
 
-**Previous status** (05 Oct 2026 / 3.4.0 rebase) is preserved below for history.
+**Previous status** (12 Oct 2026 / 3.4.1 rebase) is preserved below for history.
 
 ## Custom Work Included
 
@@ -707,6 +708,50 @@ The custom commits (with new SHAs after this rebase) that now sit on top of upst
 
 After rebase: the fresh pre-rebase backup branch + tag were created and retained (plus prior 3.3.2 / SCHD / 3.2.4 / 3.2.3 / 3.2.0 backups).
 
+## How This Branch Was Updated (22 Oct 2026) — 3.5.4 Rebase
+
+1. Full safety backup created (following the established pattern):
+   - Local branch `keoni-custom-backup-20261022-212835` (at pre-rebase tip `fa27e17`)
+   - Tag `backup-before-3.5.4-rebase-20261022-212835`
+   (No new tarball was created in this sync.)
+
+2. Fork `main` was reset (`--hard`) to exactly match `upstream/main` at `4e8119d` (tag **3.5.4**). This was a clean fast-forward of six upstream commits (`bfb16f2` / **3.5.1** PL/I, `97ba1fd` REXX Language Association badge notes, `fdeb181` badge image, `d7fe2f0` arm64 script tweaks, `eff2fcb` / **3.5.2** ICVR/AICA, `4e8119d` / **3.5.4** CEDF/CEDG).
+
+3. `keoni-custom` was rebased onto the new upstream base using:
+   `git rebase upstream/main`
+   (Simple rebase — upstream/main was a clean 6-commit fast-forward from the prior base `300c466`; no history rewrite / `--onto` required.)
+   **One conflict**, in `runtime/transactions.conf`, while replaying `feat(menus): register SCHD and list it on REXM`. Upstream 3.5.1 had already added `SCHD:rexx:schd.rexx:PUBLIC,USERS,ADMIN` (same ACL) and moved `STAR` to the top of the file. Resolved by keeping upstream's single `SCHD` row and not putting `STAR` back in the old position. The two `REXMENU.rexx` edits from that commit applied with no conflict. The other 40 custom commits replayed cleanly. Custom DODFMR/PERS and menu registrations were preserved. `CUSP` was left as the upstream registration; it was not added to a custom menu in this sync.
+
+4. Updated this `CUSTOM.md`, then force-pushed fork `main` and `keoni-custom` (`origin`, `--force-with-lease`), plus the pre-rebase backup branch and tag. The Omarchy clone was not updated from this machine.
+
+The newest custom commits (with new SHAs after this rebase) that now sit on top of upstream `4e8119d` are:
+
+- this commit: docs: update CUSTOM.md for 3.5.4 rebase
+- `f84f8a9` feat(dodf): match PAT lost-time rules on DODF and DODC
+- `ef985fc` docs: note Omarchy checkout reset after 3.4.1 rebase
+- `ade6be6` docs: pin correct tip SHA in CUSTOM.md
+- `00e26ca` docs: update CUSTOM.md for 3.4.1 rebase (clean rebase on new upstream base)
+- `71c9168` docs: note upstream 3.3.3 binaries stayed tracked after rebase
+- `29d02cb` docs: pin correct tip SHA in CUSTOM.md
+- `bc95be1` docs: update CUSTOM.md for 3.4.0 rebase (clean rebase on new upstream base)
+- `7b2ed2f` docs: pin correct tip SHA in CUSTOM.md
+- `2bc9b3f` docs: update CUSTOM.md for 3.3.2 rebase (clean rebase on new upstream base)
+- `4e262e7` fix(dodf): accept grade W, surface errors, fill lost days
+- `1c9014b` feat(dodf): PAT-style Y/M/D report and return-to-edit
+- `7b29982` fix(dodf): use PARSE ARG so Bricks REXX accepts DODFMR helpers
+- `146bcfb` feat(dodf): port PAT DODFMR PEBD engine to REXX and COBOL
+
+(41 replayed custom commits in total, plus this status update.)
+
+**New upstream highlights included in this rebase (3.5.1–3.5.4)**:
+- 3.5.1 (`bfb16f2`, tag **3.5.1**): PL/I language support. Sample `runtime/pli/cusp.pli`, includes `runtime/pliinc/DFHAID.inc` and `DFHRESP.inc`, transaction `CUSP:pli:cusp.pli:PUBLIC`. `transactions.conf` header now says the first duplicate TRANSID wins. `SCHD` moved next to the other scheduler rows; `STAR` moved to the top; `TODO` moved near the web samples.
+- `97ba1fd` / `fdeb181`: REXX Language Association badge (`rexxla.png`) and README notes. Tag **3.1.6** points at `fdeb181`, not at a 3.1.x source base.
+- `d7fe2f0`: arm64 notes in `README.md`, `add_brick_user.bash`, and `start_bricks.bash`.
+- 3.5.2 (`eff2fcb`, tag **3.5.2**): CICS-equivalent ICVR/AICA runaway detection and IBM-accurate abend/RETURN semantics. Commit message also notes panic-path bug fixes. Published tree change in this repo is `programming_reference.pdf` only (engine source is not in the tree).
+- 3.5.4 (`4e8119d`, tag **3.5.4**): CEDF/CEDG tracing transactions, plus closer CICS ABEND-code and LINK/XCTL conventions. Published tree change is `programming_reference.pdf` only. CEDF/CEDG are not rows in `transactions.conf`.
+
+After rebase: the fresh pre-rebase backup branch + tag were created and retained (plus prior 3.4.1 / 3.4.0 / 3.3.2 / SCHD backups).
+
 ## Future Maintenance
 
 ### Recommended Workflow
@@ -747,7 +792,7 @@ git push origin keoni-custom --force-with-lease
 
 ---
 
-**Last updated**: 12 Oct 2026 (3.4.1 rebase, zero conflicts; simple rebase on fast-forward upstream)
+**Last updated**: 22 Oct 2026 (3.5.4 rebase, one `transactions.conf` conflict on the old SCHD registration; simple rebase on fast-forward upstream)
 **Maintainer**: Keoni (keonipkim fork)
 
 This file lives on the `keoni-custom` branch only and should be updated whenever significant custom work is added or the branch is rebased against upstream.
