@@ -10,7 +10,7 @@ The goal of `keoni-custom` is to stay as close as possible to the official upstr
 
 - **Upstream base**: `4e8119d` / tag **3.5.4** (`3.5.4 CEDF/CEDG tracing transactions, and follow CICS ABEND code conventions as well as CICS LINK/XCTL conventions closely`). Parent is `eff2fcb` / tag **3.5.2** (ICVR/AICA runaway detection). Tag **3.5.1** is `bfb16f2` (PL/I). There is no 3.5.3 tag. Tag **3.1.6** currently points at `fdeb181` (`add badge`), which sits *between* 3.5.1 and 3.5.2 — it is not an older base.
 - Menu system repaired so maps, PF keys, and `transactions.conf` ACLs agree (see below). Sign-on for live checks: userid `ADMIN` / password `ADMIN` (`runtime/users.conf` stores the id as `admin`).
-- Last rebase tip: this document's commit (docs: update CUSTOM.md for 3.5.4 rebase). Pre-docs tip after replay: `f84f8a9`.
+- Last rebase tip: `067f836` (docs: update CUSTOM.md for 3.5.4 rebase). Pre-docs tip after replay: `f84f8a9`.
 - Fork `main` has been reset to exactly match upstream `main`.
 - This branch (`keoni-custom`) has been rebased on top of the latest upstream. **One conflict** — all 41 custom commits replayed (simple `git rebase upstream/main`; no `--onto` needed — upstream was a clean 6-commit fast-forward from the prior `300c466` / 3.4.1 base). The only overlap was `runtime/transactions.conf` on `feat(menus): register SCHD`: upstream 3.5.1 already had the same `SCHD` row and had moved `STAR` to the top of the file. Resolution kept upstream's single `SCHD` line and did not reinsert `STAR` in the old slot. The REXMENU rows from that commit applied cleanly. Custom additions (DODFMR/PERS + full menu system) preserved. `bricks.cnf` still has duplicate `start_transaction` (`HELP` then `MYMU`); last-wins keeps `MYMU` and will warn at boot. Upstream now documents that duplicate TRANSID rows are first-wins (opposite of `bricks.cnf`).
 - All prior custom work now sits on upstream `4e8119d` / 3.5.4 (including 3.5.1 PL/I + `CUSP`, 3.5.2 ICVR/AICA, 3.4.1 UTF-8 / binary drop, 3.4.0 TODO web app, and all previous 3.x/2.x work).
@@ -726,7 +726,7 @@ After rebase: the fresh pre-rebase backup branch + tag were created and retained
 
 The newest custom commits (with new SHAs after this rebase) that now sit on top of upstream `4e8119d` are:
 
-- this commit: docs: update CUSTOM.md for 3.5.4 rebase
+- `067f836` docs: update CUSTOM.md for 3.5.4 rebase (one transactions.conf conflict on SCHD)
 - `f84f8a9` feat(dodf): match PAT lost-time rules on DODF and DODC
 - `ef985fc` docs: note Omarchy checkout reset after 3.4.1 rebase
 - `ade6be6` docs: pin correct tip SHA in CUSTOM.md
