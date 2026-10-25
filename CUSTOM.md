@@ -18,7 +18,7 @@ The goal of `keoni-custom` is to stay as close as possible to the official upstr
 - `CUSP` (`runtime/pli/cusp.pli`) is registered by upstream as `CUSP:pli:cusp.pli:PUBLIC`. It is not yet a row on the custom menus; type `CUSP` at the prompt. New 3.5.6 samples (`NQUE`, `ABNC`, `ABNH`, `APCH`, `SPLC`, `SPDB`, `ABMR`, `ABUR`, `ABMP`, `ABNP`, `ABZP`) are in the tree but **not** in `transactions.conf` upstream, so they are not on the menus.
 - `PROGRAMMING.md` was removed upstream (3.5.4.1). The guide is `programming_reference.pdf` only.
 - Tracked `bin/` remains empty (upstream dropped release binaries in 3.4.1). Local untracked `bin/*-3.3.2-*` downloads were left in place and stay ignored. They predate this base; do not expect 3.5.6 `QUERY SECURITY` from that binary.
-- Omarchy checkout was **not** reset from this Mac. After `git fetch origin`, that clone needs `git reset --hard origin/keoni-custom` (and `origin/main` if it tracks fork main) — a pull will refuse the rewritten history.
+- Omarchy checkout (`beelink` / `kpkim@omarchy.local:~/Projects/personal/BRICKS_TS`) was reset from this Mac after the push. It was clean at `fa27e17` (pre-3.5.4 tip; it had not taken the 22 Oct rebase). `git fetch origin` then `git reset --hard origin/keoni-custom` and `origin/main`. A pull would have refused the rewritten history.
 
 **Previous status** (22 Oct 2026 / 3.5.4 rebase) is preserved below for history.
 
@@ -775,7 +775,7 @@ After rebase: the fresh pre-rebase backup branch + tag were created and retained
 
 4. Follow-up, not part of the replay: `08cf2e8` retargets the seven menu programs (`bricks_menus/rexx/` and the deployed `runtime/rexx/` copies) at 3.5.6 `QUERY SECURITY`. The old 50/51 codes no longer mean READABLE/NOTREADABLE, so every menu row would have been hidden and `SQLM` would have bounced to `MYMU`. Calls are now `RESTYPE('TRANSATTACH') RESID(...) LOGMESSAGE(NOLOG)`; READABLE is 35, NOTREADABLE is 36, and the admin banner is ALTERABLE (52).
 
-5. Updated this `CUSTOM.md`, then force-pushed fork `main` and `keoni-custom` (`origin`, `--force-with-lease`), plus the pre-rebase backup branch and tag. The Omarchy clone was not updated from this machine.
+5. Updated this `CUSTOM.md`, then force-pushed fork `main` and `keoni-custom` (`origin`, `--force-with-lease`), plus the pre-rebase backup branch and tag. The Omarchy clone was then `git fetch origin` + `git reset --hard` onto those tips (working tree was clean at `fa27e17`).
 
 The newest custom commits (with new SHAs after this rebase) that now sit on top of upstream `aa16f10` are:
 
