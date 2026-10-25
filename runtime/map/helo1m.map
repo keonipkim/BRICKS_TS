@@ -1,0 +1,21 @@
+* HELO transaction -- 32x80 layout for mod 3 terminals.
+* Mirrors the named slots from helo1.map (INFOLINE, GREETING, FOOTER) so
+* the same SCR. stem feeds any of the HELO maps; adds the INFO1-3 and
+* ACT1-3 panels of helo1l.map, packed to fit a 32-row screen.
+MAP HELO1M SIZE 32x80
+  FIELD INFOLINE AT 0,0   LEN 78 PROT BRIGHT COLOR=TURQUOISE
+  FIELD GREETING AT 5,5   LEN 20 PROT BRIGHT COLOR=WHITE
+
+  * --- panels that fit on a mod-3 screen ---
+  FIELD AT 10,2  LEN 25 PROT DIM    COLOR=TURQUOISE  "System information:"
+  FIELD INFO1    AT 12,4  LEN 70 PROT COLOR=WHITE
+  FIELD INFO2    AT 13,4  LEN 70 PROT COLOR=WHITE
+  FIELD INFO3    AT 14,4  LEN 70 PROT COLOR=WHITE
+
+  FIELD AT 18,2  LEN 25 PROT DIM    COLOR=TURQUOISE  "Recent activity:"
+  FIELD ACT1     AT 20,4  LEN 70 PROT COLOR=WHITE
+  FIELD ACT2     AT 21,4  LEN 70 PROT COLOR=WHITE
+  FIELD ACT3     AT 22,4  LEN 70 PROT COLOR=WHITE
+
+  FIELD FOOTER   AT 30,2  LEN 60 PROT DIM    COLOR=BLUE
+ENDMAP

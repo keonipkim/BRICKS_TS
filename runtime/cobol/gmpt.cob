@@ -94,4 +94,4 @@
 
            EXEC CICS SEND TEXT FROM(SCR) ERASE END-EXEC.
            EXEC CICS RETURN END-EXEC.
-           STOP RUN.
+           GOBACK.

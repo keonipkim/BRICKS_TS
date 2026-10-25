@@ -48,6 +48,7 @@
       *> -206    SQL-UNDEF-COL      column not found
       *> -407    SQL-NOTNULL        null into NOT NULL column
       *> -433    SQL-STRTRUNC       value too long for destination
+      *> -510    SQL-CURSOR-RO      WHERE CURRENT OF, not FOR UPDATE
       *> -530    SQL-FKVIOL         foreign-key violation
       *> -545    SQL-CHKVIOL        check-constraint violation
       *> -551    SQL-INSUF-PRIV     operator not authorised
@@ -117,6 +118,11 @@
 
       *> -551 = operator not authorised (PG 42501).
        01 SQL-INSUF-PRIV     PIC S9(8) VALUE -551.
+
+      *> -510 = positioned UPDATE / DELETE (WHERE CURRENT OF) on a
+      *> cursor not declared FOR UPDATE. Same code DB2 emits.
+       01 SQL-CURSOR-RO      PIC S9(8) VALUE -510.
+       01 DB2-READ-ONLY      PIC S9(8) VALUE -510.
 
       *> -802 = numeric value out of range (PG 22003).
        01 SQL-NUMOVERFLOW    PIC S9(8) VALUE -802.

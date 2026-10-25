@@ -32,6 +32,7 @@
        WORKING-STORAGE SECTION.
        COPY DFHAID.
        COPY DFHRESP.
+       01 WS-CICS-RESP PIC S9(8) COMP.  *> RESP(...) target
        01 SCR.
           05 INFOLINE PIC X(78).
           05 ROW1.
@@ -210,7 +211,7 @@
 
            MOVE NCOUNT TO DFHCOMMAREA.
            EXEC CICS RETURN END-EXEC.
-           STOP RUN.
+           GOBACK.
 
        FILTERED-LIST.
       *> Walk every record once, applying FUNCTION POS against the
@@ -223,9 +224,11 @@
            MOVE 0 TO SLOT.
            MOVE 'N' TO SCAN-DONE.
            MOVE SPACES TO INFOLINE.
-           EXEC CICS STARTBR FILE('customers') END-EXEC.
+           EXEC CICS STARTBR FILE('customers')
+                     RESP(WS-CICS-RESP) END-EXEC.
            PERFORM SCAN-ONE UNTIL SCAN-DONE = 'Y'.
-           EXEC CICS ENDBR FILE('customers') END-EXEC.
+           EXEC CICS ENDBR FILE('customers')
+                     RESP(WS-CICS-RESP) END-EXEC.
 
            STRING 'GUSL -- search: ' DELIMITED BY SIZE
                   FILTER DELIMITED BY SIZE
@@ -243,7 +246,8 @@
            MOVE SPACES TO REC.
            MOVE SPACES TO KEY-IN.
            EXEC CICS READNEXT FILE('customers') INTO(REC)
-                              RIDFLD(KEY-IN) END-EXEC.
+                              RIDFLD(KEY-IN)
+                              RESP(WS-CICS-RESP) END-EXEC.
            IF EIBRESP NOT = RESP-NORMAL THEN
                MOVE 'Y' TO SCAN-DONE
            END-IF.
@@ -332,7 +336,8 @@
            MOVE SPACES TO INFOLINE.
            MOVE 'GUSL -- customers (PF7=Prev PF8=Next PF3=Exit).' TO INFOLINE.
 
-           EXEC CICS STARTBR FILE('customers') END-EXEC.
+           EXEC CICS STARTBR FILE('customers')
+                     RESP(WS-CICS-RESP) END-EXEC.
 
       *> Skip past prior pages -- PERFORM SKIP-ONE in a UNTIL loop
       *> until the skip counter reaches (PAGE-1)*15. SKIP-ONE bumps
@@ -403,7 +408,8 @@
               MOVE KEY-IN TO K15 MOVE SNAME TO N15
               MOVE SCITY TO C15 MOVE SPHONE TO P15 END-IF.
 
-           EXEC CICS ENDBR FILE('customers') END-EXEC.
+           EXEC CICS ENDBR FILE('customers')
+                     RESP(WS-CICS-RESP) END-EXEC.
 
            EXEC CICS SEND MAP('CUSTL') FROM(SCR) ERASE END-EXEC.
            EXEC CICS RECEIVE MAP('CUSTL') END-EXEC.
@@ -433,7 +439,8 @@
            MOVE SPACES TO REC.
            MOVE SPACES TO KEY-IN.
            EXEC CICS READNEXT FILE('customers') INTO(REC)
-                              RIDFLD(KEY-IN) END-EXEC.
+                              RIDFLD(KEY-IN)
+                              RESP(WS-CICS-RESP) END-EXEC.
            IF EIBRESP = RESP-NORMAL THEN
                COMPUTE SKIPCNT = SKIPCNT + 1
            END-IF.
@@ -445,7 +452,8 @@
            MOVE SPACES TO REC.
            MOVE SPACES TO KEY-IN.
            EXEC CICS READNEXT FILE('customers') INTO(REC)
-                              RIDFLD(KEY-IN) END-EXEC.
+                              RIDFLD(KEY-IN)
+                              RESP(WS-CICS-RESP) END-EXEC.
            IF EIBRESP = RESP-NORMAL THEN
                COMPUTE NCOUNT = NCOUNT + 1
            END-IF.

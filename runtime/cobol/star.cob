@@ -177,12 +177,15 @@
        01 WS-LEFTV      PIC S9(2).
        01 WS-ALEFT      PIC S9(4).
        01 WS-BHIT       PIC X(1).
-      *> WS-GLYPH is a 3-cell tabl, NOT an elementary PIC X(3).  
-      *> read it one character at a time (WS-GC(1..3)); source reference-
-      *> modification (WS-GLYPH(2:1)) is dropped by the interpreter
-      *> (>>> ||| \\\).  A plain OCCURS group + subscipt avoids both the
-      *> broken ref-mod and REDEFINES.  `MOVE '<M>' TO WS-GLYPH` is a group
-      *> move    (byte copy), so WS-GC(1)/'<' WS-GC(2)/'M' WS-GC(3)/'>'.
+      *> WS-GLYPH is a 3-cell table, NOT an elementary PIC X(3).  We
+      *> read it one character at a time (WS-GC(1..3)).  This predates
+      *> reference modification, which the interpreter used to drop --
+      *> WS-GLYPH(2:1) returned the whole field and rendered every
+      *> 3-wide sprite as its first char x3 (>>> ||| \\\).  Slicing
+      *> works now, so a new program could write WS-GLYPH(2:1); the
+      *> OCCURS table is kept because it reads just as clearly.
+      *> `MOVE '<M>' TO WS-GLYPH` is a group move (byte copy), so
+      *> WS-GC(1)/'<' WS-GC(2)/'M' WS-GC(3)/'>'.
         01 WS-GLYPH.
           05 WS-GC      OCCURS 3 TIMES PIC X(1).
        01 WS-ACOL       PIC X(9).

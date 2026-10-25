@@ -19,5 +19,5 @@
            EXEC CICS SEND MAP('CUST1') FROM(SCR) ERASE END-EXEC.
            EXEC CICS RECEIVE MAP('CUST1') INTO(SCR) END-EXEC.           
            EXEC CICS RETURN END-EXEC.
-           STOP RUN.           
+           GOBACK.
         

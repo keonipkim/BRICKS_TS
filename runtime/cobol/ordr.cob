@@ -25,6 +25,7 @@
        WORKING-STORAGE SECTION.
        COPY DFHAID.
        COPY DFHRESP.
+       01 WS-CICS-RESP PIC S9(8) COMP.  *> RESP(...) target
        01 USR PIC X(8).
        01 TRM PIC X(4).
 
@@ -101,13 +102,14 @@
            EXEC CICS RECEIVE MAP('ORDR2') INTO(SUM-SCR) END-EXEC.
 
            EXEC CICS RETURN END-EXEC.
-           STOP RUN.
+           GOBACK.
 
        IMPORT-ONE.
       *> Reset REC so a short last line doesn't drag stale bytes into
       *> the UNSTRING below.
            MOVE SPACES TO REC.
-           EXEC CICS READQ TD QUEUE('orders.sample.txt') INTO(REC) END-EXEC.
+           EXEC CICS READQ TD QUEUE('orders.sample.txt') INTO(REC)
+                     RESP(WS-CICS-RESP) END-EXEC.
            IF EIBRESP = RESP-QZERO THEN
                MOVE 'Y' TO DONE-FLAG
            END-IF.
@@ -140,7 +142,8 @@
                   PRICE DELIMITED BY SIZE
                INTO OREC
            END-STRING.
-           EXEC CICS WRITE FILE('ORDERS') FROM(OREC) RIDFLD(CUST-ID) END-EXEC.
+           EXEC CICS WRITE FILE('ORDERS') FROM(OREC) RIDFLD(CUST-ID)
+                     RESP(WS-CICS-RESP) END-EXEC.
            IF EIBRESP = RESP-NORMAL THEN
                COMPUTE N-WRITE = N-WRITE + 1
            END-IF.

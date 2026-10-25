@@ -34,11 +34,10 @@ EXEC CICS INQUIRE SYSTEM
   GMMTEXT(GMMTEXT)
 END-EXEC
 
-EXEC CICS QUERY SECURITY
-  RESOURCE('FSPF')
-  READ(CANREAD)
-  UPDATE(CANUPDATE)
-END-EXEC
+/* Menu access comes from the security.conf row FSPF:MENU             */
+/* (*=READ, ADMIN=ALTER): READ means signed on, UPDATE means admin.   */
+/* NOLOG because painting the menu is an inquiry, not a violation.    */
+EXEC CICS QUERY SECURITY RESCLASS('FSPF') RESID('MENU') RESIDLENGTH(4) READ(CANREAD) UPDATE(CANUPDATE) LOGMESSAGE(NOLOG) END-EXEC
 
 /* Initialize variables. */
 FRAME.          = ''      /* Frames from the database. */
@@ -74,9 +73,9 @@ SET.BCOLOR      = 'BLUE'  /* The default color of the per-frame welcome message.
 SET.LASTINPUT   = ''      /* The last input from the user. Used for PF6 to recall input. */
 SET.ISAUTH      = 'NO'    /* The user is authenticated. Not PUBLIC. */
 SET.ISADMIN     = 'NO'    /* The user has admin access. */
-IF CANUPDATE = 52 THEN
+IF CANUPDATE = 37 THEN   /* UPDATABLE */
   SET.ISADMIN   = 'YES'
-IF CANREAD = 50 THEN
+IF CANREAD = 35 THEN     /* READABLE */
   SET.ISAUTH    = 'YES'
 
 /* What is the terminal type, and thus Map set? */

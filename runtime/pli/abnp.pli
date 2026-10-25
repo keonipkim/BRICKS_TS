@@ -1,0 +1,12 @@
+/* ABNP - unhandled CICS condition demo (PL/I). The READ asks for a   */
+/* key that is not on file and codes neither RESP nor NOHANDLE, and   */
+/* no HANDLE CONDITION is active. As on IBM CICS the NOTFND condition */
+/* is unhandled, so the task abends AEIM. Compare CUSP (RESP coded).  */
+ABNP: PROC OPTIONS(MAIN);
+   DCL REC CHAR(80);
+   DCL CKEY CHAR(9) INIT('NOSUCHKEY');
+   EXEC CICS READ FILE('customers') INTO(REC) RIDFLD(CKEY);
+   /* Never reached: the READ above abends the task AEIM.             */
+   EXEC CICS SEND TEXT FROM('ABNP: READ RETURNED - NOT EXPECTED') ERASE;
+   EXEC CICS RETURN;
+END ABNP;

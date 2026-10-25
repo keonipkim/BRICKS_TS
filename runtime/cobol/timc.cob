@@ -26,6 +26,7 @@
        WORKING-STORAGE SECTION.
        COPY DFHAID.
        COPY DFHRESP.
+       01 WS-CICS-RESP PIC S9(8) COMP.  *> RESP(...) target
 
        01 TRM      PIC X(8).
        01 BUF      PIC X(50).
@@ -56,7 +57,8 @@
       *> First thing: see if this is a scheduled re-entry. RETRIEVE
       *> drains any payload the originating START left for us; on
       *> a cold dispatch (operator typed TIMC) RESP-ENDDATA fires.
-           EXEC CICS RETRIEVE INTO(BUF) LENGTH(BUFLEN) END-EXEC.
+           EXEC CICS RETRIEVE INTO(BUF) LENGTH(BUFLEN)
+                     RESP(WS-CICS-RESP) END-EXEC.
 
            IF EIBRESP = RESP-NORMAL THEN
                PERFORM SHOW-REMINDER
@@ -113,7 +115,7 @@
                            FROM(MSG) END-EXEC.
 
            EXEC CICS RETURN END-EXEC.
-           STOP RUN.
+           GOBACK.
 
        SHOW-REMINDER.
       *> Scheduled-fire branch: paint TIM2 with the saved message

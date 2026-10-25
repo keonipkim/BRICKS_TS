@@ -31,7 +31,7 @@ MAP BANK2 SIZE 24x80
   FIELD BALANCE AT 6,14 LEN 18 PROT BRIGHT COLOR=YELLOW
   FIELD AT 6,40 LEN 40 PROT COLOR=BLUE             " "
 
-  FIELD AT 7,0  LEN 80 PROT DIM COLOR=BLUE         "-------------------------------------------------------------------------------"
+  FIELD AT 7,0  LEN 80 PROT DIM COLOR=BLUE         "------------------------------------------------------------------------------"
 
   FIELD AT 8,2  LEN 78 PROT DIM COLOR=TURQUOISE    "DATE/TIME         TYPE          AMOUNT    NEW BALANCE   DESCRIPTION"
 

@@ -68,4 +68,4 @@
 
            EXEC CICS SEND MAP('EXAM1') FROM(SCR) ERASE END-EXEC.
            EXEC CICS RETURN END-EXEC.
-           STOP RUN.
+           GOBACK.

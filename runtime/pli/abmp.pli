@@ -1,0 +1,13 @@
+/* ABMP - abend ABMB demo (PL/I). SEND TEXT asks for the cursor at   */
+/* position 9999, past the end of any 3270 screen (a 3279-4 has 43   */
+/* rows of 80 columns, 3440 positions). IBM CICS abends the task     */
+/* ABMB and the screen is not touched. CURSOR positions count from   */
+/* 0 as on IBM: CURSOR(0) is row 1, column 1.                        */
+ABMP: PROC OPTIONS(MAIN);
+   DCL POS FIXED BIN(15) INIT(9999);
+   EXEC CICS SEND TEXT FROM('ABMP: CURSOR BEYOND THE SCREEN') ERASE
+             CURSOR(POS);
+   /* Never reached: the SEND above abends the task ABMB.             */
+   EXEC CICS SEND TEXT FROM('ABMP: SEND RETURNED - NOT EXPECTED') ERASE;
+   EXEC CICS RETURN;
+END ABMP;

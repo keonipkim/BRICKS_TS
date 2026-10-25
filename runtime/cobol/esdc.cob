@@ -43,6 +43,7 @@
        WORKING-STORAGE SECTION.
        COPY DFHAID.
        COPY DFHRESP.
+       01 WS-CICS-RESP PIC S9(8) COMP.  *> RESP(...) target
 
       *> ---- map IO group (matches esds.map field names) --------------
       *> Field names line up 1:1 with esds.map: INFOLINE banner,
@@ -140,7 +141,7 @@
       *> ParseInts it -- see the header comment for the deviation
       *> from the z/OS-canonical PIC S9(8) COMP declaration.
            EXEC CICS STARTBR FILE('audit.log')
-                             RIDFLD(WS-RBA) END-EXEC.
+                             RIDFLD(WS-RBA) RESP(WS-CICS-RESP) END-EXEC.
            IF EIBRESP NOT = RESP-NORMAL THEN
                GO TO STARTBR-FAILED
            END-IF.
@@ -156,7 +157,7 @@
 
            EXEC CICS ENDBR FILE('audit.log') END-EXEC.
            EXEC CICS RETURN END-EXEC.
-           STOP RUN.
+           GOBACK.
 
       *> ===============================================================
       *> STARTBR-FAILED -- can't open the browse. Paint a single-page
@@ -179,7 +180,7 @@
            EXEC CICS SEND MAP('ESDS') FROM(SCR) ERASE END-EXEC.
            EXEC CICS RECEIVE MAP('ESDS') INTO(SCR) END-EXEC.
            EXEC CICS RETURN END-EXEC.
-           STOP RUN.
+           GOBACK.
 
       *> ===============================================================
       *> AID-LOOP -- one round-trip per ENTER/PFn. Each pass: RECEIVE
@@ -291,7 +292,8 @@
            EXEC CICS READNEXT FILE('audit.log')
                               INTO(WS-REC)
                               RIDFLD(WS-RBA)
-                              LENGTH(WS-LEN) END-EXEC.
+                              LENGTH(WS-LEN)
+                              RESP(WS-CICS-RESP) END-EXEC.
 
            EVALUATE EIBRESP
                WHEN RESP-NORMAL
@@ -348,7 +350,8 @@
            EXEC CICS READPREV FILE('audit.log')
                               INTO(WS-REC)
                               RIDFLD(WS-RBA)
-                              LENGTH(WS-LEN) END-EXEC.
+                              LENGTH(WS-LEN)
+                              RESP(WS-CICS-RESP) END-EXEC.
 
            IF EIBRESP = RESP-NORMAL THEN
                ADD 1 TO WS-I

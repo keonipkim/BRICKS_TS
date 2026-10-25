@@ -233,7 +233,7 @@ AID_FRACTAL: PROCEDURE EXPOSE MNDL. SCR. EIBCPOSN
     /* Center on the cursor. */
     WHEN AID = 'F1' THEN DO
       /* Translate the cursor position. */
-      COL = (EIBCPOSN // (MNDL.WIDTH + 1)) - 2
+      COL = (EIBCPOSN // (MNDL.WIDTH + 1)) - 1
       ROW = INT(EIBCPOSN / (MNDL.WIDTH + 1))
       SCR.NCIMAG = MNDL.YMAX - (ROW * MNDL.YSTEP)
       SCR.NCREAL = MNDL.XMIN + (COL * MNDL.XSTEP)
@@ -249,7 +249,7 @@ AID_FRACTAL: PROCEDURE EXPOSE MNDL. SCR. EIBCPOSN
     /* Show the Julia set for the current point. */
     WHEN AID = 'F5' THEN DO
       MNDL.SKIP_DRAW = 'YES'
-      COL = (EIBCPOSN // (MNDL.WIDTH + 1)) - 2
+      COL = (EIBCPOSN // (MNDL.WIDTH + 1)) - 1
       ROW = INT(EIBCPOSN / (MNDL.WIDTH + 1))
       REAL = MNDL.YMAX - (ROW * MNDL.YSTEP)
       IMAG = MNDL.XMIN + (COL * MNDL.XSTEP)

@@ -1,0 +1,23 @@
+* NQUE -- N-Queens solver (PL/I), input screen.
+* NIN / DMIN are re-sent with the values from the COMMAREA; a field the
+* operator does not touch comes back unmodified (not in the input), so
+* the program keeps the value it painted.
+MAP NQUE1 SIZE 24x80
+  FIELD AT 0,1   LEN 44 PROT BRIGHT COLOR=WHITE  "BRICKS N-QUEENS SOLVER  (transaction NQUE)"
+  FIELD AT 1,1   LEN 76 PROT COLOR=TURQUOISE     "Places n queens on an n x n board so that no two queens attack each other."
+  FIELD AT 4,2   LEN 22 PROT COLOR=TURQUOISE     "Board size n (5-11)  :"
+  INPUT NIN      AT 4,25 LEN 2 NUMERIC UNDERSCORE BRIGHT COLOR=GREEN
+  STOP           AT 4,28
+  FIELD AT 4,30  LEN 48 PROT DIM                 "the board needs 2n+1 screen rows"
+  FIELD AT 6,2   LEN 22 PROT COLOR=TURQUOISE     "Remove mirrors (Y/N) :"
+  INPUT DMIN     AT 6,25 LEN 1 UNDERSCORE BRIGHT COLOR=GREEN
+  STOP           AT 6,27
+  FIELD AT 6,30  LEN 48 PROT DIM                 "Y = one board per symmetry class"
+  FIELD AT 9,2   LEN 76 PROT COLOR=BLUE BRIGHT   "N lists every solution (n=8: 92). Y keeps only fundamental ones (n=8: 12)."
+  FIELD AT 10,2  LEN 76 PROT COLOR=BLUE BRIGHT   "Fundamental = unique under the 4 rotations and 4 reflections of the board."
+  FIELD AT 11,2  LEN 76 PROT COLOR=BLUE BRIGHT   "The last 5 solutions found are kept and shown one board at a time."
+  FIELD AT 12,2  LEN 76 PROT DIM                 "n=11 takes a second or two; wait for the board before pressing a key."
+  FIELD MSG      AT 15,2 LEN 76 PROT BRIGHT COLOR=RED
+  FIELD AT 22,2  LEN 76 PROT COLOR=BLUE          "ENTER=Solve    PF3=End    PF12=End"
+  CURSOR         AT NIN
+ENDMAP

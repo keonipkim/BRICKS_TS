@@ -21,4 +21,4 @@
                                 YYYYMMDD(YYYYMMDD) END-EXEC.
            DISPLAY 'Today is ' YYYYMMDD.
            EXEC CICS RETURN END-EXEC.
-           STOP RUN.
+           GOBACK.

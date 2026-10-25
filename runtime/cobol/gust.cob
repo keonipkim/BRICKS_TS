@@ -7,18 +7,20 @@
       *> This Cobol version does not adapt to screen size for simplicity. 
        IDENTIFICATION DIVISION.
        PROGRAM-ID. GUST.
-
        DATA DIVISION.
        WORKING-STORAGE SECTION.
        COPY DFHAID.
        COPY DFHRESP.
+       01 WS-CICS-RESP PIC S9(8) COMP.  *> RESP(...) target
        COPY DFHVALUE.
        01 USR PIC X(8).
        01 TRM PIC X(4).
       *> WS-CACR-UP holds the EXEC CICS QUERY SECURITY UPDATE result
       *> (DFHVALUE-UPDATABLE or DFHVALUE-NOTUPDATABLE) so the menu
       *> can gate the D=Delete action on whether this caller may
-      *> mutate the GUST resource.
+      *> update the CUSTOMERS file (security.conf row
+      *> FCICSFCT:CUSTOMERS; ADMIN only as shipped). With no row the
+      *> RESTYPE form answers NOTUPDATABLE, so delete fails closed.
        01 WS-CACR-UP PIC S9(8) VALUE 0.
 
        01 SCR.
@@ -77,7 +79,7 @@
            PERFORM MENU-LOOP UNTIL EXIT-FLAG = 'Y'.
 
            EXEC CICS RETURN END-EXEC.
-           STOP RUN.
+           GOBACK.
 
        MENU-LOOP.
            EXEC CICS SEND MAP('CUST1') FROM(SCR) ERASE END-EXEC.
@@ -137,10 +139,12 @@
            END-IF.
 
       *> EXEC CICS QUERY SECURITY: refuse D=Delete to callers who
-      *> are not authorised to UPDATE the GUST resource. Mirrors the
-      *> menu-gating pattern documented in PROGRAMMING.md Chapter 6.
+      *> may not UPDATE the CUSTOMERS file. Deleting a record is a
+      *> file update, so this is the RESTYPE('FILE') form (class
+      *> FCICSFCT); LOGMESSAGE defaults to LOG, auditing denials.
            IF VALID-ACTION = 'Y' AND ACTION = 'D' THEN
-               EXEC CICS QUERY SECURITY RESOURCE('GUST')
+               EXEC CICS QUERY SECURITY RESTYPE('FILE')
+                                        RESID('CUSTOMERS')
                                         UPDATE(WS-CACR-UP) END-EXEC
                IF WS-CACR-UP NOT = DFHVALUE-UPDATABLE THEN
                    MOVE 'Delete not permitted for this user.' TO MSG
@@ -189,7 +193,8 @@
                INTO REC
            END-STRING.
 
-           EXEC CICS WRITE FILE('customers') FROM(REC) RIDFLD(KEY-IN) END-EXEC.
+           EXEC CICS WRITE FILE('customers') FROM(REC) RIDFLD(KEY-IN)
+                         RESP(WS-CICS-RESP) END-EXEC.
 
            IF EIBRESP = RESP-DUPREC THEN
                STRING 'Customer ' DELIMITED BY SIZE
@@ -215,7 +220,8 @@
            END-IF.
 
        ACT-QUERY.
-           EXEC CICS READ FILE('customers') INTO(REC) RIDFLD(KEY-IN) END-EXEC.
+           EXEC CICS READ FILE('customers') INTO(REC) RIDFLD(KEY-IN)
+                         RESP(WS-CICS-RESP) END-EXEC.
            IF EIBRESP = RESP-NOTFND THEN
                STRING 'Customer ' DELIMITED BY SIZE
                       KEY-IN DELIMITED BY SIZE
@@ -245,7 +251,7 @@
 
        ACT-UPDATE.
            EXEC CICS READ FILE('customers') INTO(REC) RIDFLD(KEY-IN)
-                         UPDATE END-EXEC.
+                         UPDATE RESP(WS-CICS-RESP) END-EXEC.
            IF EIBRESP = RESP-NOTFND THEN
                STRING 'Customer ' DELIMITED BY SIZE
                       KEY-IN DELIMITED BY SIZE
@@ -277,7 +283,8 @@
                    INTO REC
                END-STRING
 
-               EXEC CICS REWRITE FILE('customers') FROM(REC) END-EXEC
+               EXEC CICS REWRITE FILE('customers') FROM(REC)
+                         RESP(WS-CICS-RESP) END-EXEC
                IF EIBRESP NOT = RESP-NORMAL THEN
                    MOVE EIBRESP TO RESP-STR
                    STRING 'REWRITE failed RESP=' DELIMITED BY SIZE
@@ -295,7 +302,8 @@
            END-IF.
 
        ACT-DELETE.
-           EXEC CICS DELETE FILE('customers') RIDFLD(KEY-IN) END-EXEC.
+           EXEC CICS DELETE FILE('customers') RIDFLD(KEY-IN)
+                         RESP(WS-CICS-RESP) END-EXEC.
            IF EIBRESP = RESP-NOTFND THEN
                STRING 'Customer ' DELIMITED BY SIZE
                       KEY-IN DELIMITED BY SIZE

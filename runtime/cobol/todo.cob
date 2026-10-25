@@ -1,7 +1,7 @@
       *> TODO -- multi-user, multi-list to-do REST API (WAPI + VSAM).
       *>
-      *> This program serves every /api/todo/... route in web_routes.conf.
-      *> It works out what was asked from the HTTP get method plus the shape
+      *> One program serves every /api/todo/... route in web_routes.conf.
+      *> It works out what was asked from the HTTP method plus the shape
       *> of the path (EVALUATE WS-SHAPE ALSO WS-METHOD in MAIN), so the
       *> routing table and this program have to agree.
       *>
@@ -12,11 +12,11 @@
       *>   TODOLST  key user(16) list 9(6)
       *>   TODOITM  key user(16) list 9(6) item 9(8)
       *> Every key part is fixed width and space padded, so user "bob"
-      *> never runs into "bobby" as long as we always compare the
-      *> whople fixed width part during a browse (see COLLECT-ITEMS /
-      *> DO-LISTS-GET). IBM's CICS right-trims keys and records at the
+      *> never runs into "bobby" -- as long as we always compare the
+      *> WHOLE fixed width part during a browse (see COLLECT-ITEMS /
+      *> DO-LISTS-GET). CICS right-trims keys and records at the
       *> boundary, which is harmless: the last key part is numeric, or
-      *> it is the user id which is trimmed the same way.
+      *> it is the user id which is trimmed the same way everywhere.
       *>
       *> Auth: POST /users carries user + key in the body. Every other
       *> call needs X-Todo-User and X-Todo-Key headers. Passwords are
@@ -39,11 +39,11 @@
       *> lock that guards an invariant is always let go by the LAST
       *> write of the UOW (child WRITE first, parent REWRITE last).
       *>
-      *> Rseponses: every JSON object is made by JSON GENERATE from a
+      *> Responses: every JSON object is made by JSON GENERATE from a
       *> small flat JO-* record (lower-case names via NAME OF, item
       *> "done" via CONVERTING ... TO JSON BOOLEAN). Arrays and the few
       *> envelopes that wrap them are glued together with STRING ...
-      *> WITH POINTER (yeah!), because bricks has no OCCURS DEPENDING ON and a
+      *> WITH POINTER, because bricks has no OCCURS DEPENDING ON and a
       *> fixed OCCURS 200 table would always come out with 200 entries.
       *> The finished body goes out in ONE WEB SEND at the very end,
       *> since only the first SEND sets the status code.
@@ -89,7 +89,7 @@
       *> send stays LOW-VALUES, which is how READ-FIELD tells "absent"
       *> from "sent but empty". EVERY member is as wide as the body can
       *> be (4096), so JSON PARSE never cuts a value short and the
-      *> validators see exactly what was sent, 2      junk" must fail
+      *> validators see exactly what was sent -- "2      junk" must fail
       *> as a version just like it does in a form body.
        01 JI-REC.
           05 JI-USER       PIC X(4096).
@@ -102,12 +102,12 @@
        01 JI-REV         PIC X(4096).
        01 JI-TRAIL       PIC 9(5).
 
-      *> authenticated caller  
+      *> ---- authenticated caller -------------------------------------
        01 AU-USER        PIC X(16).
        01 AU-KEY         PIC X(128).
        01 WS-AUTH-OK     PIC X.
 
-      *>  validation scratch
+      *> ---- validation scratch ---------------------------------------
        01 V-IN           PIC X(64).
        01 V-LEN          PIC 9(5).
        01 V-OK           PIC X.
@@ -118,6 +118,9 @@
        01 T-TLEN         PIC 9(5).
        01 T-MAX          PIC 9(3).
        01 T-OK           PIC X.
+      *> 'Y' = CHECK-TEXT also accepts WS-PRINT-L1 (titles only). The
+      *> caller sets it right before the PERFORM; CHECK-TEXT resets it.
+       01 T-L1           PIC X VALUE 'N'.
        01 T-OUT          PIC X(128).
        01 N-IN           PIC X(64).
        01 N-LEN          PIC 9(5).
@@ -132,18 +135,31 @@
                          VALUE 'abcdefghijklmnopqrstuvwxyz0123456789-'.
        01 WS-DIGITS      PIC X(10) VALUE '0123456789'.
        01 WS-HEX         PIC X(22) VALUE '0123456789abcdefABCDEF'.
-
       *> x'21' thru x'7E' in order. POS() into this string is our
       *> stand-in for ORD (bricks has no ORD intrinsic): '!' = 1 ... '~' = 94.
        01 WS-PRINT       PIC X(94) VALUE
           '!"#$%&''()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~'.
-      
       *> same again with the blank in front, for the digest char codes
       *> (passwords may contain spaces): ' ' = 1, '!' = 2 ... '~' = 95.
        01 WS-PRINT95     PIC X(95) VALUE
           ' !"#$%&''()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~'.
+      *> x'80' thru x'FF' in order: the bricks graphic plane (x'80' is
+      *> the euro sign, x'81' a full block ...) and Latin-1 (x'E9' is
+      *> e-acute). Program data is one byte per character, so these are
+      *> printable characters too -- but only titles take them (see
+      *> T-L1); user names, list ids and passwords stay ASCII so the
+      *> digest and the X-Todo-* headers keep working unchanged.
+       01 WS-PRINT-L1.
+          05 FILLER      PIC X(16) VALUE X'808182838485868788898A8B8C8D8E8F'.
+          05 FILLER      PIC X(16) VALUE X'909192939495969798999A9B9C9D9E9F'.
+          05 FILLER      PIC X(16) VALUE X'A0A1A2A3A4A5A6A7A8A9AAABACADAEAF'.
+          05 FILLER      PIC X(16) VALUE X'B0B1B2B3B4B5B6B7B8B9BABBBCBDBEBF'.
+          05 FILLER      PIC X(16) VALUE X'C0C1C2C3C4C5C6C7C8C9CACBCCCDCECF'.
+          05 FILLER      PIC X(16) VALUE X'D0D1D2D3D4D5D6D7D8D9DADBDCDDDEDF'.
+          05 FILLER      PIC X(16) VALUE X'E0E1E2E3E4E5E6E7E8E9EAEBECEDEEEF'.
+          05 FILLER      PIC X(16) VALUE X'F0F1F2F3F4F5F6F7F8F9FAFBFCFDFEFF'.
 
-      *> parsed parameters
+      *> ---- parsed parameters ----------------------------------------
        01 P-LIST         PIC 9(6).
        01 P-ITEM         PIC 9(8).
        01 P-VERSION      PIC 9(6).
@@ -158,7 +174,7 @@
        01 P-FILTER       PIC X(4).
        01 WS-DCHG        PIC X.
 
-      *> keys
+      *> ---- keys -----------------------------------------------------
        01 K-USR          PIC X(16).
        01 K-LST.
           05 K-LST-USR   PIC X(16).
@@ -169,7 +185,7 @@
           05 K-ITM-ID    PIC 9(8).
        01 K-BR           PIC X(30).
 
-      *> rceords
+      *> ---- records --------------------------------------------------
        01 USR-REC.
           05 USR-ID        PIC X(16).
           05 USR-DIGEST    PIC 9(18).
@@ -199,7 +215,7 @@
           05 ITM-UPDATED   PIC X(19).
           05 ITM-TITLE     PIC X(80).
 
-      *> id table for purge / cascade delee
+      *> ---- id table for purge / cascade delete ----------------------
        01 WS-IDTAB.
           05 WS-TID        PIC 9(8) OCCURS 200 TIMES.
        01 WS-TN          PIC 9(4).
@@ -211,7 +227,7 @@
        01 WS-COUNT       PIC 9(5).
        01 WS-DELN        PIC 9(5).
 
-      *> digest
+      *> ---- digest -------------------------------------------------
        01 DG-SRC         PIC X(160).
        01 DG-LEN         PIC 9(4).
        01 DG-PTR         PIC 9(4).
@@ -227,13 +243,13 @@
        01 DG-P2          PIC 9(9) VALUE 999999929.
        01 DG-DIGEST      PIC 9(18).
 
-      *>    tjhe time
+      *> ---- time ---------------------------------------------------
        01 WS-ABS         PIC 9(15).
        01 WS-DATE        PIC X(10).
        01 WS-TIME        PIC X(8).
        01 WS-NOW         PIC X(19).
 
-      *> JSON output records (one JSON GENERATE each)
+      *> ---- JSON output records (one JSON GENERATE each) ------------
       *> Stamps are X(20): the stored X(19) UTC stamp plus a 'Z'.
        01 JO-LIST.
           05 JO-L-ID       PIC 9(6).
@@ -270,7 +286,7 @@
              10 JO-E-CODE  PIC X(16).
              10 JO-E-MSG   PIC X(80).
 
-      *> response
+      *> ---- response -----------------------------------------------
        01 WS-RESP        PIC S9(8).
        01 WS-RESP2       PIC S9(8).
        01 WS-ERR         PIC X.
@@ -299,7 +315,7 @@
            EXEC CICS WEB EXTRACT HTTPMETHOD(WS-METHOD) PATH(WS-PATH)
                 RESP(WS-RESP) END-EXEC.
            PERFORM PARSE-ROUTE.
-      *> size check comes before anything else for POST/PUT.
+      *> Body size check comes before anything else for POST/PUT.
            IF WS-METHOD = 'POST' OR 'PUT'
                PERFORM CHECK-BODY
            END-IF.
@@ -330,9 +346,9 @@
            EXEC CICS RETURN END-EXEC.
            GOBACK.
 
-
-      *> Routnng helpers
-      *> 
+      *> =============================================================
+      *> Routing helpers
+      *> =============================================================
        PARSE-ROUTE.
       *> Split whatever follows /api/todo/ on '/' and name the shape.
       *> The shape decides the handler; the {list} / {id} values
@@ -399,10 +415,10 @@
                PERFORM PARSE-JSON-BODY
                EXIT PARAGRAPH
            END-IF.
-      *> In go the url.ParseQuery (used by WEB READ FORMFIELD) quietly drops
+      *> Go's url.ParseQuery (used by WEB READ FORMFIELD) quietly drops
       *> a pair with a bad %xx escape or a ';' in it -- the field just
       *> looks absent. Better to tell the client their body is broken
-      *> than to act on half of it, so we check it here first.
+      *> than to act on half of it, so we vet it here first.
            MOVE WS-BODY TO VT-BUF.
            MOVE WS-BODY-LEN TO VT-LEN.
            PERFORM VET-ENCODED.
@@ -513,10 +529,10 @@
            MOVE 'encoded slash in list or item id' TO E-MSG.
            PERFORM SET-ERR.
 
-
+      *> =============================================================
       *> POST /api/todo/users   body: user, key
       *> One UOW: WRITE the user, WRITE their first list "My tasks".
-
+      *> =============================================================
        DO-NEW-USER.
            MOVE 'user' TO F-NAME.
            PERFORM READ-FIELD.
@@ -563,7 +579,7 @@
                    PERFORM FAIL-IO
                    EXIT PARAGRAPH
            END-EVALUATE.
-      *> The user record is written now if the list WRITE fails the
+      *> The user record is written now -- if the list WRITE fails the
       *> rollback in FAIL-IO takes the user away again, so we never
       *> end up with a user that has no list and LISTS = 1.
            MOVE SPACES TO LST-REC.
@@ -607,9 +623,9 @@
       *> a 500 never goes out for a write that was committed
            PERFORM DO-COMMIT.
 
-
+      *> =============================================================
       *> GET /api/todo/me
-
+      *> =============================================================
        DO-ME.
            PERFORM AUTHENTICATE.
            IF WS-ERR = 'Y'
@@ -626,9 +642,9 @@
            END-JSON.
            PERFORM PUT-PIECE.
 
-
+      *> =============================================================
       *> GET /api/todo/lists -- browse TODOLST on the user prefix
-
+      *> =============================================================
        DO-LISTS-GET.
            PERFORM AUTHENTICATE.
            IF WS-ERR = 'Y'
@@ -684,12 +700,12 @@
            END-STRING.
            PERFORM PUT-COUNT-TAIL.
 
-
+      *> =============================================================
       *> POST /api/todo/lists   body: name
       *> READ UPDATE user -> limit -> WRITE list -> REWRITE user LAST.
       *> The user lock (it guards NEXTLIST/LISTS) is only let go by the
       *> final REWRITE, so nobody can slip in between the two writes.
-
+      *> =============================================================
        DO-LIST-CREATE.
            PERFORM AUTHENTICATE.
            IF WS-ERR = 'Y'
@@ -761,9 +777,9 @@
       *> a 500 never goes out for a write that was committed
            PERFORM DO-COMMIT.
 
-
+      *> =============================================================
       *> PUT /api/todo/lists/{list}   body: name, version
- 
+      *> =============================================================
        DO-LIST-PUT.
            PERFORM AUTHENTICATE.
            IF WS-ERR = 'Y'
@@ -833,12 +849,12 @@
       *> a 500 never goes out for a write that was committed
            PERFORM DO-COMMIT.
 
-
+      *> =============================================================
       *> DELETE /api/todo/lists/{list}[?version=n]
       *> Cascade: lock the list, then the user, collect every item id,
       *> delete each item, delete the list, REWRITE the user last.
       *> All or nothing -- one locked item and the lot is rolled back.
-
+      *> =============================================================
        DO-LIST-DELETE.
            PERFORM AUTHENTICATE.
            IF WS-ERR = 'Y'
@@ -961,9 +977,9 @@
       *> a 500 never goes out for a write that was committed
            PERFORM DO-COMMIT.
 
-
+      *> =============================================================
       *> GET /api/todo/lists/{list}/items[?filter=all|open|done]
-
+      *> =============================================================
        DO-ITEMS-GET.
            PERFORM AUTHENTICATE.
            IF WS-ERR = 'Y'
@@ -1085,6 +1101,7 @@
                MOVE 0 TO T-LEN
            END-IF.
            MOVE 80 TO T-MAX.
+           MOVE 'Y' TO T-L1.
            PERFORM CHECK-TEXT.
            IF T-OK = 'N'
                PERFORM ERR-BADTITLE
@@ -1164,13 +1181,13 @@
       *> a 500 never goes out for a write that was committed
            PERFORM DO-COMMIT.
 
-
+      *> =============================================================
       *> POST /api/todo/lists/{list}/purge -- remove all done items
       *> Lock the list FIRST and keep it until the closing REWRITE, so
       *> no create/update can move the counters while we delete. (That
       *> is list -> item, against the usual order; bricks READ UPDATE
       *> never waits, so the worst outcome is a 409 BUSY, not a hang.)
-
+      *> =============================================================
        DO-PURGE.
            PERFORM AUTHENTICATE.
            IF WS-ERR = 'Y'
@@ -1266,9 +1283,9 @@
       *> a 500 never goes out for a write that was committed
            PERFORM DO-COMMIT.
 
-
+      *> =============================================================
       *> GET /api/todo/lists/{list}/items/{id}
-
+      *> =============================================================
        DO-ITEM-GET.
            PERFORM AUTHENTICATE.
            IF WS-ERR = 'Y'
@@ -1295,13 +1312,13 @@
                    PERFORM FAIL-IO
            END-EVALUATE.
 
-
+      *> =============================================================
       *> PUT /api/todo/lists/{list}/items/{id}
       *>   body: version (required) + any of title, done, priority
       *> READ UPDATE item -> version check -> (list lock if the done
       *> flag flips) -> REWRITE list -> REWRITE item (last, so the item
       *> lock is held until the final write).
-
+      *> =============================================================
        DO-ITEM-PUT.
            PERFORM AUTHENTICATE.
            IF WS-ERR = 'Y'
@@ -1327,6 +1344,7 @@
            PERFORM READ-FIELD.
            IF F-FOUND = 'Y'
                MOVE 80 TO T-MAX
+               MOVE 'Y' TO T-L1
                PERFORM CHECK-TEXT
                IF T-OK = 'N'
                    PERFORM ERR-BADTITLE
@@ -1467,9 +1485,9 @@
       *> a 500 never goes out for a write that was committed
            PERFORM DO-COMMIT.
 
-
+      *> =============================================================
       *> DELETE /api/todo/lists/{list}/items/{id}[?version=n]
- 
+      *> =============================================================
        DO-ITEM-DELETE.
            PERFORM AUTHENTICATE.
            IF WS-ERR = 'Y'
@@ -1565,10 +1583,10 @@
       *> a 500 never goes out for a write that was committed
            PERFORM DO-COMMIT.
 
- 
+      *> =============================================================
       *> AUTHENTICATE -- headers X-Todo-User / X-Todo-Key.
       *> Leaves AU-*, K-USR, K-LST/K-ITM prefixes and USR-REC set.
- 
+      *> =============================================================
        AUTHENTICATE.
            MOVE 'Y' TO WS-AUTH-OK.
            MOVE 'X-Todo-User' TO F-NAME.
@@ -1613,8 +1631,8 @@
                PERFORM ERR-AUTH-401
            END-IF.
 
- 
-      *> COMPUTE-DIGEST , TOY DIGEST, NOT CRYPTOGRAPHY.
+      *> =============================================================
+      *> COMPUTE-DIGEST -- TOY DIGEST, NOT CRYPTOGRAPHY.
       *> Input: AU-USER ':' AU-KEY (key trimmed both ends, inner blanks
       *> kept). Two polynomial rolling hashes over the char codes (POS
       *> into WS-PRINT95, so ' '=1 '!'=2 .. '~'=95):
@@ -1626,7 +1644,7 @@
       *> t - (t / p) * p with an integer quotient). It only stops the
       *> secret sitting in clear in the file -- anyone with the file can
       *> brute force it. Do not reuse this for anything real.
- 
+      *> =============================================================
        COMPUTE-DIGEST.
            MOVE SPACES TO DG-SRC.
            MOVE 1 TO DG-PTR.
@@ -1659,9 +1677,9 @@
                ADD DG-PLEN TO DG-PTR
            END-IF.
 
-
+      *> =============================================================
       *> Field readers and validators
- 
+      *> =============================================================
        READ-FIELD.
       *> T-IN/T-LEN <- body field F-NAME; F-FOUND = Y/N. Form bodies go
       *> through WEB READ FORMFIELD, JSON bodies were already parsed
@@ -1774,8 +1792,11 @@
            PERFORM CHECK-TEXT.
 
        CHECK-TEXT.
-      *> T-IN/T-LEN -> T-OUT. Every byte must be x'20'..x'7E' (so a JSON
-      *> é or a raw UTF-8 byte is turned away just like a tab), then
+      *> T-IN/T-LEN -> T-OUT. Every byte must be x'20'..x'7E', or, with
+      *> T-L1 = 'Y' (titles), x'80'..x'FF' as well: the web edge has
+      *> already turned the UTF-8 body into one byte per character, so
+      *> "café" arrives as 4 bytes with x'E9' and a euro sign as x'80'.
+      *> A tab or other control byte is turned away either way. Then
       *> 1..T-MAX chars once leading/trailing spaces are trimmed.
            MOVE 'N' TO T-OK.
            MOVE SPACES TO T-OUT.
@@ -1786,6 +1807,8 @@
                        UNTIL V-I > T-LEN OR T-OK = 'N'
                    IF T-IN(V-I:1) NOT = SPACE
                       AND FUNCTION POS(T-IN(V-I:1), WS-PRINT) = 0
+                      AND (T-L1 NOT = 'Y'
+                           OR FUNCTION POS(T-IN(V-I:1), WS-PRINT-L1) = 0)
                        MOVE 'N' TO T-OK
                    END-IF
                END-PERFORM
@@ -1798,6 +1821,7 @@
                    MOVE FUNCTION TRIM(T-IN) TO T-OUT
                END-IF
            END-IF.
+           MOVE 'N' TO T-L1.
 
        CHECK-NUM.
       *> N-IN(1:N-LEN) must be 1..N-MAX digits -> N-VAL
@@ -1914,11 +1938,11 @@
                MOVE 'Y' TO P-PRIO-SET
            END-IF.
 
-
+      *> =============================================================
       *> COLLECT-ITEMS -- ids of this list's items (all, or only done
       *> ones when WS-ALLDONE = 'N') into WS-TID / WS-TN. Browse is
       *> closed again before the caller starts deleting.
-
+      *> =============================================================
        COLLECT-ITEMS.
            MOVE 0 TO WS-TN.
            MOVE 'N' TO WS-TOVER.
@@ -1971,9 +1995,9 @@
                    PERFORM SET-ERR
            END-EVALUATE.
 
-
+      *> =============================================================
       *> Time stamp YYYY-MM-DDTHH:MM:SS (UTC) into WS-NOW
-
+      *> =============================================================
        GET-NOW.
            EXEC CICS ASKTIME ABSTIME(WS-ABS) RESP(WS-RESP2) END-EXEC.
            EXEC CICS FORMATTIME ABSTIME(WS-ABS) YYYYMMDD(WS-DATE)
@@ -1983,9 +2007,9 @@
            STRING WS-DATE 'T' WS-TIME DELIMITED BY SIZE INTO WS-NOW
            END-STRING.
 
-
+      *> =============================================================
       *> Error helpers
-
+      *> =============================================================
        FAIL-IO.
       *> Something unexpected came back from a file verb. Undo the
       *> whole UOW and say which file / RESP -- nothing more.
@@ -2138,12 +2162,12 @@
                ON OVERFLOW PERFORM FAIL-JSON
            END-STRING.
 
-
+      *> =============================================================
       *> JSON output. GEN-* fill a JO-* record and JSON GENERATE it into
       *> JS-PIECE / JS-PLEN; PUT-* append to JSON-BUF at JS-PTR with
       *> STRING ... WITH POINTER. Any overflow (receiver too small)
       *> sets WS-JSFAIL and SEND-RESPONSE turns that into a 500.
-
+      *> =============================================================
        GEN-LIST.
            MOVE LST-ID TO JO-L-ID.
            MOVE LST-NAME TO JO-L-NAME.
@@ -2226,13 +2250,13 @@
        FAIL-JSON.
            MOVE 'Y' TO WS-JSFAIL.
 
-
+      *> =============================================================
       *> One and only WEB SEND
- 
+      *> =============================================================
        SEND-RESPONSE.
       *> A response that didn't fit is a server problem, never a 2xx.
       *> (The buffers are sized for the worst case -- 200 fully escaped
-      *> items is about 62,650 bytes so this is belt and braces.)
+      *> items is about 62,650 bytes -- so this is belt and braces.)
            IF WS-JSFAIL = 'Y'
                MOVE SPACE TO E-CUR
                MOVE 500 TO WS-STATUS

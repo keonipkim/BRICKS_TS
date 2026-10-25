@@ -625,7 +625,7 @@
            MOVE STATE TO DFHCOMMAREA.
            EXEC CICS RETURN TRANSID('TOPX')
                             COMMAREA(STATE) END-EXEC.
-           STOP RUN.
+           GOBACK.
 
 
       *> DETECT-MODEL -- pick the map pair and visible-row budget

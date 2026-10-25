@@ -1,0 +1,438 @@
+/*********************************************************************/
+/* NQUE -- the N-Queens puzzle, PL/I edition.                        */
+/*                                                                   */
+/* Places n queens on an n x n chess board so that no two queens     */
+/* attack each other (no two share a row, a column or a diagonal),   */
+/* for n = 5 .. 11, and counts every solution.                       */
+/*                                                                   */
+/*   Input (NQUE1)    board size n and the mirror filter Y/N.        */
+/*   Display (NQUE2)  one of the last 5 solutions found, drawn as a  */
+/*                    grid of + - ! with Q for a queen, next to the  */
+/*                    totals and the search time.                    */
+/*                                                                   */
+/* Mirror filter Y keeps only the fundamental solutions: a board is  */
+/* kept only if it is the smallest (lexicographically, as a vector   */
+/* of queen columns) of the 8 boards its 4 rotations and 4 mirror    */
+/* images give. n=8 has 92 solutions, 12 of them fundamental.        */
+/*                                                                   */
+/* The transaction is PSEUDO-CONVERSATIONAL, IBM style: every        */
+/* operator turnaround is a task of its own. A task inspects         */
+/* EIBCALEN / the COMMAREA, receives the screen recorded there,      */
+/* acts on EIBAID, sends the next screen and ends with               */
+/* EXEC CICS RETURN TRANSID('NQUE') COMMAREA(DFHCOMMAREA). Nothing   */
+/* else survives between turnarounds: the COMMAREA carries the       */
+/* screen id, the values typed, the totals and the kept boards, so   */
+/* paging through the boards never solves again. PF12 (and PF3 or    */
+/* CLEAR on the input screen) ends with a plain EXEC CICS RETURN.    */
+/*                                                                   */
+/* The search is iterative backtracking with O(1) attack checks:     */
+/* COLU(c), DG1(r+c-1) and DG2(r-c+n) flag the columns and the two   */
+/* diagonal directions that already hold a queen. It runs in one     */
+/* task; every YIELD_EVERY placements an EXEC CICS DELAY of 0 ms     */
+/* hands control back to CICS, which restarts the runaway (ICVR)     */
+/* clock, so n=11 (about 167,000 placements) never ends in AICA.     */
+/*********************************************************************/
+NQUEEN: PROC OPTIONS(MAIN);
+
+   %INCLUDE DFHAID;
+   %INCLUDE DFHRESP;
+
+   /* ---- Limits ----------------------------------------------------*/
+   DCL MAXN        FIXED BIN(31) VALUE(11);   /* largest board         */
+   DCL NDIAG       FIXED BIN(31) VALUE(21);   /* diagonals, 2*MAXN-1   */
+   DCL KEEP        FIXED BIN(31) VALUE(5);    /* boards kept for show  */
+   DCL YIELD_EVERY FIXED BIN(31) VALUE(1000); /* placements per DELAY  */
+   DCL CA_VERSION  CHAR(4)       VALUE('NQ01');
+
+   /* ---- COMMAREA --------------------------------------------------*/
+   /* The bytes RETURN TRANSID ... COMMAREA handed on are mapped onto  */
+   /* this structure before the program starts (EIBCALEN tells how     */
+   /* many arrived). The same structure is handed on again, so it is   */
+   /* the whole state of the conversation. CA_EYE / EIBCALEN guard     */
+   /* against a foreign or outdated COMMAREA: either one wrong and     */
+   /* the conversation starts over at the input screen.                */
+   DCL 1 DFHCOMMAREA,
+         2 CA_EYE     CHAR(4),              /* CA_VERSION              */
+         2 CA_SCREEN  CHAR(1),              /* '1' input, '2' display  */
+         2 CA_NIN     CHAR(2),              /* n as shown on NQUE1     */
+         2 CA_DMIN    CHAR(1),              /* Y/N as shown on NQUE1   */
+         2 CA_N       FIXED BIN(15),        /* board size solved       */
+         2 CA_DEMIR   CHAR(1),              /* mirror filter Y or N    */
+         2 CA_ALLCNT  FIXED BIN(31),        /* all solutions           */
+         2 CA_UNQCNT  FIXED BIN(31),        /* fundamental (filter Y)  */
+         2 CA_FILTCNT FIXED BIN(31),        /* solutions kept by filter*/
+         2 CA_KEPTCNT FIXED BIN(31),        /* boards in CA_RING       */
+         2 CA_ELAPSED FIXED DEC(15),        /* search time in ms       */
+         2 CA_CUR     FIXED BIN(15),        /* board on show, 1..KEPT  */
+         2 CA_RSOL(KEEP) FIXED BIN(31),     /* solution # of each slot */
+         2 CA_RING(KEEP, MAXN) FIXED BIN(15); /* queen column per row  */
+
+   /* ---- Map structures --------------------------------------------*/
+   /* SEND MAP FROM / RECEIVE MAP INTO move map fields to members of   */
+   /* the same name. MSG is in both, so it is always qualified.        */
+   DCL 1 INP,                           /* NQUE1                       */
+         2 NIN      CHAR(2),
+         2 DMIN     CHAR(1),
+         2 MSG      CHAR(76);
+   DCL 1 INP_IN LIKE INP;
+
+   /* Map fields BRD1..BRD23 land in the elements of BRD.              */
+   DCL 1 DISP,                          /* NQUE2                       */
+         2 BRD(23)  CHAR(23),
+         2 NOUT     CHAR(35),
+         2 MOUT     CHAR(35),
+         2 ALLOUT   CHAR(35),
+         2 UNQOUT   CHAR(35),
+         2 KEPTOUT  CHAR(35),
+         2 ELAPOUT  CHAR(35),
+         2 BRDOUT   CHAR(53),
+         2 SOLOUT   CHAR(53),
+         2 COLSOUT  CHAR(53),
+         2 MSG      CHAR(53);
+   DCL 1 DISP_IN LIKE DISP;
+
+   /* An input field the operator does not touch is not in the input  */
+   /* (its MDT is off), so RECEIVE MAP leaves the INTO member alone.   */
+   /* Pre-loading the member with low values tells "not sent" apart    */
+   /* from "erased" (which arrives as blanks), as a BMS program tests  */
+   /* the field length for 0.                                          */
+   DCL UNSENT2     CHAR(2) VALUE('0000'X);
+   DCL UNSENT1     CHAR(1) VALUE('00'X);
+
+   /* ---- Search state ----------------------------------------------*/
+   /* Declared at MAIN level so the hot loop never re-initialises      */
+   /* AUTOMATIC storage on a procedure entry.                          */
+   DCL (N, R, C, SLOT, TICK, RC, DRC) FIXED BIN(31);
+   DCL PLACED      FIXED BIN(63);           /* queens placed in total  */
+   DCL QC(MAXN)    FIXED BIN(31);           /* column of row r's queen */
+   DCL COLU(MAXN)  FIXED BIN(31);           /* 1 = column taken        */
+   DCL DG1(NDIAG)  FIXED BIN(31);           /* 1 = r+c-1 diagonal taken*/
+   DCL DG2(NDIAG)  FIXED BIN(31);           /* 1 = r-c+n diagonal taken*/
+   DCL TP(MAXN)    FIXED BIN(31);           /* transformed board       */
+   DCL (T0, T1)    FIXED DEC(15);           /* ABSTIME, ms since 1900  */
+   DCL (SEP, LINE) CHAR(23) VAR;            /* board drawing           */
+
+   /* ================================================================*/
+   /* Main line: one turnaround.                                      */
+   /* ================================================================*/
+   IF EIBCALEN <> STG(DFHCOMMAREA) THEN CALL START_OVER;
+   IF CA_EYE <> CA_VERSION THEN CALL START_OVER;
+
+   SELECT (CA_SCREEN);
+      WHEN ('1') CALL INPUT_TURN;
+      WHEN ('2') DO;
+         /* The board screen trusts the counters it pages with; a     */
+         /* COMMAREA that is out of range starts over instead of      */
+         /* abending (MOD by a zero KEPTCNT, a subscript out of range).*/
+         IF STATE_OK() THEN CALL DISPLAY_TURN;
+         CALL START_OVER;
+      END;
+      OTHERWISE  CALL START_OVER;
+   END;
+
+   /* STATE_OK -- '1'B if the COMMAREA describes a finished search:   */
+   /* n in 5..MAXN, 1..KEEP boards kept, the board on show one of     */
+   /* them, and no more kept than the filter let through.             */
+   STATE_OK: PROC RETURNS(BIT(1));
+      IF CA_N < 5 | CA_N > MAXN THEN RETURN('0'B);
+      IF CA_KEPTCNT < 1 | CA_KEPTCNT > KEEP THEN RETURN('0'B);
+      IF CA_KEPTCNT > CA_FILTCNT THEN RETURN('0'B);
+      IF CA_CUR < 1 | CA_CUR > CA_KEPTCNT THEN RETURN('0'B);
+      RETURN('1'B);
+   END STATE_OK;
+
+   /* ================================================================*/
+   /* START_OVER -- first entry (EIBCALEN = 0) or an unusable         */
+   /* COMMAREA: a fresh conversation at the input screen with the     */
+   /* defaults n=8, filter N.                                         */
+   /* ================================================================*/
+   START_OVER: PROC;
+      DFHCOMMAREA = '';
+      CA_EYE  = CA_VERSION;
+      CA_NIN  = '8';
+      CA_DMIN = 'N';
+      CALL SEND_INPUT('');
+   END START_OVER;
+
+   /* ================================================================*/
+   /* INPUT_TURN -- the operator answered the input screen.           */
+   /* ================================================================*/
+   INPUT_TURN: PROC;
+      IF EIBAID = PF03 | EIBAID = PF12 | EIBAID = CLEAR THEN
+         EXEC CICS RETURN;
+
+      INP_IN = '';
+      INP_IN.NIN  = UNSENT2;
+      INP_IN.DMIN = UNSENT1;
+      EXEC CICS RECEIVE MAP('NQUE1') INTO(INP_IN) RESP(RC);
+      /* Keep what is on the screen: a typed value replaces the one    */
+      /* painted, an untouched field keeps it.                         */
+      IF INP_IN.NIN  <> UNSENT2 THEN CA_NIN  = INP_IN.NIN;
+      IF INP_IN.DMIN <> UNSENT1 THEN CA_DMIN = INP_IN.DMIN;
+
+      IF EIBAID <> ENTER THEN
+         CALL SEND_INPUT('Unknown key. ENTER=Solve, PF3 or PF12=End.');
+      CALL CHECK_INPUT;
+
+      /* Paint the wait message without waiting for a key (DATAONLY    */
+      /* is fire-and-forget), then search in this task.                */
+      INP = '';
+      INP.NIN  = CA_NIN;
+      INP.DMIN = CA_DMIN;
+      INP.MSG  = 'Solving n=' || CHAR(N) || ', please wait.';
+      EXEC CICS SEND MAP('NQUE1') FROM(INP) DATAONLY RESP(RC);
+
+      CALL SOLVE;
+      CA_CUR = 1;
+      CALL SEND_DISPLAY;
+   END INPUT_TURN;
+
+   /* ================================================================*/
+   /* CHECK_INPUT -- validate n and the filter; the first error goes  */
+   /* back to the operator on the input screen (SEND_INPUT ends the   */
+   /* task). On success N and CA_N / CA_DEMIR hold the request.       */
+   /* ================================================================*/
+   CHECK_INPUT: PROC;
+      DCL T CHAR(2) VAR;
+      DCL F CHAR(1) VAR;
+      T = TRIM(CA_NIN);
+      IF T = '' THEN
+         CALL SEND_INPUT('Enter the board size n (5 to 11).');
+      IF VERIFY(T, '0123456789') > 0 THEN
+         CALL SEND_INPUT('n must be a whole number from 5 to 11.');
+      N = T;
+      IF N < 5 | N > MAXN THEN
+         CALL SEND_INPUT('n must be a whole number from 5 to 11.');
+      F = UPPERCASE(TRIM(CA_DMIN));
+      IF F <> 'Y' & F <> 'N' THEN
+         CALL SEND_INPUT('Mirror flag must be Y or N.');
+      CA_N     = N;
+      CA_DEMIR = F;
+   END CHECK_INPUT;
+
+   /* ================================================================*/
+   /* DISPLAY_TURN -- the operator answered the board display.        */
+   /* ENTER / PF8 go to the next kept board (wrapping from the last   */
+   /* to the first), PF7 to the previous one, PF3 or CLEAR back to    */
+   /* the input screen, PF12 ends. Nothing is solved again.           */
+   /* ================================================================*/
+   DISPLAY_TURN: PROC;
+      IF EIBAID = PF12 THEN EXEC CICS RETURN;
+      IF EIBAID = PF03 | EIBAID = CLEAR THEN CALL SEND_INPUT('');
+
+      /* NQUE2 has no input fields; the RECEIVE only completes the     */
+      /* turnaround, its response does not matter.                     */
+      EXEC CICS RECEIVE MAP('NQUE2') INTO(DISP_IN) RESP(RC);
+
+      N = CA_N;
+      SELECT;
+         WHEN (EIBAID = ENTER | EIBAID = PF08)
+            CA_CUR = MOD(CA_CUR, CA_KEPTCNT) + 1;
+         WHEN (EIBAID = PF07)
+            CA_CUR = MOD(CA_CUR - 2 + CA_KEPTCNT, CA_KEPTCNT) + 1;
+         OTHERWISE;                     /* any other key: repaint      */
+      END;
+      CALL SEND_DISPLAY;
+   END DISPLAY_TURN;
+
+   /* ================================================================*/
+   /* SOLVE -- count every solution for N, keep the last KEEP that    */
+   /* pass the mirror filter in the ring CA_RING / CA_RSOL.           */
+   /*                                                                 */
+   /* Iterative backtracking. R is the row being worked on and QC(R)  */
+   /* the column its queen stands in (0 = none yet). Each pass lifts  */
+   /* row R's queen, if any, and tries the columns to its right; the  */
+   /* first free one takes the queen and the search moves down a row  */
+   /* (or records a solution on the last row and tries further right  */
+   /* on the next pass). No free column: back up a row. R = 0 means   */
+   /* the first row ran out of columns, so the search is complete.    */
+   /* ================================================================*/
+   SOLVE: PROC;
+      CA_ALLCNT, CA_UNQCNT, CA_FILTCNT = 0;
+      CA_RING = 0;
+      CA_RSOL = 0;
+      PLACED = 0;
+      TICK = YIELD_EVERY;
+      QC = 0;
+      COLU = 0;
+      DG1 = 0;
+      DG2 = 0;
+      EXEC CICS ASKTIME ABSTIME(T0) RESP(RC);
+
+      R = 1;
+      DO WHILE (R > 0);
+         C = QC(R) + 1;
+         IF QC(R) > 0 THEN DO;          /* lift row R's queen          */
+            COLU(QC(R)) = 0;
+            DG1(R + QC(R) - 1) = 0;
+            DG2(R - QC(R) + N) = 0;
+         END;
+         DO WHILE (C <= N);             /* first free column >= C      */
+            IF COLU(C) = 0 & DG1(R + C - 1) = 0 & DG2(R - C + N) = 0
+               THEN LEAVE;
+            C = C + 1;
+         END;
+         IF C > N THEN DO;              /* none: back up a row         */
+            QC(R) = 0;
+            R = R - 1;
+         END;
+         ELSE DO;
+            QC(R) = C;
+            COLU(C) = 1;
+            DG1(R + C - 1) = 1;
+            DG2(R - C + N) = 1;
+            PLACED = PLACED + 1;
+            IF R = N THEN CALL FOUND;
+            ELSE DO;
+               R = R + 1;
+               QC(R) = 0;
+            END;
+            /* Hand control back to CICS now and then: the DELAY       */
+            /* restarts the ICVR runaway clock.                        */
+            TICK = TICK - 1;
+            IF TICK <= 0 THEN DO;
+               EXEC CICS DELAY FOR MILLISECS(0) RESP(DRC);
+               TICK = YIELD_EVERY;
+            END;
+         END;
+      END;
+
+      EXEC CICS ASKTIME ABSTIME(T1) RESP(RC);
+      /* ABSTIME is wall-clock time; a clock step back must not show  */
+      /* a negative search time.                                       */
+      CA_ELAPSED = T1 - T0;
+      IF CA_ELAPSED < 0 THEN CA_ELAPSED = 0;
+      CA_KEPTCNT = MIN(KEEP, CA_FILTCNT);
+      PUT SKIP LIST('NQUE n=', N, 'all=', CA_ALLCNT, 'kept=', CA_FILTCNT,
+                    'placed=', PLACED, 'ms=', CA_ELAPSED);
+   END SOLVE;
+
+   /* FOUND -- QC holds a solution. Count it, apply the mirror filter */
+   /* and store it in the next ring slot (the oldest one is dropped). */
+   FOUND: PROC;
+      DCL K FIXED BIN(31);
+      CA_ALLCNT = CA_ALLCNT + 1;
+      IF CA_DEMIR = 'Y' THEN DO;
+         IF IS_CANON() = '0'B THEN RETURN;
+         CA_UNQCNT = CA_UNQCNT + 1;
+      END;
+      CA_FILTCNT = CA_FILTCNT + 1;
+      SLOT = MOD(CA_FILTCNT - 1, KEEP) + 1;
+      DO K = 1 TO N;
+         CA_RING(SLOT, K) = QC(K);
+      END;
+      CA_RSOL(SLOT) = CA_FILTCNT;
+   END FOUND;
+
+   /* IS_CANON -- '1'B if QC is the smallest of the 8 boards of its    */
+   /* symmetry class. Each of the 7 transformations moves the queen   */
+   /* at (row R, column C) to a new square; TP is the transformed     */
+   /* board as a column vector, compared with QC row by row: the      */
+   /* first row that differs decides.                                 */
+   IS_CANON: PROC RETURNS(BIT(1));
+      DCL (T, R, C) FIXED BIN(31);
+      DO T = 1 TO 7;
+         DO R = 1 TO N;
+            C = QC(R);
+            SELECT (T);
+               WHEN (1) TP(C)         = N + 1 - R;   /* rotate 90      */
+               WHEN (2) TP(N + 1 - R) = N + 1 - C;   /* rotate 180     */
+               WHEN (3) TP(N + 1 - C) = R;           /* rotate 270     */
+               WHEN (4) TP(R)         = N + 1 - C;   /* mirror L/R     */
+               WHEN (5) TP(N + 1 - R) = C;           /* mirror T/B     */
+               WHEN (6) TP(C)         = R;           /* transpose      */
+               WHEN (7) TP(N + 1 - C) = N + 1 - R;   /* anti-transpose */
+            END;
+         END;
+         DO R = 1 TO N;
+            IF TP(R) < QC(R) THEN RETURN('0'B);
+            IF TP(R) > QC(R) THEN LEAVE;
+         END;
+      END;
+      RETURN('1'B);
+   END IS_CANON;
+
+   /* ================================================================*/
+   /* FILL_DISPLAY -- board CA_CUR of the kept ones and the totals.   */
+   /* Board 1 is the oldest kept solution, board CA_KEPTCNT the last  */
+   /* one found: solution S = FILTCNT - KEPTCNT + CUR sits in ring    */
+   /* slot MOD(S-1, KEEP) + 1.                                        */
+   /* ================================================================*/
+   FILL_DISPLAY: PROC;
+      DCL (S, K) FIXED BIN(31);
+      DCL COLS CHAR(53) VAR;
+      DISP = '';
+      S = CA_FILTCNT - CA_KEPTCNT + CA_CUR;
+      SLOT = MOD(S - 1, KEEP) + 1;
+
+      /* Row r of the board is screen line 2r; the lines between and   */
+      /* around the rows are the separator +-+-...+.                   */
+      SEP = '+' || COPY('-+', N);
+      DO R = 1 TO N;
+         LINE = '!';
+         DO C = 1 TO N;
+            IF CA_RING(SLOT, R) = C THEN LINE = LINE || 'Q!';
+            ELSE LINE = LINE || ' !';
+         END;
+         DISP.BRD(2 * R - 1) = SEP;
+         DISP.BRD(2 * R) = LINE;
+      END;
+      DISP.BRD(2 * N + 1) = SEP;
+
+      DISP.NOUT = CHAR(N) || ' x ' || CHAR(N);
+      IF CA_DEMIR = 'Y' THEN DO;
+         DISP.MOUT   = 'Y - unique up to symmetry';
+         DISP.UNQOUT = CHAR(CA_UNQCNT);
+      END;
+      ELSE DO;
+         DISP.MOUT   = 'N - all solutions';
+         DISP.UNQOUT = 'not computed (filter N)';
+      END;
+      DISP.ALLOUT  = CHAR(CA_ALLCNT);
+      DISP.KEPTOUT = CHAR(CA_KEPTCNT) || ' (most recent)';
+      IF CA_ELAPSED = 0 THEN DISP.ELAPOUT = '<1 ms';
+      ELSE DISP.ELAPOUT = CHAR(CA_ELAPSED) || ' ms';
+
+      DISP.BRDOUT = 'Board ' || CHAR(CA_CUR) || ' of ' || CHAR(CA_KEPTCNT);
+      DISP.SOLOUT = 'Solution #' || CHAR(CA_RSOL(SLOT)) || ' of '
+                    || CHAR(CA_FILTCNT);
+      COLS = 'Columns:';
+      DO K = 1 TO N;
+         COLS = COLS || ' ' || CHAR(CA_RING(SLOT, K));
+      END;
+      DISP.COLSOUT = COLS;
+      IF CA_KEPTCNT = 1 THEN
+         DISP.MSG = 'Only one board kept.';
+      ELSE IF CA_CUR = CA_KEPTCNT THEN
+         DISP.MSG = 'Last kept board - ENTER wraps to board 1.';
+   END FILL_DISPLAY;
+
+   /* ================================================================*/
+   /* Screen output. Each ends the turnaround: SEND MAP, then RETURN  */
+   /* TRANSID('NQUE') with the COMMAREA, so the operator's next key   */
+   /* starts the next task. The task ends there, so a CALL of        */
+   /* SEND_INPUT or SEND_DISPLAY never returns to its caller. A SEND  */
+   /* that fails means the map is not installed; abend rather than   */
+   /* hand on a screen that is not there.                            */
+   /* ================================================================*/
+   SEND_INPUT: PROC(TEXT);
+      DCL TEXT CHAR(*) VAR;
+      CA_SCREEN = '1';
+      INP = '';
+      INP.NIN  = CA_NIN;
+      INP.DMIN = CA_DMIN;
+      INP.MSG  = TEXT;
+      EXEC CICS SEND MAP('NQUE1') FROM(INP) ERASE RESP(RC);
+      IF RC <> DFHRESP(NORMAL) THEN EXEC CICS ABEND ABCODE('NQM1');
+      EXEC CICS RETURN TRANSID('NQUE') COMMAREA(DFHCOMMAREA);
+   END SEND_INPUT;
+
+   SEND_DISPLAY: PROC;
+      CA_SCREEN = '2';
+      CALL FILL_DISPLAY;
+      EXEC CICS SEND MAP('NQUE2') FROM(DISP) ERASE RESP(RC);
+      IF RC <> DFHRESP(NORMAL) THEN EXEC CICS ABEND ABCODE('NQM2');
+      EXEC CICS RETURN TRANSID('NQUE') COMMAREA(DFHCOMMAREA);
+   END SEND_DISPLAY;
+
+END NQUEEN;

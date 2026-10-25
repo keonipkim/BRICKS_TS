@@ -21,6 +21,7 @@
        DATA DIVISION.
        WORKING-STORAGE SECTION.
        COPY DFHRESP.       *> RESP-NORMAL, RESP-NOTFND, ...
+       01 WS-CICS-RESP PIC S9(8) COMP.  *> RESP(...) target
        COPY DFHWBSC.       *> DFHRESP-WB-OK, -NOTFND, -UNAUTH ...
        COPY DFHWBMETH.     *> WB-GET / WB-POST / ...
        COPY DFHWBSI.       *> DFH-WB-SESS template
@@ -56,7 +57,8 @@
       *> the host/scheme/port don't need to be hardcoded here. An
       *> operator can re-target the demo by editing one row.
            EXEC CICS WEB OPEN URIMAP('GITHUB')
-                              SESSTOKEN(DFH-WB-SESS) END-EXEC.
+                              SESSTOKEN(DFH-WB-SESS)
+                              RESP(WS-CICS-RESP) END-EXEC.
            IF EIBRESP NOT = DFHRESP-NORMAL GO TO OPENERR.
 
       *> ---- 2. One-shot SEND + RECEIVE ------------------------
@@ -64,11 +66,13 @@
                                   METHOD(WB-GET)
                                   PATH('/zen')
                                   INTO(DFH-WB-BODY)
-                                  STATUSCODE(STAT) END-EXEC.
+                                  STATUSCODE(STAT)
+                                  RESP(WS-CICS-RESP) END-EXEC.
            IF EIBRESP NOT = DFHRESP-NORMAL GO TO FETCHERR.
 
       *> ---- 3. Release the session ----------------------------
-           EXEC CICS WEB CLOSE SESSTOKEN(DFH-WB-SESS) END-EXEC.
+           EXEC CICS WEB CLOSE SESSTOKEN(DFH-WB-SESS)
+                     RESP(WS-CICS-RESP) END-EXEC.
 
       *> ---- 4. Render the response ----------------------------
            IF STAT NOT = DFHRESP-WB-OK GO TO HTTPERR.
@@ -90,7 +94,8 @@
        FETCHERR.
            STRING 'WEB CONVERSE failed -- EIBRESP=' EIBRESP
                   DELIMITED BY SIZE INTO ERRMSG.
-           EXEC CICS WEB CLOSE SESSTOKEN(DFH-WB-SESS) END-EXEC.
+           EXEC CICS WEB CLOSE SESSTOKEN(DFH-WB-SESS)
+                     RESP(WS-CICS-RESP) END-EXEC.
            EXEC CICS SEND MAP('WZEN1') FROM(SCR) ERASE END-EXEC.
            EXEC CICS RETURN END-EXEC.
 
@@ -100,4 +105,4 @@
                   DELIMITED BY SIZE INTO ERRMSG.
            EXEC CICS SEND MAP('WZEN1') FROM(SCR) ERASE END-EXEC.
            EXEC CICS RETURN END-EXEC.
-           STOP RUN.
+           GOBACK.

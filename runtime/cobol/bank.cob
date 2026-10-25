@@ -31,6 +31,18 @@
       *> tasks so the operator can pick a SEL row on a later ENTER:
       *> the hit list itself is regnerated by re-running the same
       *> SELECT before each PAINT.
+      *>
+      *>   ACCESS CONTROL      EXEC CICS QUERY SECURITY RESCLASS('BANK')
+      *>     RESID('ACCOUNT') at the point of use, one axis per query,
+      *>     LOGMESSAGE(LOG) so every denial lands in the bricks log.
+      *>     The levels come from runtime/security.conf (row
+      *>     BANK:ACCOUNT) and nest ALTER > CONTROL > UPDATE > READ:
+      *>       READ     search / pick an account   (VIEWER, PUBLIC)
+      *>       UPDATE   change the address         (TELLER)
+      *>       CONTROL  open or close an account   (SUPERV)
+      *>       ALTER    unused here, held by ADMIN
+      *>     Any non-NORMAL RESP (e.g. NOTFND RESP2=8 when the row is
+      *>     missing) fails closed: the action is refused.
 
        IDENTIFICATION DIVISION.
        PROGRAM-ID. BANK.
@@ -39,7 +51,34 @@
        WORKING-STORAGE SECTION.
        COPY DFHAID.
        COPY DFHRESP.
+       COPY DFHVALUE.
        COPY SQLCA.
+
+      *> ---- QUERY SECURITY scratch (CHECK-ACCOUNT-ACCESS) -------------
+      *> WS-SEC-NEED names the action and so the axis queried:
+      *> R=inquiry (READ), U=address (UPDATE), O=open / K=close
+      *> (CONTROL). WS-SEC-CVDA receives the CVDA as DISPLAY text (see
+      *> DFHVALUE), so it is PIC S9(8), not COMP, to compare equal to
+      *> the DFHVALUE-* constants.
+       01 WS-SEC-NEED   PIC X(1)  VALUE 'R'.
+          88 NEED-UPDATE  VALUE 'U'.
+          88 NEED-CONTROL VALUE 'O' 'K'.
+       01 WS-SEC-CVDA   PIC S9(8) VALUE 0.
+       01 WS-SEC-RESP   PIC S9(8) VALUE 0.
+       01 WS-SEC-RESP2  PIC S9(8) VALUE 0.
+       01 WS-SEC-RESP-D PIC 9(3)  VALUE 0.
+       01 WS-SEC-RSP2-D PIC 9(3)  VALUE 0.
+       01 WS-SEC-OK     PIC X(1)  VALUE 'N'.
+          88 ACCESS-OK  VALUE 'Y'.
+      *> Denial texts; each fits ST-MSG X(60).
+       01 MSG-NEED-READ   PIC X(60) VALUE
+          'Account inquiry needs READ access to BANK ACCOUNT.'.
+       01 MSG-NEED-UPDATE PIC X(60) VALUE
+          'Address change needs UPDATE access to BANK ACCOUNT.'.
+       01 MSG-NEED-OPEN   PIC X(60) VALUE
+          'Opening an account needs CONTROL access to BANK ACCOUNT.'.
+       01 MSG-NEED-CLOSE  PIC X(60) VALUE
+          'Closing an account needs CONTROL access to BANK ACCOUNT.'.
 
       *> ---- pseudo-conversational state (rides in COMMAREA) ----------
       *> ST-MAGIC is a 4-byte signature that lets BANK detect a
@@ -274,10 +313,10 @@
                WHEN 'O' PERFORM PAINT-OPEN
                WHEN 'K' PERFORM PAINT-CLOSE
                WHEN 'X'
-      *> Clear DFHCOMMAREA so the next un-related transaction
-      *> (e.g. SQLD) doesn't inherit BANK's state bytes -- the
-      *> bricks dispatcher rstrips DFHCOMMAREA into sess.Commarea
-      *> on the way out, so spaces collapse to length 0.
+      *> Leave without a COMMAREA so the next un-related transaction
+      *> (e.g. SQLD) starts cold with EIBCALEN = 0: a RETURN with no
+      *> COMMAREA option forwards nothing, whatever DFHCOMMAREA holds.
+      *> Clearing it is just tidiness.
                    MOVE SPACES TO DFHCOMMAREA
                    EXEC CICS RETURN END-EXEC
                    STOP RUN
@@ -287,7 +326,7 @@
            MOVE STATE TO DFHCOMMAREA.
            EXEC CICS RETURN TRANSID('BANK')
                             COMMAREA(STATE) END-EXEC.
-           STOP RUN.
+           GOBACK.
 
       *> ===============================================================
       *> Search screen (BANK1)
@@ -307,6 +346,19 @@
        PROCESS-SEARCH-INPUT.
            MOVE SPACES TO ST-MSG.
 
+      *> READ gate before any SELECT. On denial the search context is
+      *> dropped too, so PAINT-SEARCH does not re-run the SELECT.
+           MOVE 'R' TO WS-SEC-NEED.
+           PERFORM CHECK-ACCOUNT-ACCESS.
+           IF NOT ACCESS-OK THEN
+               MOVE SPACES TO ST-LAST
+               MOVE SPACES TO ST-FIRST
+               MOVE SPACES TO ST-ADDR
+           ELSE
+               PERFORM DO-SEARCH-INPUT
+           END-IF.
+
+       DO-SEARCH-INPUT.
       *> Account number always wins -- and short-circuits everything.
       *> The lpad in the WHERE clause lets the operator type a short
       *> number too (e.g. "61") and still match the zero-padded row.
@@ -572,9 +624,24 @@
            EXEC CICS RECEIVE MAP('BANK2') INTO(SCR2) END-EXEC.
            MOVE SPACES TO ST-MSG.
            IF EIBAID EQUAL PF03 THEN MOVE 'S' TO ST-SCREEN END-IF.
-           IF EIBAID EQUAL PF04 THEN MOVE 'A' TO ST-SCREEN END-IF.
-           IF EIBAID EQUAL PF05 THEN MOVE 'K' TO ST-SCREEN END-IF.
-           IF EIBAID EQUAL PF06 THEN MOVE 'O' TO ST-SCREEN END-IF.
+      *> PF4/PF5/PF6 only leave the detail screen when the caller
+      *> holds the level the target screen needs; otherwise BANK2 is
+      *> repainted with the denial text from CHECK-ACCOUNT-ACCESS.
+           IF EIBAID EQUAL PF04 THEN
+               MOVE 'U' TO WS-SEC-NEED
+               PERFORM CHECK-ACCOUNT-ACCESS
+               IF ACCESS-OK THEN MOVE 'A' TO ST-SCREEN END-IF
+           END-IF.
+           IF EIBAID EQUAL PF05 THEN
+               MOVE 'K' TO WS-SEC-NEED
+               PERFORM CHECK-ACCOUNT-ACCESS
+               IF ACCESS-OK THEN MOVE 'K' TO ST-SCREEN END-IF
+           END-IF.
+           IF EIBAID EQUAL PF06 THEN
+               MOVE 'O' TO WS-SEC-NEED
+               PERFORM CHECK-ACCOUNT-ACCESS
+               IF ACCESS-OK THEN MOVE 'O' TO ST-SCREEN END-IF
+           END-IF.
            IF EIBAID EQUAL PF07 THEN
                MOVE FUNCTION NUMVAL(ST-OFF) TO N-OFF
                IF N-OFF GREATER THAN OR EQUAL TO 13 THEN
@@ -767,21 +834,32 @@
            IF EIBAID EQUAL PF03 THEN
                MOVE 'D' TO ST-SCREEN
            ELSE
-               EXEC SQL
-                   UPDATE accounts
-                      SET street = :S3STREET,
-                          city   = :S3CITY,
-                          state  = :S3STATE,
-                          zip    = :S3ZIP
-                    WHERE account_number = :ST-ACCT
-               END-EXEC
-               IF SQLCODE EQUAL 0 THEN
-                   EXEC SQL COMMIT END-EXEC
-                   MOVE 'Address updated.' TO ST-MSG
-                   MOVE 'D' TO ST-SCREEN
+      *> Re-check UPDATE at the point of the write: the level may have
+      *> changed (security.conf reloads live) since PF4 was allowed.
+               MOVE 'U' TO WS-SEC-NEED
+               PERFORM CHECK-ACCOUNT-ACCESS
+               IF ACCESS-OK THEN
+                   PERFORM DO-UPDATE-ADDRESS
                ELSE
-                   MOVE 'Update failed -- see bricks log.' TO ST-MSG
+                   MOVE 'D' TO ST-SCREEN
                END-IF
+           END-IF.
+
+       DO-UPDATE-ADDRESS.
+           EXEC SQL
+               UPDATE accounts
+                  SET street = :S3STREET,
+                      city   = :S3CITY,
+                      state  = :S3STATE,
+                      zip    = :S3ZIP
+                WHERE account_number = :ST-ACCT
+           END-EXEC
+           IF SQLCODE EQUAL 0 THEN
+               EXEC SQL COMMIT END-EXEC
+               MOVE 'Address updated.' TO ST-MSG
+               MOVE 'D' TO ST-SCREEN
+           ELSE
+               MOVE 'Update failed -- see bricks log.' TO ST-MSG
            END-IF.
 
        PAINT-ADDRESS.
@@ -825,7 +903,14 @@
            IF EIBAID EQUAL PF03 THEN
                MOVE 'S' TO ST-SCREEN
            ELSE
-               PERFORM DO-CREATE-ACCOUNT
+      *> CONTROL re-check before the INSERT (see HANDLE-ADDRESS).
+               MOVE 'O' TO WS-SEC-NEED
+               PERFORM CHECK-ACCOUNT-ACCESS
+               IF ACCESS-OK THEN
+                   PERFORM DO-CREATE-ACCOUNT
+               ELSE
+                   MOVE 'S' TO ST-SCREEN
+               END-IF
            END-IF.
 
        DO-CREATE-ACCOUNT.
@@ -932,7 +1017,14 @@
            IF EIBAID EQUAL PF03 THEN
                MOVE 'D' TO ST-SCREEN
            ELSE
-               PERFORM DO-CONFIRM-CLOSE
+      *> CONTROL re-check before the close (see HANDLE-ADDRESS).
+               MOVE 'K' TO WS-SEC-NEED
+               PERFORM CHECK-ACCOUNT-ACCESS
+               IF ACCESS-OK THEN
+                   PERFORM DO-CONFIRM-CLOSE
+               ELSE
+                   MOVE 'D' TO ST-SCREEN
+               END-IF
            END-IF.
 
        DO-CONFIRM-CLOSE.
@@ -1002,4 +1094,85 @@
                MOVE DB-BAL-TXT TO S5BALANCE
                MOVE ST-MSG TO S5MSG
                EXEC CICS SEND MAP('BANK5') FROM(SCR5) ERASE END-EXEC
+           END-IF.
+
+      *> ===============================================================
+      *> Access control (QUERY SECURITY)
+      *> ===============================================================
+
+      *> CHECK-ACCOUNT-ACCESS -- ask CICS whether the signed-on user
+      *> holds the level WS-SEC-NEED names on BANK ACCOUNT. Sets
+      *> ACCESS-OK ('Y') only when RESP is NORMAL and the one axis
+      *> queried came back as its positive CVDA; anything else fails
+      *> closed with a denial text in ST-MSG (max 60 bytes).
+      *> RESIDLENGTH(7) is the length of 'ACCOUNT' (RESCLASS form).
+       CHECK-ACCOUNT-ACCESS.
+           MOVE 'N' TO WS-SEC-OK.
+           MOVE 0 TO WS-SEC-CVDA.
+           IF NEED-UPDATE THEN
+               EXEC CICS QUERY SECURITY RESCLASS('BANK')
+                    RESID('ACCOUNT') RESIDLENGTH(7)
+                    UPDATE(WS-SEC-CVDA)
+                    LOGMESSAGE(DFHVALUE(LOG))
+                    RESP(WS-SEC-RESP) RESP2(WS-SEC-RESP2)
+               END-EXEC
+               IF WS-SEC-RESP = DFHRESP(NORMAL)
+                  AND WS-SEC-CVDA = DFHVALUE-UPDATABLE THEN
+                   MOVE 'Y' TO WS-SEC-OK
+               END-IF
+           ELSE
+               IF NEED-CONTROL THEN
+                   EXEC CICS QUERY SECURITY RESCLASS('BANK')
+                        RESID('ACCOUNT') RESIDLENGTH(7)
+                        CONTROL(WS-SEC-CVDA)
+                        LOGMESSAGE(DFHVALUE(LOG))
+                        RESP(WS-SEC-RESP) RESP2(WS-SEC-RESP2)
+                   END-EXEC
+                   IF WS-SEC-RESP = DFHRESP(NORMAL)
+                      AND WS-SEC-CVDA = DFHVALUE-CTRLABLE THEN
+                       MOVE 'Y' TO WS-SEC-OK
+                   END-IF
+               ELSE
+                   EXEC CICS QUERY SECURITY RESCLASS('BANK')
+                        RESID('ACCOUNT') RESIDLENGTH(7)
+                        READ(WS-SEC-CVDA)
+                        LOGMESSAGE(DFHVALUE(LOG))
+                        RESP(WS-SEC-RESP) RESP2(WS-SEC-RESP2)
+                   END-EXEC
+                   IF WS-SEC-RESP = DFHRESP(NORMAL)
+                      AND WS-SEC-CVDA = DFHVALUE-READABLE THEN
+                       MOVE 'Y' TO WS-SEC-OK
+                   END-IF
+               END-IF
+           END-IF.
+           IF NOT ACCESS-OK THEN
+               PERFORM SET-ACCESS-DENIED-MSG
+           END-IF.
+
+      *> SET-ACCESS-DENIED-MSG -- a NORMAL RESP means the profile was
+      *> found and simply does not grant the level; any other RESP is
+      *> a setup problem (missing row, no security.conf) and says so.
+       SET-ACCESS-DENIED-MSG.
+           MOVE SPACES TO ST-MSG.
+           IF WS-SEC-RESP NOT = DFHRESP(NORMAL) THEN
+               MOVE WS-SEC-RESP  TO WS-SEC-RESP-D
+               MOVE WS-SEC-RESP2 TO WS-SEC-RSP2-D
+               STRING 'Security check failed RESP=' DELIMITED BY SIZE
+                      WS-SEC-RESP-D                 DELIMITED BY SIZE
+                      ' RESP2='                     DELIMITED BY SIZE
+                      WS-SEC-RSP2-D                 DELIMITED BY SIZE
+                      ', see security.conf.'        DELIMITED BY SIZE
+                   INTO ST-MSG
+               END-STRING
+           ELSE
+               EVALUATE WS-SEC-NEED
+                   WHEN 'U'
+                       MOVE MSG-NEED-UPDATE TO ST-MSG
+                   WHEN 'O'
+                       MOVE MSG-NEED-OPEN TO ST-MSG
+                   WHEN 'K'
+                       MOVE MSG-NEED-CLOSE TO ST-MSG
+                   WHEN OTHER
+                       MOVE MSG-NEED-READ TO ST-MSG
+               END-EVALUATE
            END-IF.

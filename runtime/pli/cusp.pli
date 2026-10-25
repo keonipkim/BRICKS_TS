@@ -83,6 +83,7 @@ CUSP: PROC OPTIONS(MAIN);
    DCL REC       CHAR(1024) VAR;        /* record body                 */
    DCL (NM, AD, CY, PH) CHAR(1024) VAR; /* record fields               */
    DCL RC        FIXED BIN(31);         /* RESP of the last command    */
+   DCL CANUPD    FIXED BIN(31) INIT(0); /* QUERY SECURITY UPDATE cvda  */
    DCL N         FIXED BIN(31);
 
    /* ---- List / search state (was CUSL) ----------------------------*/
@@ -216,7 +217,16 @@ CUSP: PROC OPTIONS(MAIN);
       END;
    END UPDATE_CUSTOMER;
 
+   /* Deleting a record is an UPDATE of the CUSTOMERS file, so ask    */
+   /* QUERY SECURITY (class FCICSFCT in security.conf) first. With no */
+   /* profile row the answer is NOTUPDATABLE: delete fails closed.    */
    DELETE_CUSTOMER: PROC;
+      EXEC CICS QUERY SECURITY RESTYPE('FILE') RESID('CUSTOMERS')
+           UPDATE(CANUPD) LOGMESSAGE(DFHVALUE(LOG)) RESP(RC);
+      IF RC <> DFHRESP(NORMAL) | CANUPD <> DFHVALUE(UPDATABLE) THEN DO;
+         MENU.MSG = 'Delete not permitted for this user.';
+         RETURN;
+      END;
       EXEC CICS DELETE FILE('customers') RIDFLD(CKEY) RESP(RC);
       IF RC = DFHRESP(NOTFND) THEN
          MENU.MSG = 'Customer ' || CKEY || ' not found.';

@@ -29,6 +29,7 @@
        DATA DIVISION.
        WORKING-STORAGE SECTION.
        COPY DFHRESP.       *> RESP-NORMAL, RESP-NOTFND, ...
+       01 WS-CICS-RESP PIC S9(8) COMP.  *> RESP(...) target
        COPY DFHWBSC.       *> DFHRESP-WB-OK, ...
        COPY DFHWBMETH.     *> WB-GET, WB-POST, ...
        COPY DFHWBSI.       *> DFH-WB-SESS, DFH-WB-BODY
@@ -78,7 +79,8 @@
 
       *> ---- 1. Open the outbound session ----------------------
            EXEC CICS WEB OPEN URIMAP('GITHUB')
-                              SESSTOKEN(DFH-WB-SESS) END-EXEC.
+                              SESSTOKEN(DFH-WB-SESS)
+                              RESP(WS-CICS-RESP) END-EXEC.
            IF EIBRESP NOT = DFHRESP-NORMAL GO TO OPENERR.
 
       *> ---- 2. Attach a custom User-Agent ----------------------
@@ -88,14 +90,16 @@
       *> some (like GitHub's) reject the default with 403.
            EXEC CICS WEB WRITE HTTPHEADER('User-Agent')
                                VALUE('bricks-whdr/1.0')
-                               SESSTOKEN(DFH-WB-SESS) END-EXEC.
+                               SESSTOKEN(DFH-WB-SESS)
+                               RESP(WS-CICS-RESP) END-EXEC.
            IF EIBRESP NOT = DFHRESP-NORMAL GO TO WRITEERR.
            MOVE '  User-Agent: bricks-whdr/1.0'           TO REQH1.
 
       *> ---- 3. Attach a content-negotiation Accept header ------
            EXEC CICS WEB WRITE HTTPHEADER('Accept')
                                VALUE('text/plain')
-                               SESSTOKEN(DFH-WB-SESS) END-EXEC.
+                               SESSTOKEN(DFH-WB-SESS)
+                               RESP(WS-CICS-RESP) END-EXEC.
            IF EIBRESP NOT = DFHRESP-NORMAL GO TO WRITEERR.
            MOVE '  Accept: text/plain'                    TO REQH2.
 
@@ -104,13 +108,15 @@
                                   METHOD(WB-GET)
                                   PATH('/zen')
                                   INTO(DFH-WB-BODY)
-                                  STATUSCODE(STAT) END-EXEC.
+                                  STATUSCODE(STAT)
+                                  RESP(WS-CICS-RESP) END-EXEC.
            IF EIBRESP NOT = DFHRESP-NORMAL GO TO FETCHERR.
 
       *> ---- 5. Read Content-Type off the response --------------
            EXEC CICS WEB READ HTTPHEADER('Content-Type')
                               VALUE(CT)
-                              SESSTOKEN(DFH-WB-SESS) END-EXEC.
+                              SESSTOKEN(DFH-WB-SESS)
+                              RESP(WS-CICS-RESP) END-EXEC.
            IF EIBRESP = DFHRESP-NORMAL THEN
                STRING '  Content-Type: ' CT DELIMITED BY SIZE
                       INTO RESH1
@@ -121,7 +127,8 @@
       *> ---- 6. Read Server (always present on GitHub) ----------
            EXEC CICS WEB READ HTTPHEADER('Server')
                               VALUE(SRV)
-                              SESSTOKEN(DFH-WB-SESS) END-EXEC.
+                              SESSTOKEN(DFH-WB-SESS)
+                              RESP(WS-CICS-RESP) END-EXEC.
            IF EIBRESP = DFHRESP-NORMAL THEN
                STRING '  Server: ' SRV DELIMITED BY SIZE
                       INTO RESH2
@@ -132,7 +139,8 @@
       *> ---- 7. Read a known-absent header (NOTFND branch) ------
            EXEC CICS WEB READ HTTPHEADER('X-No-Such-Header')
                               VALUE(NONE)
-                              SESSTOKEN(DFH-WB-SESS) END-EXEC.
+                              SESSTOKEN(DFH-WB-SESS)
+                              RESP(WS-CICS-RESP) END-EXEC.
            IF EIBRESP = DFHRESP-NOTFND THEN
                MOVE '  X-No-Such-Header: NOTFND (as expected)'
                                                           TO RESH3
@@ -142,7 +150,8 @@
            END-IF.
 
       *> ---- 8. Release the session ----------------------------
-           EXEC CICS WEB CLOSE SESSTOKEN(DFH-WB-SESS) END-EXEC.
+           EXEC CICS WEB CLOSE SESSTOKEN(DFH-WB-SESS)
+                     RESP(WS-CICS-RESP) END-EXEC.
 
       *> ---- 9. Render -----------------------------------------
            IF STAT NOT = DFHRESP-WB-OK GO TO HTTPERR.
@@ -161,14 +170,16 @@
        WRITEERR.
            STRING 'WEB WRITE HTTPHEADER failed -- EIBRESP=' EIBRESP
                   DELIMITED BY SIZE INTO ERRMSG.
-           EXEC CICS WEB CLOSE SESSTOKEN(DFH-WB-SESS) END-EXEC.
+           EXEC CICS WEB CLOSE SESSTOKEN(DFH-WB-SESS)
+                     RESP(WS-CICS-RESP) END-EXEC.
            EXEC CICS SEND MAP('WHDR1') FROM(SCR) ERASE END-EXEC.
            EXEC CICS RETURN END-EXEC.
 
        FETCHERR.
            STRING 'WEB CONVERSE failed -- EIBRESP=' EIBRESP
                   DELIMITED BY SIZE INTO ERRMSG.
-           EXEC CICS WEB CLOSE SESSTOKEN(DFH-WB-SESS) END-EXEC.
+           EXEC CICS WEB CLOSE SESSTOKEN(DFH-WB-SESS)
+                     RESP(WS-CICS-RESP) END-EXEC.
            EXEC CICS SEND MAP('WHDR1') FROM(SCR) ERASE END-EXEC.
            EXEC CICS RETURN END-EXEC.
 
@@ -178,4 +189,4 @@
                   DELIMITED BY SIZE INTO ERRMSG.
            EXEC CICS SEND MAP('WHDR1') FROM(SCR) ERASE END-EXEC.
            EXEC CICS RETURN END-EXEC.
-           STOP RUN.
+           GOBACK.

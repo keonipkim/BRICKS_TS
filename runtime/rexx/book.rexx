@@ -275,22 +275,22 @@ POPULATE_ROWS: PROCEDURE EXPOSE NVIS OFFS HIST. SCR.
  * fully overwrites the previous frame (no ghosting), and blanks the chrome
  * fields so only the logo shows. DELAY FOR MILLISECS paces it. */
 LOGO_INTRO: PROCEDURE EXPOSE MAPNAME NVIS HIST.
-  LOGO.1  = ' '
-  LOGO.2  = ' A27APR ZRHFRA 1900 SWISS'
+  LOGO.1  = ' 18OCT JFK ZRH 9A'
+  LOGO.2  = ' 01Y1, -SMITH/JANE MS, FFPCP523/AA123456789, 4G1S12A, WP/NCB, TTP'
   LOGO.3  = '                 SSAI'
   LOGO.4  = '                 AIRSWI'
   LOGO.5  = '                 SAIRSWI'
   LOGO.6  = '                 RSWISSAIR'
-  LOGO.7  = '                 WISSWISAIRS                $'
-  LOGO.8  = '     AIRSWISSAIRSWISSAIRSWISSAIRSWISSAIRSWISS   S   S'
-  LOGO.9  = '     AIRSWISSAIRSWISSAIRSWISSAIRSWISSAIRSWISS   S   S'
-  LOGO.10 = '                 SWISWISSAIR                $'
+  LOGO.7  = '                 WISSWISAIRS               '
+  LOGO.8  = '     AIRSWISSAIRSWISSAIRSWISSAISWISSAIRSWISS'
+  LOGO.9  = '     AIRSWISSAIRSWISSAIRSWISSAISWISSAIRSWISS'
+  LOGO.10 = '                 SWISWISSAIR                '
   LOGO.11 = '                 IRSWISSAI'
   LOGO.12 = '                 SAIRSWI                   S W I S S A I R'
   LOGO.13 = '                 ISSAIR              RESERVATION AND TICKETING SYSTEM'
   LOGO.14 = '                 SWISS                   '
   LOGO.0  = 14
-  DLY = 55                                       /* ms per frame -- gentle    */
+  DLY = 60                                       /* ms per frame -- gentle    */
   /* Blank the chrome once (these stay set across the DATAONLY frames). */
   SCR. = ''
   SCR.TITLE  = LEFT('', 30)
@@ -437,8 +437,8 @@ APPEND: PROCEDURE EXPOSE HIST.
 
 DISPATCH: PROCEDURE EXPOSE AGENT AUTH CURPNR NCAND QDATE QROUTE,
           CAND. HIST. ENDFLAG USR TRM SCRH,
-          airports. eqDesc. eqSeats. seatConfig. airlines.,
-          flightNumRange. fareTypes. paxTypes.,
+          airports. eqDesc. eqSeats. seatConfig.,
+          fareTypes. paxTypes.,
           cityCode. aptRegion. airlineName. routeMiles. regionMiles.
   PARSE ARG RAW
   CMD = STRIP(TRANSLATE(RAW))                  /* uppercase + trim */
@@ -656,7 +656,7 @@ DO_SIGNIN: PROCEDURE EXPOSE AGENT AUTH HIST.
 
 /* --- Availability search: DATE FROM TO [TIME] ------------------- */
 DO_AVAIL: PROCEDURE EXPOSE NCAND QDATE QROUTE CAND. HIST.,
-          airports. eqDesc. eqSeats. airlines. flightNumRange. aptRegion.
+          airports. eqDesc. eqSeats. aptRegion.
   PARSE ARG CMD
   PARSE VAR CMD QDT QFR QTO QTM
   IF QDT = '' | QFR = '' | QTO = '' THEN DO
@@ -689,6 +689,10 @@ DO_AVAIL: PROCEDURE EXPOSE NCAND QDATE QROUTE CAND. HIST.,
   CALL APPEND 'Route: ' || QFR || ' (' || ANMFR || ')'
   CALL APPEND '       to ' || QTO || ' (' || ANMTO || ')'
   CALL GENERATEFLIGHTS QDT, QFR, QTO, QTM
+  IF FLTSRC = 'ERROR' THEN DO
+    CALL APPEND '*** FLIGHT DATA LINK UNAVAILABLE - PLEASE RETRY'
+    RETURN
+  END
   CALL DISPLAYFLIGHTS QDT, QFR, QTO, QTM
   RETURN
 
@@ -1600,7 +1604,7 @@ DO_DD: PROCEDURE EXPOSE HIST. airports. aptRegion. routeMiles. regionMiles.
 
 /* --- S<date><citypair> schedule/timetable ----------------------- */
 DO_SCHED: PROCEDURE EXPOSE HIST. airports. aptRegion. FLIGHTS.,
-          airlines. flightNumRange. eqSeats.
+          eqSeats.
   PARSE ARG CMD
   REST = SUBSTR(CMD, 2)                          /* text after 'S' */
   IF LENGTH(REST) < 7 THEN DO
@@ -1626,10 +1630,14 @@ DO_SCHED: PROCEDURE EXPOSE HIST. airports. aptRegion. FLIGHTS.,
     RETURN
   END
   CALL GENERATEFLIGHTS DT, QFR, QTO, ''
+  IF FLTSRC = 'ERROR' THEN DO
+    CALL APPEND '*** FLIGHT DATA LINK UNAVAILABLE - PLEASE RETRY'
+    RETURN
+  END
   CALL APPEND 'SCHEDULE ' || DT || '  ' || QFR || '/' || QTO || '  DAILY'
   CALL APPEND 'ARLN FLT  DEP    ARR    EQ    DAYS'
   IF FLIGHTS.0 = 0 THEN DO
-    CALL APPEND 'NO SCHEDULED SERVICE'
+    CALL APPEND 'NO SCHEDULED SERVICE ' || QFR || '-' || QTO
     RETURN
   END
   DO I = 1 TO FLIGHTS.0
@@ -1642,6 +1650,32 @@ DO_SCHED: PROCEDURE EXPOSE HIST. airports. aptRegion. FLIGHTS.,
   CALL APPEND FLIGHTS.0 || ' flight(s) scheduled.'
   RETURN
 
+/* AVSGET issues a GET to aviationstack and returns the response body (or
+ * '' on failure). The hardcoded access_key is prepended to QS here, so the
+ * key lives in exactly one place. Exposes AVSRC (transport EIBRESP: 0 ok,
+ * 22 truncated, else error), AVSSC (HTTP status code) and AVSST (HTTP
+ * status text) for the caller to inspect. Each EXEC CICS WEB verb is one
+ * physical line (comma-continuation is illegal inside an EXEC body). */
+AVSGET: PROCEDURE EXPOSE AVSRC AVSSC AVSST
+  PARSE ARG APATH, AQ
+  AKEY = 'b9ab2b78155a8ed4006c9bb94e416d67'
+  FQ = 'access_key=' || AKEY
+  IF AQ \= '' THEN FQ = FQ || '&' || AQ
+  AVSRC = 0
+  AVSSC = 0
+  AVSST = ''
+  EXEC CICS WEB OPEN HOST('api.aviationstack.com') SCHEME('https') PORT('443') SESSTOKEN(TOK) RESP(ORC) END-EXEC
+  IF ORC \= 0 THEN DO
+    AVSRC = ORC
+    RETURN ''
+  END
+  BODY = ''
+  RLEN = 0
+  EXEC CICS WEB CONVERSE SESSTOKEN(TOK) METHOD('GET') PATH(APATH) QUERYSTRING(FQ) INTO(BODY) LENGTH(RLEN) STATUSCODE(AVSSC) STATUSTEXT(AVSST) MAXLENGTH(262144) RESP(WRC) END-EXEC
+  EXEC CICS WEB CLOSE SESSTOKEN(TOK) END-EXEC
+  AVSRC = WRC
+  RETURN BODY
+
 /* --- DO<apt>/D | DO<apt>/A | DO<airline+flt>/<date>: live FLIFO via the
  * aviationstack REST API. Issues an HTTPS GET with EXEC CICS WEB and
  * renders the JSON with the JSONGET / JSONCOUNT builtins. Every EXEC CICS
@@ -1653,13 +1687,6 @@ DO_FLIFO: PROCEDURE EXPOSE HIST. airports.
   PARSE VAR REST CODE '/' ARG
   CODE = STRIP(CODE)
   ARG  = STRIP(ARG)
-  /* Hardcoded endpoint + key. aviationstack supports https + dep/arr
-   * filters on this key; switch ASCHEME to 'http' (PORT 80) for a key
-   * whose plan is http-only. */
-  AKEY    = 'b9ab2b78155a8ed4006c9bb94e416d67'
-  AHOST   = 'api.aviationstack.com'
-  ASCHEME = 'https'
-  APORT   = '443'
   IF ARG = 'D' | ARG = 'A' THEN DO
     CALL ISVALIDAIRPORT CODE
     IF \RESULT THEN DO
@@ -1683,26 +1710,16 @@ DO_FLIFO: PROCEDURE EXPOSE HIST. airports.
     CALL APPEND '*** Usage: DO<apt>/D, DO<apt>/A, or DO<airline+flt>/<date>'
     RETURN
   END
-  QS = 'access_key=' || AKEY || '&' || QFILT || '&limit=20'
-  /* --- outbound HTTPS GET (one line per EXEC CICS verb) --- */
-  EXEC CICS WEB OPEN HOST(AHOST) SCHEME(ASCHEME) PORT(APORT) SESSTOKEN(TOK) RESP(ORC) END-EXEC
-  IF ORC \= 0 THEN DO
-    CALL APPEND '*** FLIFO link failed (WEB OPEN RESP=' || ORC || ')'
+  IF MODE = 'FLT' THEN QS = QFILT || '&limit=40'   /* ~40 days of history */
+  ELSE QS = QFILT || '&limit=20'
+  RESP = AVSGET('/v1/flights', QS)
+  IF AVSRC = 22 THEN CALL APPEND '*** FLIFO response truncated; partial data'
+  ELSE IF AVSRC \= 0 THEN DO
+    CALL APPEND '*** FLIFO link failed (RESP=' || AVSRC || ')'
     RETURN
   END
-  RESP = ''
-  RLEN = 0
-  SC   = 0
-  ST   = ''
-  EXEC CICS WEB CONVERSE SESSTOKEN(TOK) METHOD('GET') PATH('/v1/flights') QUERYSTRING(QS) INTO(RESP) LENGTH(RLEN) STATUSCODE(SC) STATUSTEXT(ST) MAXLENGTH(262144) RESP(WRC) END-EXEC
-  EXEC CICS WEB CLOSE SESSTOKEN(TOK) END-EXEC
-  IF WRC = 22 THEN CALL APPEND '*** FLIFO response truncated; partial data'
-  ELSE IF WRC \= 0 THEN DO
-    CALL APPEND '*** FLIFO call failed (RESP=' || WRC || ')'
-    RETURN
-  END
-  IF SC \= 200 THEN DO
-    CALL APPEND '*** FLIFO HTTP ' || STRIP(ST)
+  IF AVSSC \= 200 THEN DO
+    CALL APPEND '*** FLIFO HTTP ' || STRIP(AVSST)
     EMSG = JSONGET(RESP, 'error.message')
     IF EMSG \= '' THEN CALL APPEND '*** ' || LEFT(EMSG, 70)
     RETURN
@@ -1716,15 +1733,32 @@ DO_FLIFO: PROCEDURE EXPOSE HIST. airports.
     CALL APPEND 'NO LIVE FLIGHTS FOR ' || CODE
     RETURN
   END
-  /* --- single-flight FLIFO --- */
+  /* --- single-flight FLIFO. The undated flight_iata query returns the last
+   *     N days newest-first; pick the entry whose flight_date matches the
+   *     requested date (ARG) so different dates give different results. An
+   *     unparseable date falls back to the most recent (data.0). --- */
   IF MODE = 'FLT' THEN DO
-    CALL APPEND 'FLIFO ' || JSONGET(RESP,'data.0.flight.iata') || '  ',
-                || JSONGET(RESP,'data.0.airline.name') || '   (times UTC)'
-    CALL APPEND '  ' || JSONGET(RESP,'data.0.departure.iata') || ' -> ',
-                || JSONGET(RESP,'data.0.arrival.iata') || '   STATUS: ',
-                || JSONGET(RESP,'data.0.flight_status')
-    CALL APPEND FLIFOLEG('DEP', RESP, 'data.0.departure')
-    CALL APPEND FLIFOLEG('ARR', RESP, 'data.0.arrival')
+    PFX = 'data.0'
+    TGT = ISODATE(ARG)
+    IF TGT \= '' THEN DO
+      HIT = -1
+      DO K = 0 TO N - 1
+        IF HIT < 0 THEN IF JSONGET(RESP, 'data.' || K || '.flight_date') = TGT THEN HIT = K
+      END
+      IF HIT < 0 THEN DO
+        CALL APPEND 'NO ' || CODE || ' ON ' || TGT || ' IN LAST ' || N || ' DAYS'
+        RETURN
+      END
+      PFX = 'data.' || HIT
+    END
+    CALL APPEND 'FLIFO ' || JSONGET(RESP, PFX || '.flight.iata') || '  ',
+                || JSONGET(RESP, PFX || '.airline.name'),
+                || '   ' || JSONGET(RESP, PFX || '.flight_date') || ' (UTC)'
+    CALL APPEND '  ' || JSONGET(RESP, PFX || '.departure.iata') || ' -> ',
+                || JSONGET(RESP, PFX || '.arrival.iata') || '   STATUS: ',
+                || JSONGET(RESP, PFX || '.flight_status')
+    CALL APPEND FLIFOLEG('DEP', RESP, PFX || '.departure')
+    CALL APPEND FLIFOLEG('ARR', RESP, PFX || '.arrival')
     RETURN
   END
   /* --- departures / arrivals board --- */
@@ -1760,6 +1794,39 @@ DO_FLIFO: PROCEDURE EXPOSE HIST. airports.
   IF MODE = 'DEP' THEN CALL APPEND N || ' live departure(s) from ' || CODE || ' (UTC)'
   ELSE CALL APPEND N || ' live arrival(s) at ' || CODE || ' (UTC)'
   RETURN
+
+/* ISODATE parses a SABRE-style day token -- 'DDMMM' (27JUN, the canonical
+ * form) or 'MMMDD' (JUN27) -- into 'YYYY-MM-DD' using the current year, for
+ * matching against the API flight_date. Returns '' if no month is found. */
+ISODATE: PROCEDURE
+  PARSE ARG RAW
+  D = TRANSLATE(STRIP(RAW))
+  IF D = '' THEN RETURN ''
+  MONS = 'JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC'
+  /* find the month (first match). NOTE: bricks LEAVE inside a THEN DO ...
+   * END group does NOT break the enclosing loop, so use a set-once guard. */
+  MN = 0
+  DO M = 1 TO 12
+    IF MN = 0 THEN IF POS(WORD(MONS, M), D) > 0 THEN MN = M
+  END
+  IF MN = 0 THEN RETURN ''
+  MP   = POS(WORD(MONS, MN), D)
+  PRE  = LEFT(D, MP - 1)
+  POST = SUBSTR(D, MP + 3)
+  IF DATATYPE(PRE,'W') & PRE \= '' THEN DSRC = PRE     /* DDMMM */
+  ELSE DSRC = POST                                     /* MMMDD */
+  /* leading 1-2 digits of DSRC = day (any trailing year is ignored). */
+  DD   = ''
+  STOP = 0
+  DO I = 1 TO LENGTH(DSRC)
+    C = SUBSTR(DSRC, I, 1)
+    IF STOP = 0 & DATATYPE(C,'W') & LENGTH(DD) < 2 THEN DD = DD || C
+    ELSE STOP = 1
+  END
+  IF DD = '' THEN RETURN ''
+  IF DD < 1 | DD > 31 THEN RETURN ''
+  YYYY = LEFT(DATE('S'), 4)
+  RETURN YYYY || '-' || RIGHT(MN,2,'0') || '-' || RIGHT(DD,2,'0')
 
 /* HH:MM from an ISO timestamp like '2026-06-26T03:35:00+00:00' (UTC). */
 ISOHHMM: PROCEDURE
@@ -1832,7 +1899,7 @@ DELAYABBR: PROCEDURE
 
 /* --- 1<date><pair><tm><-carr><-cls> canonical availability ------ */
 DO_AVAIL1: PROCEDURE EXPOSE NCAND QDATE QROUTE CAND. HIST.,
-           airports. eqDesc. eqSeats. airlines. flightNumRange. aptRegion.
+           airports. eqDesc. eqSeats. aptRegion.
   PARSE ARG CMD
   BODY = SUBSTR(CMD, 2)                          /* drop leading '1' */
   CLS  = ''
@@ -2134,7 +2201,7 @@ DISPLAYFLIGHTS: PROCEDURE EXPOSE NCAND CAND. HIST. FLIGHTS.
   CALL APPEND ' #  ARLN  FLTN  DEPC/ARVC  DEPT   ARRT   AVST  EQTYP'
   CAND.0 = 0
   IF FLIGHTS.0 = 0 THEN DO
-    CALL APPEND 'NO FLIGHTS AVAILABLE FOR THAT QUERY'
+    CALL APPEND 'NO SCHEDULED SERVICE ' || QFR || '-' || QTO
     NCAND = 0
     RETURN
   END
@@ -2172,68 +2239,98 @@ DISPLAYFLIGHTS: PROCEDURE EXPOSE NCAND CAND. HIST. FLIGHTS.
   END
   CAND.0 = IDX
   NCAND  = IDX
-  IF IDX = 0 THEN CALL APPEND 'NO FLIGHTS AVAILABLE FOR THAT QUERY'
+  IF IDX = 0 THEN CALL APPEND 'NO FLIGHTS NEAR THAT TIME - TRY WITHOUT A TIME'
   ELSE CALL APPEND 'Use SELL <n> to book.'
   RETURN
 
-GENERATEFLIGHTS: PROCEDURE EXPOSE FLIGHTS. airlines. flightNumRange. eqSeats.,
-                 aptRegion.
+/* GENERATEFLIGHTS populates FLIGHTS. with the REAL scheduled flights for a
+ * city pair from aviationstack /v1/routes. Carrier, flight number, and
+ * dep/arr times are real; equipment type and seat counts are EMULATED (the
+ * routes feed carries neither). Sets the exposed status FLTSRC to 'OK',
+ * 'EMPTY' (no scheduled service) or 'ERROR' (link/HTTP failure). Each
+ * FLIGHTS. row keeps the legacy 9-field tuple the rest of the pipeline
+ * (DISPLAYFLIGHTS / CAND. / DO_SELL / BUILD_PNR) already consumes. */
+GENERATEFLIGHTS: PROCEDURE EXPOSE FLIGHTS. eqSeats. aptRegion. FLTSRC
   PARSE ARG QDATE, DEPAPT, ARRAPT, TIMEFILTER
   FLIGHTS.0 = 0
-  USEDNUMS = ''
+  FLTSRC = 'OK'
+  BODY = AVSGET('/v1/routes', 'dep_iata=' || DEPAPT || '&arr_iata=' || ARRAPT || '&limit=100')
+  /* Any transport error is a hard failure for a search, INCLUDING RESP 22
+   * (truncation) -- a partial routes payload is not usable JSON. (FLIFO, by
+   * contrast, renders partial live data.) At limit=100 into a 256 KB buffer
+   * truncation cannot occur in practice. */
+  IF AVSRC \= 0 THEN DO
+    FLTSRC = 'ERROR'
+    RETURN
+  END
+  IF AVSSC \= 200 THEN DO
+    FLTSRC = 'ERROR'
+    RETURN
+  END
+  IF JSONGET(BODY, 'error.code') \= '' THEN DO
+    FLTSRC = 'ERROR'
+    RETURN
+  END
+  /* Emulated equipment pool for this region pair (no aircraft in routes). */
   CALL GETROUTEEQUIPMENT DEPAPT, ARRAPT
   ROUTEEQ = RESULT
   NUMEQ = WORDS(ROUTEEQ)
-  DO A = 1 TO airlines.0
-    AIRLINE = airlines.A
-    FNR = flightNumRange.AIRLINE
-    PARSE VAR FNR MINFLT MAXFLT
-    CALL GETRANDOMNUM 2, 5
-    NUMFLIGHTS = RESULT
-    DO F = 1 TO NUMFLIGHTS
-      CALL GETUNIQUEFLIGHTNUM AIRLINE, MINFLT, MAXFLT, USEDNUMS
-      FLTSTR = RESULT
-      USEDNUMS = USEDNUMS AIRLINE || FLTSTR
-      CALL GETRANDOMNUM 360, 1380
-      DEPTIME = RESULT
-      DEPTIME = (DEPTIME % 5) * 5
-      CALL GETRANDOMNUM 1, NUMEQ
-      EQIDX = RESULT
-      EQTYPE = WORD(ROUTEEQ, EQIDX)
-      CALL GETFLIGHTTIME DEPAPT, ARRAPT
-      FLIGHTDUR = RESULT
-      ARRTIME = DEPTIME + FLIGHTDUR
-      CALL FORMATTIME DEPTIME
-      DEPTSTR = RESULT
-      CALL FORMATTIME ARRTIME
-      ARRTSTR = RESULT
-      MAXSEATS = eqSeats.EQTYPE
-      IF \DATATYPE(MAXSEATS,'W') THEN MAXSEATS = 150
-      MINSEATS = TRUNC(MAXSEATS * 0.2)
-      MAXAVAIL = TRUNC(MAXSEATS * 0.95)
-      CALL GETRANDOMNUM MINSEATS, MAXAVAIL
-      AVAILSEATS = RESULT
-      NIDX = FLIGHTS.0 + 1
-      FLIGHTS.0 = NIDX
-      FLIGHTS.NIDX = AIRLINE FLTSTR DEPAPT QDATE DEPTSTR ARRTSTR ARRAPT AVAILSEATS EQTYPE
-    END
+  N = JSONCOUNT(BODY, 'data')
+  USED = ''
+  DO I = 0 TO N - 1
+    P   = 'data.' || I
+    AIR = JSONGET(BODY, P || '.airline.iata')
+    FLT = JSONGET(BODY, P || '.flight.number')
+    DTM = JSONGET(BODY, P || '.departure.time')
+    ATM = JSONGET(BODY, P || '.arrival.time')
+    IF AIR = '' THEN ITERATE                        /* skip incomplete rows */
+    IF FLT = '' THEN ITERATE
+    IF LENGTH(DTM) < 5 THEN ITERATE
+    IF LENGTH(ATM) < 5 THEN ITERATE
+    DHH = SUBSTR(DTM,1,2)
+    DMM = SUBSTR(DTM,4,2)
+    AHH = SUBSTR(ATM,1,2)
+    AMM = SUBSTR(ATM,4,2)
+    IF \DATATYPE(DHH,'W') | \DATATYPE(DMM,'W') THEN ITERATE
+    IF \DATATYPE(AHH,'W') | \DATATYPE(AMM,'W') THEN ITERATE
+    IF WORDPOS(AIR || FLT, USED) > 0 THEN ITERATE   /* dedupe carrier+number */
+    USED = USED AIR || FLT
+    DMIN = (DHH * 60) + DMM
+    AMIN = (AHH * 60) + AMM
+    CALL FORMATTIME DMIN
+    DEPTSTR = RESULT
+    CALL FORMATTIME AMIN
+    ARRTSTR = RESULT
+    CALL GETRANDOMNUM 1, NUMEQ                       /* emulated equipment */
+    EQTYPE = WORD(ROUTEEQ, RESULT)
+    MAXSEATS = eqSeats.EQTYPE
+    IF \DATATYPE(MAXSEATS,'W') THEN MAXSEATS = 150
+    CALL GETRANDOMNUM TRUNC(MAXSEATS * 0.2), TRUNC(MAXSEATS * 0.95)
+    AVAILSEATS = RESULT                              /* emulated seats */
+    NIDX = FLIGHTS.0 + 1
+    FLIGHTS.0 = NIDX
+    FLIGHTS.NIDX = AIR FLT DEPAPT QDATE DEPTSTR ARRTSTR ARRAPT AVAILSEATS EQTYPE
+    DEPMIN.NIDX = DMIN
   END
-  /* Sort by departure time. */
-  IF FLIGHTS.0 > 1 THEN DO
-    DO I = 1 TO FLIGHTS.0 - 1
-      DO J = I + 1 TO FLIGHTS.0
-        FLROWI = FLIGHTS.I
-        FLROWJ = FLIGHTS.J
-        PARSE VAR FLROWI AI FI DCI DDI DPI ATI ACI AVI EI
-        PARSE VAR FLROWJ AJ FJ DCJ DDJ DPJ ATJ ACJ AVJ EJ
-        IF DPI > DPJ THEN DO
-          TEMP = FLIGHTS.I
-          FLIGHTS.I = FLIGHTS.J
-          FLIGHTS.J = TEMP
-        END
+  IF FLIGHTS.0 = 0 THEN DO
+    FLTSRC = 'EMPTY'
+    RETURN
+  END
+  /* Sort chronologically by the real departure minute. */
+  DO I = 1 TO FLIGHTS.0 - 1
+    DO J = I + 1 TO FLIGHTS.0
+      IF DEPMIN.I > DEPMIN.J THEN DO
+        TF = FLIGHTS.I
+        FLIGHTS.I = FLIGHTS.J
+        FLIGHTS.J = TF
+        TM = DEPMIN.I
+        DEPMIN.I = DEPMIN.J
+        DEPMIN.J = TM
       END
     END
   END
+  /* COMMAREA holds <= 99 candidates; cap defensively well under that. */
+  IF FLIGHTS.0 > 30 THEN FLIGHTS.0 = 30
   RETURN
 
 GETROUTEEQUIPMENT: PROCEDURE EXPOSE aptRegion.
@@ -2260,14 +2357,6 @@ GETAIRPORTREGION: PROCEDURE EXPOSE aptRegion.
   IF R = 'APTREGION.' || CODE THEN RETURN 'OT'
   RETURN R
 
-GETFLIGHTTIME: PROCEDURE
-  PARSE ARG DEP, ARR
-  IF LENGTH(DEP) = 3 & LENGTH(ARR) = 3 THEN DO
-    CALL GETRANDOMNUM 60, 720
-    RETURN 60 + RESULT
-  END
-  RETURN 120
-
 FORMATTIME: PROCEDURE
   PARSE ARG MINS
   IF \DATATYPE(MINS,'W') THEN RETURN '0000A'
@@ -2288,16 +2377,6 @@ GETRANDOMNUM: PROCEDURE
   T = TIME('L')
   SEED = (RIGHT(T, 8) * COUNTER) // 1000000
   RETURN TRUNC(MIN + (SEED // (MAX - MIN + 1)))
-
-GETUNIQUEFLIGHTNUM: PROCEDURE
-  PARSE ARG AIRLINE, MINFLT, MAXFLT, USEDNUMS
-  DO FOREVER
-    DO I = 1 TO 100 ; NOP ; END
-    CALL GETRANDOMNUM MINFLT, MAXFLT
-    FLIGHTNUM = RESULT
-    FLIGHTSTR = RIGHT(FLIGHTNUM, 4, '0')
-    IF WORDPOS(AIRLINE || FLIGHTSTR, USEDNUMS) = 0 THEN RETURN FLIGHTSTR
-  END
 
 ISVALIDAIRPORT: PROCEDURE EXPOSE airports.
   PARSE ARG CODE
@@ -2322,7 +2401,7 @@ GETAIRPORTNAME: PROCEDURE EXPOSE airports.
 /* ================================================================ */
 
 INIT_TABLES: PROCEDURE EXPOSE airports. eqDesc. eqSeats. seatConfig.,
-             airlines. flightNumRange. fareTypes. paxTypes.,
+             fareTypes. paxTypes.,
              cityCode. aptRegion. routeMiles. regionMiles.
   /* Airports + city index + region map (hundreds of entries). */
   CALL LOADAIRPORTS
@@ -2360,15 +2439,6 @@ INIT_TABLES: PROCEDURE EXPOSE airports. eqDesc. eqSeats. seatConfig.,
   eqSeats.B767 = 203
   eqSeats.B757 = 152
   eqSeats.MD981 = 109
-
-  /* Airlines */
-  airlines.1 = 'AAL'
-  airlines.2 = 'DAL'
-  airlines.3 = 'LH'
-  airlines.0 = 3
-  flightNumRange.AAL = '100 999'
-  flightNumRange.DAL = '1000 1999'
-  flightNumRange.LH = '400 799'
 
   /* Fares */
   fareTypes.Y = 'FULL'

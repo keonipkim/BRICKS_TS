@@ -35,7 +35,9 @@ SCR. = ''
 SCR.INFOLINE = 'User:' USR '                           Term:' TRM
 
 DO FOREVER
-  EXEC CICS SEND MAP(M_MENU) FROM(SCR.) ERASE END-EXEC
+  /* NOHANDLE: a missing L map is MAPFAIL (EIBRESP 36), not a task end, */
+  /* so the fallback to the 24x80 map below can run.                    */
+  EXEC CICS SEND MAP(M_MENU) FROM(SCR.) ERASE NOHANDLE END-EXEC
   IF EIBRESP = 36 THEN DO
     M_MENU = 'CUST1'
     EXEC CICS SEND MAP(M_MENU) FROM(SCR.) ERASE END-EXEC
@@ -75,7 +77,7 @@ DO FOREVER
         DET. = ''
         DET.CUSTNO = CKEY
         DET.MODE   = 'Mode: ADD -- fill in fields and press ENTER.'
-        EXEC CICS SEND MAP(M_DETAIL) FROM(DET.) ERASE END-EXEC
+        EXEC CICS SEND MAP(M_DETAIL) FROM(DET.) ERASE NOHANDLE END-EXEC
         IF EIBRESP = 36 THEN DO
           M_DETAIL = 'CUST2'
           EXEC CICS SEND MAP(M_DETAIL) FROM(DET.) ERASE END-EXEC
@@ -138,26 +140,41 @@ DO FOREVER
       END
 
       WHEN AKT = 'D' THEN DO
-        EXEC CICS DELETE FILE('customers') RIDFLD(CKEY) END-EXEC
-        IF EIBRESP = 13 THEN SCR.MSG = 'Customer' CKEY 'not found.'
-        ELSE IF EIBRESP \= 0 THEN SCR.MSG = 'DELETE failed RESP=' || EIBRESP
-        ELSE SCR.MSG = 'Customer' CKEY 'deleted.'
+        /* Deleting a record is an UPDATE of the CUSTOMERS file: ask    */
+        /* QUERY SECURITY (class FCICSFCT in security.conf) first.      */
+        /* CANUPD comes back as a CVDA: 37 = UPDATABLE. No profile row  */
+        /* answers 38 NOTUPDATABLE, so delete fails closed.             */
+        EXEC CICS QUERY SECURITY RESTYPE('FILE') RESID('CUSTOMERS') UPDATE(CANUPD) END-EXEC
+        IF CANUPD \= 37 THEN SCR.MSG = 'Delete not permitted for this user.'
+        ELSE DO
+          EXEC CICS DELETE FILE('customers') RIDFLD(CKEY) END-EXEC
+          IF EIBRESP = 13 THEN SCR.MSG = 'Customer' CKEY 'not found.'
+          ELSE IF EIBRESP \= 0 THEN SCR.MSG = 'DELETE failed RESP=' || EIBRESP
+          ELSE SCR.MSG = 'Customer' CKEY 'deleted.'
+        END
       END
 
       WHEN AKT = 'L' THEN DO
         /* CUSL writes the match count back into the COMMAREA variable   */
-        /* on return; CMSG carries 'filter in / count out'.              */
-        CMSG = ''
+        /* on return; CMSG carries 'filter in / count out'. The callee   */
+        /* cannot grow the COMMAREA, so CMSG is 30 blanks (the SEARCH    */
+        /* field width): an empty CMSG came back empty and lost the      */
+        /* count. CUSL strips the filter, so the blanks mean no filter.  */
+        CMSG = LEFT('', 30)
         EXEC CICS LINK PROGRAM('CUSL') COMMAREA(CMSG) END-EXEC
+        CMSG = STRIP(CMSG)
         IF CMSG = '0' THEN SCR.MSG = 'No customers in file.'
         ELSE SCR.MSG = 'List complete (' || CMSG || ' records).'
       END
 
       WHEN AKT = 'S' THEN DO
         /* Pass the search term through DFHCOMMAREA on the way in; CUSL */
-        /* writes the match count back into the same variable.          */
-        CMSG = SRCH
+        /* writes the match count back into the same variable. Padded   */
+        /* to the SEARCH width so a short term still has room for the   */
+        /* count (a 1-char term could only bring back 1 digit).         */
+        CMSG = LEFT(SRCH, 30)
         EXEC CICS LINK PROGRAM('CUSL') COMMAREA(CMSG) END-EXEC
+        CMSG = STRIP(CMSG)
         IF SRCH = '' THEN DO
           IF CMSG = '0' THEN SCR.MSG = 'No customers in file.'
           ELSE SCR.MSG = 'List complete (' || CMSG || ' records).'
