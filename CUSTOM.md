@@ -6,17 +6,21 @@ This branch contains Keoni's custom extensions and modifications on top of the u
 
 The goal of `keoni-custom` is to stay as close as possible to the official upstream while carrying a set of practical enhancements and a hierarchical role-based menu system for day-to-day use.
 
-## Current Status (as of 22 Oct 2026)
+## Current Status (as of 25 Oct 2026)
 
-- **Upstream base**: `4e8119d` / tag **3.5.4** (`3.5.4 CEDF/CEDG tracing transactions, and follow CICS ABEND code conventions as well as CICS LINK/XCTL conventions closely`). Parent is `eff2fcb` / tag **3.5.2** (ICVR/AICA runaway detection). Tag **3.5.1** is `bfb16f2` (PL/I). There is no 3.5.3 tag. Tag **3.1.6** currently points at `fdeb181` (`add badge`), which sits *between* 3.5.1 and 3.5.2 — it is not an older base.
-- Menu system repaired so maps, PF keys, and `transactions.conf` ACLs agree (see below). Sign-on for live checks: userid `ADMIN` / password `ADMIN` (`runtime/users.conf` stores the id as `admin`).
-- Last rebase tip: `067f836` (docs: update CUSTOM.md for 3.5.4 rebase). Pre-docs tip after replay: `f84f8a9`.
+- **Upstream base**: `aa16f10` / tag **3.5.6** (RACF-style `QUERY SECURITY`: `RESTYPE` / `RESCLASS` / `RESID`, IBM CVDAs, `USERIDERR`). Parent is `67f9ea2` (3.5.5 DFH message). Tag **3.5.5** is `b021388`. Tag **3.5.4.1** is `ffa900e` (programming-reference rewrite). Tag **3.5.4** remains `4e8119d`. There is still no 3.5.3 tag.
+- Menu system repaired so maps, PF keys, and `transactions.conf` ACLs agree (see below). After this rebase the menus were updated for the 3.5.6 CVDA change (`08cf2e8`). Sign-on for live checks: userid `ADMIN` / password `ADMIN` (`runtime/users.conf` stores the id as `admin`). Upstream also shipped `viewer` / `teller` / `super1` for the BANK sample.
+- Replay tip before the CVDA fix: `7b22c09` (docs: pin correct tip SHA in CUSTOM.md). Functional follow-up: `08cf2e8`.
 - Fork `main` has been reset to exactly match upstream `main`.
-- This branch (`keoni-custom`) has been rebased on top of the latest upstream. **One conflict** — all 41 custom commits replayed (simple `git rebase upstream/main`; no `--onto` needed — upstream was a clean 6-commit fast-forward from the prior `300c466` / 3.4.1 base). The only overlap was `runtime/transactions.conf` on `feat(menus): register SCHD`: upstream 3.5.1 already had the same `SCHD` row and had moved `STAR` to the top of the file. Resolution kept upstream's single `SCHD` line and did not reinsert `STAR` in the old slot. The REXMENU rows from that commit applied cleanly. Custom additions (DODFMR/PERS + full menu system) preserved. `bricks.cnf` still has duplicate `start_transaction` (`HELP` then `MYMU`); last-wins keeps `MYMU` and will warn at boot. Upstream now documents that duplicate TRANSID rows are first-wins (opposite of `bricks.cnf`).
-- All prior custom work now sits on upstream `4e8119d` / 3.5.4 (including 3.5.1 PL/I + `CUSP`, 3.5.2 ICVR/AICA, 3.4.1 UTF-8 / binary drop, 3.4.0 TODO web app, and all previous 3.x/2.x work).
-- `CUSP` (`runtime/pli/cusp.pli`) is registered by upstream as `CUSP:pli:cusp.pli:PUBLIC`. It is not yet a row on the custom menus; type `CUSP` at the prompt.
-- Tracked `bin/` remains empty (upstream dropped release binaries in 3.4.1). Local untracked `bin/*-3.3.2-*` downloads were left in place and stay ignored.
+- This branch (`keoni-custom`) has been rebased on top of the latest upstream. **Two conflict stops** — all 43 custom commits replayed (simple `git rebase upstream/main`; no `--onto` needed — upstream was a clean 5-commit fast-forward from `4e8119d` / 3.5.4). Conflicts were `STOP RUN` vs upstream `GOBACK` on sample COBOL `RETURN` lines, not `transactions.conf`. Resolution kept upstream `GOBACK`, kept `RETURN TRANSID('MYMU')` on menu-chained samples, and kept a plain `RETURN` on LINK helpers `GUSL`/`GUSV`. Custom additions (DODFMR/PERS + full menu system) preserved. `bricks.cnf` still has duplicate `start_transaction` (`HELP` then `MYMU`); last-wins keeps `MYMU` and will warn at boot. Duplicate TRANSID rows are first-wins (opposite of `bricks.cnf`).
+- All prior custom work now sits on upstream `aa16f10` / 3.5.6 (including 3.5.5 CAID / map keyboard lock, the programming-reference rewrite, 3.5.4 CEDF/CEDG, 3.5.1 PL/I + `CUSP`, and all previous 3.x/2.x work).
+- `QUERY SECURITY` old numbers 50–57 are gone. Menus use IBM CVDAs: READABLE **35** / NOTREADABLE **36**, admin banner is ALTERABLE **52** on `SQLM`. Calls are `RESTYPE('TRANSATTACH') RESID(...)` with `LOGMESSAGE(NOLOG)` so painting a menu does not fill the region log. `RESOURCE()` still works but is deprecated.
+- `CUSP` (`runtime/pli/cusp.pli`) is registered by upstream as `CUSP:pli:cusp.pli:PUBLIC`. It is not yet a row on the custom menus; type `CUSP` at the prompt. New 3.5.6 samples (`NQUE`, `ABNC`, `ABNH`, `APCH`, `SPLC`, `SPDB`, `ABMR`, `ABUR`, `ABMP`, `ABNP`, `ABZP`) are in the tree but **not** in `transactions.conf` upstream, so they are not on the menus.
+- `PROGRAMMING.md` was removed upstream (3.5.4.1). The guide is `programming_reference.pdf` only.
+- Tracked `bin/` remains empty (upstream dropped release binaries in 3.4.1). Local untracked `bin/*-3.3.2-*` downloads were left in place and stay ignored. They predate this base; do not expect 3.5.6 `QUERY SECURITY` from that binary.
 - Omarchy checkout was **not** reset from this Mac. After `git fetch origin`, that clone needs `git reset --hard origin/keoni-custom` (and `origin/main` if it tracks fork main) — a pull will refuse the rewritten history.
+
+**Previous status** (22 Oct 2026 / 3.5.4 rebase) is preserved below for history.
 
 **Previous status** (12 Oct 2026 / 3.4.1 rebase) is preserved below for history.
 
@@ -40,7 +44,7 @@ These are registered in `runtime/transactions.conf` with `*` or appropriate grou
 Menu behaviour (after the 05 Sep 2026 repair):
 
 - `MYMENU.map` paints **dynamic** `Lxx` rows. The number the operator types matches the line on the screen for every role.
-- Visibility uses `EXEC CICS QUERY SECURITY RESOURCE(transid) READ(...)`, not `LINEIN('users.conf')` (that file is outside `tmp_dir` and was making every caller look like PUBLIC).
+- Visibility uses `EXEC CICS QUERY SECURITY RESTYPE('TRANSATTACH') RESID(transid) READ(...) LOGMESSAGE(NOLOG)`, not `LINEIN('users.conf')` (that file is outside `tmp_dir` and was making every caller look like PUBLIC). READABLE is CVDA 35; the admin banner is ALTERABLE (52) on `SQLM`, not READ.
 - PF1 on the main menu exits to the TRANSID prompt. PF3 on submenus returns to `MYMU`. PF9 opens `MHLP`. PF7/PF8 page long REXX/COBOL/System lists.
 - LINK-only helpers (`CUSV`, `CUSL`, `GUSV`, `GUSL`, `PERV`, `PERL`) are **not** on any menu and must `EXEC CICS RETURN` with no TRANSID so COMMAREA returns to CUST/GUST/PERS.
 - Intentionally not listed as menu rows: those LINK helpers. Sign-off is `CSSF LOGOFF` at the blank prompt (main-menu option 07 / PF1 only drops to the prompt).
@@ -752,6 +756,43 @@ The newest custom commits (with new SHAs after this rebase) that now sit on top 
 
 After rebase: the fresh pre-rebase backup branch + tag were created and retained (plus prior 3.4.1 / 3.4.0 / 3.3.2 / SCHD backups).
 
+## How This Branch Was Updated (25 Oct 2026) — 3.5.6 Rebase
+
+1. Full safety backup created (following the established pattern):
+   - Local branch `keoni-custom-backup-20261025-165712` (at pre-rebase tip `de7f7d8`)
+   - Tag `backup-before-3.5.6-rebase-20261025-165712`
+   (No new tarball was created in this sync.)
+
+2. Fork `main` was reset (`--hard`) to exactly match `upstream/main` at `aa16f10` (tag **3.5.6**). This was a clean fast-forward of five upstream commits (`ffa900e` / tag **3.5.4.1** programming-reference rewrite, `3c3c47a` and `b021388` / tag **3.5.5** CAID tools, map keyboard locking, and the new manual, `67f9ea2` DFH wrong-transaction message, `aa16f10` / tag **3.5.6** RACF `QUERY SECURITY`).
+
+3. `keoni-custom` was rebased onto the new upstream base using:
+   `git rebase upstream/main`
+   (Simple rebase — upstream/main was a clean 5-commit fast-forward from the prior base `4e8119d`; no history rewrite / `--onto` required.)
+   **Two conflict stops**, both `STOP RUN` versus upstream `GOBACK` next to a `RETURN`:
+   - `fix: align TXID values...` on `exam.cob`, `gusl.cob`, `gust.cob`, `gusv.cob`, `hello.cob`, `help.cob`, `ordr.cob`, `qagc.cob`, `sqld.cob`, `timc.cob`. Kept `GOBACK`. Kept `RETURN TRANSID('MYMU')` except on LINK helpers `GUSL`/`GUSV`, which stayed a plain `RETURN`.
+   - `feat(menus): repair role-aware launcher...` on `gusl.cob` and `gusv.cob` only (the repair already restored plain `RETURN`; the leftover was `STOP RUN` vs `GOBACK`). Kept `GOBACK`.
+   `transactions.conf` did not conflict. `SCHD` stayed a single upstream row. The other 41 custom commits replayed cleanly. Custom DODFMR/PERS and menu registrations were preserved.
+
+4. Follow-up, not part of the replay: `08cf2e8` retargets the seven menu programs (`bricks_menus/rexx/` and the deployed `runtime/rexx/` copies) at 3.5.6 `QUERY SECURITY`. The old 50/51 codes no longer mean READABLE/NOTREADABLE, so every menu row would have been hidden and `SQLM` would have bounced to `MYMU`. Calls are now `RESTYPE('TRANSATTACH') RESID(...) LOGMESSAGE(NOLOG)`; READABLE is 35, NOTREADABLE is 36, and the admin banner is ALTERABLE (52).
+
+5. Updated this `CUSTOM.md`, then force-pushed fork `main` and `keoni-custom` (`origin`, `--force-with-lease`), plus the pre-rebase backup branch and tag. The Omarchy clone was not updated from this machine.
+
+The newest custom commits (with new SHAs after this rebase) that now sit on top of upstream `aa16f10` are:
+
+- `08cf2e8` fix(menus): use 3.5.6 QUERY SECURITY CVDAs
+- `7b22c09` docs: pin correct tip SHA in CUSTOM.md
+- `b2397ba` docs: update CUSTOM.md for 3.5.4 rebase (one transactions.conf conflict on SCHD)
+- `52b1029` feat(dodf): match PAT lost-time rules on DODF and DODC
+
+(43 replayed custom commits, plus the CVDA follow-up and this status update.)
+
+**New upstream highlights included in this rebase (3.5.4.1–3.5.6)**:
+- 3.5.4.1 (`ffa900e`, tag **3.5.4.1**): `PROGRAMMING.md` removed. The application guide is `programming_reference.pdf` only. README and `SQL_guide.md` trimmed to point at that PDF.
+- 3.5.5 (`3c3c47a`, `b021388`, tag **3.5.5`; `67f9ea2` message fix): CAID tools, keyboard locking in maps, new-style manual. Tree changes outside the PDF are `log/abend.log` plus the message-only PDF refresh. Engine changes are not in this repo.
+- 3.5.6 (`aa16f10`, tag **3.5.6**): `QUERY SECURITY` in IBM form. `RESTYPE` or `RESCLASS`+`RESID` required; `RESOURCE()` still accepted as deprecated `RESTYPE('TRANSATTACH')`. CVDAs are IBM's (35/36 read, 37/38 update, 52/53 alter, 56/57 control). New `runtime/security.conf` (BANK, FCICSFCT, FSPF, SURROGAT). `users.conf` gains `viewer`, `teller`, `super1`. Sample programs (`GUST`, `CUST`, `BANK`, `FSPF`, `CUSP`) ask security at the point of use and use `GOBACK` instead of `STOP RUN`. New unregistered demos: COBOL `ABNC`/`ABNH`/`APCH`/`SPLC`, REXX `ABMR`/`ABUR`/`SPDB`, PL/I `NQUE`/`ABMP`/`ABNP`/`ABZP`. `web_routes.conf` documents first-wins duplicate routes and moves the TODO routes up with a PUBLIC-mixing warning.
+
+After rebase: the fresh pre-rebase backup branch + tag were created and retained (plus prior 3.5.4 / 3.4.1 / 3.4.0 / 3.3.2 backups).
+
 ## Future Maintenance
 
 ### Recommended Workflow
@@ -792,7 +833,7 @@ git push origin keoni-custom --force-with-lease
 
 ---
 
-**Last updated**: 22 Oct 2026 (3.5.4 rebase, one `transactions.conf` conflict on the old SCHD registration; simple rebase on fast-forward upstream)
+**Last updated**: 25 Oct 2026 (3.5.6 rebase, two `GOBACK` conflicts on sample COBOL; menu CVDAs updated in `08cf2e8`; simple rebase on fast-forward upstream)
 **Maintainer**: Keoni (keonipkim fork)
 
 This file lives on the `keoni-custom` branch only and should be updated whenever significant custom work is added or the branch is rebased against upstream.
