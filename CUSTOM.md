@@ -6,23 +6,23 @@ This branch contains Keoni's custom extensions and modifications on top of the u
 
 The goal of `keoni-custom` is to stay as close as possible to the official upstream while carrying a set of practical enhancements and a hierarchical role-based menu system for day-to-day use.
 
-## Current Status (as of 25 Oct 2026)
+## Current Status (as of 2 Nov 2026)
 
-- **Upstream base**: `aa16f10` / tag **3.5.6** (RACF-style `QUERY SECURITY`: `RESTYPE` / `RESCLASS` / `RESID`, IBM CVDAs, `USERIDERR`). Parent is `67f9ea2` (3.5.5 DFH message). Tag **3.5.5** is `b021388`. Tag **3.5.4.1** is `ffa900e` (programming-reference rewrite). Tag **3.5.4** remains `4e8119d`. There is still no 3.5.3 tag.
-- Menu system repaired so maps, PF keys, and `transactions.conf` ACLs agree (see below). After this rebase the menus were updated for the 3.5.6 CVDA change (`08cf2e8`). Sign-on for live checks: userid `ADMIN` / password `ADMIN` (`runtime/users.conf` stores the id as `admin`). Upstream also shipped `viewer` / `teller` / `super1` for the BANK sample.
-- Replay tip before the CVDA fix: `7b22c09` (docs: pin correct tip SHA in CUSTOM.md). Functional follow-up: `08cf2e8`.
+- **Upstream base**: `e95fd6a` / tag **3.5.7** (ISPF buffer bug: multiple files no longer share one buffer). Parent is `c212267` (3.5.7 binaries + programming-reference refresh). `de1d30d` is the ISPF manual update (PL/I option 4). Tag **3.5.6** remains `aa16f10`. Tag **3.5.5** is `b021388`. Tag **3.5.4.1** is `ffa900e`. There is still no 3.5.3 tag.
+- Menu system repaired so maps, PF keys, and `transactions.conf` ACLs agree (see below). Menus still use the 3.5.6 CVDA change (`e86b6bd`, was `08cf2e8`). No menu follow-up was required for 3.5.7. Sign-on for live checks: userid `ADMIN` / password `ADMIN` (`runtime/users.conf` stores the id as `admin`). Upstream also shipped `viewer` / `teller` / `super1` for the BANK sample.
+- Replay tip: `7664017` (docs: note Omarchy checkout reset after 3.5.6 rebase). This status update sits on top of that.
 - Fork `main` has been reset to exactly match upstream `main`.
-- This branch (`keoni-custom`) has been rebased on top of the latest upstream. **Two conflict stops** — all 43 custom commits replayed (simple `git rebase upstream/main`; no `--onto` needed — upstream was a clean 5-commit fast-forward from `4e8119d` / 3.5.4). Conflicts were `STOP RUN` vs upstream `GOBACK` on sample COBOL `RETURN` lines, not `transactions.conf`. Resolution kept upstream `GOBACK`, kept `RETURN TRANSID('MYMU')` on menu-chained samples, and kept a plain `RETURN` on LINK helpers `GUSL`/`GUSV`. Custom additions (DODFMR/PERS + full menu system) preserved. `bricks.cnf` still has duplicate `start_transaction` (`HELP` then `MYMU`); last-wins keeps `MYMU` and will warn at boot. Duplicate TRANSID rows are first-wins (opposite of `bricks.cnf`).
-- All prior custom work now sits on upstream `aa16f10` / 3.5.6 (including 3.5.5 CAID / map keyboard lock, the programming-reference rewrite, 3.5.4 CEDF/CEDG, 3.5.1 PL/I + `CUSP`, and all previous 3.x/2.x work).
+- This branch (`keoni-custom`) has been rebased on top of the latest upstream. **Zero conflicts** — all 46 custom commits replayed (simple `git rebase upstream/main`; no `--onto` needed — upstream was a clean 3-commit fast-forward from `aa16f10` / 3.5.6). Custom additions (DODFMR/PERS + full menu system) preserved. `bricks.cnf` still has duplicate `start_transaction` (`HELP` then `MYMU`); last-wins keeps `MYMU` and will warn at boot. Duplicate TRANSID rows are first-wins (opposite of `bricks.cnf`).
+- All prior custom work now sits on upstream `e95fd6a` / 3.5.7 (including 3.5.6 `QUERY SECURITY`, 3.5.5 CAID / map keyboard lock, the programming-reference rewrite, 3.5.4 CEDF/CEDG, 3.5.1 PL/I + `CUSP`, and all previous 3.x/2.x work).
 - `QUERY SECURITY` old numbers 50–57 are gone. Menus use IBM CVDAs: READABLE **35** / NOTREADABLE **36**, admin banner is ALTERABLE **52** on `SQLM`. Calls are `RESTYPE('TRANSATTACH') RESID(...)` with `LOGMESSAGE(NOLOG)` so painting a menu does not fill the region log. `RESOURCE()` still works but is deprecated.
-- `CUSP` (`runtime/pli/cusp.pli`) is registered by upstream as `CUSP:pli:cusp.pli:PUBLIC`. It is not yet a row on the custom menus; type `CUSP` at the prompt. New 3.5.6 samples (`NQUE`, `ABNC`, `ABNH`, `APCH`, `SPLC`, `SPDB`, `ABMR`, `ABUR`, `ABMP`, `ABNP`, `ABZP`) are in the tree but **not** in `transactions.conf` upstream, so they are not on the menus.
-- `PROGRAMMING.md` was removed upstream (3.5.4.1). The guide is `programming_reference.pdf` only.
-- Tracked `bin/` remains empty (upstream dropped release binaries in 3.4.1). Local untracked `bin/*-3.3.2-*` downloads were left in place and stay ignored. They predate this base; do not expect 3.5.6 `QUERY SECURITY` from that binary.
-- Omarchy checkout (`beelink` / `kpkim@omarchy.local:~/Projects/personal/BRICKS_TS`) was reset from this Mac after the push. It was clean at `fa27e17` (pre-3.5.4 tip; it had not taken the 22 Oct rebase). `git fetch origin` then `git reset --hard origin/keoni-custom` and `origin/main`. A pull would have refused the rewritten history.
+- `CUSP` (`runtime/pli/cusp.pli`) is registered by upstream as `CUSP:pli:cusp.pli:PUBLIC`. It is not yet a row on the custom menus; type `CUSP` at the prompt. New 3.5.6 samples (`NQUE`, `ABNC`, `ABNH`, `APCH`, `SPLC`, `SPDB`, `ABMR`, `ABUR`, `ABMP`, `ABNP`, `ABZP`) are in the tree but **not** in `transactions.conf` upstream, so they are not on the menus. ISPF option 4 now documents editing `runtime/pli` (`ISPF_editor.md`).
+- `PROGRAMMING.md` was removed upstream (3.5.4.1). The guide is `programming_reference.pdf` only (refreshed again in 3.5.7).
+- Tracked `bin/` is no longer empty. Upstream shipped 3.5.7 release binaries (42 files: `bricks`, `brickscompile`, `bricksconvert`, `bricksdesigner`, `bricksload`, `brickspw`, `idcams` for darwin/linux/windows). `.gitignore` still has `/bin/`, which ignores untracked extras but does **not** untrack those release binaries. Local untracked `bin/*-3.3.2-*` downloads were left in place. The gitignored `bricks` symlink on this Mac was repointed at `bin/bricks-3.5.7-darwin-arm64` (it still named the missing 2.6.6 binary).
+- Omarchy checkout (`beelink` / `kpkim@omarchy.local:~/Projects/personal/BRICKS_TS`) was reset from this Mac after the push. `git fetch origin` then `git reset --hard origin/keoni-custom` and `origin/main`. A pull would have refused the rewritten history.
+
+**Previous status** (25 Oct 2026 / 3.5.6 rebase) is preserved below for history.
 
 **Previous status** (22 Oct 2026 / 3.5.4 rebase) is preserved below for history.
-
-**Previous status** (12 Oct 2026 / 3.4.1 rebase) is preserved below for history.
 
 ## Custom Work Included
 
@@ -793,6 +793,37 @@ The newest custom commits (with new SHAs after this rebase) that now sit on top 
 
 After rebase: the fresh pre-rebase backup branch + tag were created and retained (plus prior 3.5.4 / 3.4.1 / 3.4.0 / 3.3.2 backups).
 
+## How This Branch Was Updated (2 Nov 2026) — 3.5.7 Rebase
+
+1. Full safety backup created (following the established pattern):
+   - Local branch `keoni-custom-backup-20261102-190128` (at pre-rebase tip `5278caf`)
+   - Tag `backup-before-3.5.7-rebase-20261102-190128`
+   (No new tarball was created in this sync.)
+
+2. Fork `main` was reset (`--hard`) to exactly match `upstream/main` at `e95fd6a` (tag **3.5.7**). This was a clean fast-forward of three upstream commits (`de1d30d` ISPF manual: PL/I option 4, `c212267` 3.5.7 release binaries plus programming-reference refresh, `e95fd6a` ISPF same-buffer bugfix).
+
+3. `keoni-custom` was rebased onto the new upstream base using:
+   `git rebase upstream/main`
+   (Simple rebase — upstream/main was a clean 3-commit fast-forward from the prior base `aa16f10`; no history rewrite / `--onto` required.)
+   The rebase completed with **zero conflicts** — all 46 custom commits replayed cleanly. No file in the custom range overlapped the upstream diff (`ISPF_editor.md`, `programming_reference.pdf`, and new `bin/*-3.5.7-*`).
+
+4. Updated this `CUSTOM.md`, then force-pushed fork `main` and `keoni-custom` (`origin`, `--force-with-lease`), plus the pre-rebase backup branch and tag. The Omarchy clone was then `git fetch origin` + `git reset --hard` onto those tips.
+
+The newest custom commits (with new SHAs after this rebase) that now sit on top of upstream `e95fd6a` are:
+
+- `7664017` docs: note Omarchy checkout reset after 3.5.6 rebase
+- `b74adfa` docs: update CUSTOM.md for 3.5.6 rebase
+- `e86b6bd` fix(menus): use 3.5.6 QUERY SECURITY CVDAs
+- `48e94c5` docs: pin correct tip SHA in CUSTOM.md
+
+(46 replayed custom commits, plus this status update.)
+
+**New upstream highlights included in this rebase (3.5.7)**:
+- `de1d30d`: `ISPF_editor.md` documents option 4, edit PL/I files in `runtime/pli` (`pli_dir`).
+- `c212267` / `e95fd6a` (tag **3.5.7**): ISPF no longer keeps multiple open files in the same buffer. Release binaries are tracked again under `bin/` (dropped since 3.4.1). `programming_reference.pdf` was refreshed. Engine changes are in those binaries, not in this repo's source.
+
+After rebase: the fresh pre-rebase backup branch + tag were created and retained (plus prior 3.5.6 / 3.5.4 / 3.4.1 / 3.4.0 / 3.3.2 backups).
+
 ## Future Maintenance
 
 ### Recommended Workflow
@@ -833,7 +864,7 @@ git push origin keoni-custom --force-with-lease
 
 ---
 
-**Last updated**: 25 Oct 2026 (3.5.6 rebase, two `GOBACK` conflicts on sample COBOL; menu CVDAs updated in `08cf2e8`; simple rebase on fast-forward upstream)
+**Last updated**: 2 Nov 2026 (3.5.7 rebase, zero conflicts; simple rebase on a 3-commit fast-forward; release binaries tracked again under `bin/`)
 **Maintainer**: Keoni (keonipkim fork)
 
 This file lives on the `keoni-custom` branch only and should be updated whenever significant custom work is added or the branch is rebased against upstream.
